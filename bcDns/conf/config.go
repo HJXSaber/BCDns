@@ -38,4 +38,5 @@ func init() {
 	}
 
 	BCDnsConfig.Port = viper.GetInt("PORT")
+	BCDnsConfig.HostName = viper.GetString("HOSTNAME")
 }
