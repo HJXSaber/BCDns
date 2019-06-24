@@ -91,7 +91,7 @@ func (*CAX509) Sign(msg []byte) []byte {
 			}
 		}
 	}
-	return []byte{}
+	return nil
 }
 
 func (ca *CAX509) VerifySignature(sig, msg []byte, Id string) bool {

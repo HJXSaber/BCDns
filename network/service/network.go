@@ -11,6 +11,7 @@ import (
 type DnsNet struct {
 	Network *memberlist.Memberlist
 	broadCasts *memberlist.TransmitLimitedQueue
+	Leader memberlist.Node
 }
 
 //Can not broadcast msg whose size is longer than 1350B

@@ -1,11 +1,12 @@
 package messages
 
 import (
+	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
 	"encoding/json"
 	"fmt"
-	"github.com/satori/go.uuid"
+	"github.com/rs/xid"
 	"reflect"
 )
 
@@ -95,7 +96,11 @@ func (p *ProposalMassage) Response(pass bool) ([]byte, error) {
 type PId struct {
 	//Name is hostname
 	Name string
-	SequenceNumber uuid.UUID
+	SequenceNumber []byte
+}
+
+func (p PId) String() string {
+	return p.Name + ":" + string(p.SequenceNumber)
 }
 
 type Operation struct {
@@ -128,6 +133,64 @@ func Parse(data []byte) *ProposalMassage {
 		return nil
 	}
 	return &msg
+}
+
+func NewProposal(zoneName string, t int) *ProposalMassage {
+	switch t {
+	case Add:
+		sig := service.CertificateAuthorityX509.Sign([]byte(zoneName))
+		if sig == nil {
+			fmt.Println("Generate proposal failed: sign failed")
+			return nil
+		}
+		msg := AddMsg{
+			ZoneName:zoneName,
+			Sig:sig,
+		}
+		msgData, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		return &ProposalMassage{
+			PId: PId{
+				Name: conf.BCDnsConfig.HostName,
+				SequenceNumber: xid.New().Bytes(),
+			},
+			Operation: Operation{
+				Type: Add,
+				data: msgData,
+			},
+		}
+	case Del:
+		sig := service.CertificateAuthorityX509.Sign([]byte(zoneName))
+		if sig == nil {
+			fmt.Println("Generate proposal failed: sign failed")
+			return nil
+		}
+		msg := DelMsg{
+			ZoneName:zoneName,
+			Sig:sig,
+		}
+		msgData, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		return &ProposalMassage{
+			PId: PId{
+				Name: conf.BCDnsConfig.HostName,
+				SequenceNumber: xid.New().Bytes(),
+			},
+			Operation: Operation{
+				Type: Del,
+				data: msgData,
+			},
+		}
+	default:
+		fmt.Println("Unknown proposal type")
+		return nil
+	}
 }
 
 type AddReqFailed struct {
