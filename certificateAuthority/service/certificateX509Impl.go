@@ -50,6 +50,7 @@ func (err CheckSigFailedErr) Error() string {
 type CAX509 struct {
 	Mutex sync.Mutex
 	Certificates map[string]x509.Certificate
+
 }
 
 func init() {
@@ -205,6 +206,14 @@ func (ca *CAX509) VerifyCertificate(data []byte) bool {
 
 func (ca *CAX509) GetLocalCertificate() (*x509.Certificate, []byte) {
 	return loadCertificate2(CertificatesPath + LocalCertificateName), loadCertificate2Bytes(CertificatesPath + LocalCertificateName)
+}
+
+func (ca *CAX509) GetNetworkSize() int {
+	return len(ca.Certificates)
+}
+
+func (ca *CAX509) GetF() int {
+	return (ca.GetNetworkSize() - 1) / 3
 }
 
 func loadPrivateKey2() *rsa.PrivateKey {

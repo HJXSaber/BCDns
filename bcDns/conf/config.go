@@ -18,6 +18,8 @@ type Config struct {
 
 	ProposalBufferSize int
 	ProposalOvertime time.Duration
+
+	LeaderMsgBufferSize int
 }
 
 var (

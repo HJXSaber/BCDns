@@ -15,5 +15,7 @@ type CAX509Interface interface {
 	GetSeeds() []string
 	VerifyCertificate(data []byte) bool
 	GetLocalCertificate() (*x509.Certificate, []byte)
+	GetNetworkSize() int
+	GetF() int
 }
 
