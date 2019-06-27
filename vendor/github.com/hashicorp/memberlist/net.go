@@ -4,6 +4,7 @@ import (
 	"BCDns_0.1/certificateAuthority/service"
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
@@ -265,6 +266,15 @@ func (m *Memberlist) handleConn(conn net.Conn) {
 		if err := m.mergeRemoteState(join, remoteNodes, userState); err != nil {
 			m.logger.Printf("[ERR] memberlist: Failed push/pull merge: %s %s", err, LogConn(conn))
 			return
+		}
+		for _, member := range m.Members() {
+			if member.Addr.String() == conn.RemoteAddr().String() {
+				for i, cert := range service.CertificateAuthorityX509.CertificatesOrder {
+					if cert.Cert.IPAddresses[0].Equal(member.Addr) {
+						service.CertificateAuthorityX509.CertificatesOrder[i].Member = member
+					}
+				}
+			}
 		}
 	case pingMsg:
 		var p ping
@@ -750,6 +760,7 @@ func (m *Memberlist) rawSendMsgStream(conn net.Conn, sendBuf []byte) error {
 
 // sendUserMsg is used to stream a user message to another host.
 func (m *Memberlist) sendUserMsg(addr string, sendBuf []byte) error {
+	tls.Dial()
 	conn, err := m.transport.DialTimeout(addr, m.config.TCPTimeout)
 	if err != nil {
 		return err

@@ -27,6 +27,10 @@ var (
 	BCDnsConfig Config
 )
 
+const (
+	ViewRetrieve = iota
+)
+
 func init() {
 	if val, ok := os.LookupEnv("BCDNSConfFile"); ok {
 		path = val

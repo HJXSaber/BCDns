@@ -1,6 +1,10 @@
 package utils
 
 import (
+	"bytes"
+	"encoding/gob"
+	"fmt"
+	"log"
 	"reflect"
 	"testing"
 )
@@ -109,4 +113,35 @@ func TestConvertError_Error(T *testing.T) {
 	//}
 	//d := reflect.ValueOf(dst).Elem().Interface()
 	//fmt.Println(d.(Dst))
+}
+
+type T struct {
+	Val *int
+	A *A
+	M map[string]bool
+}
+
+type A struct {
+	Str string
+}
+
+func TestGob(t *testing.T) {
+	val := 1
+	tt := T{
+		Val: &val,
+		A: &A{
+			Str:"hello",
+		},
+		M:make(map[string]bool),
+	}
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(tt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var ttt T
+	dnc := gob.NewDecoder(&buf)
+	err = dnc.Decode(&ttt)
+	fmt.Println(*ttt.Val, ttt.A.Str)
 }

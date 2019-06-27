@@ -2,9 +2,11 @@ package service
 
 import (
 	"BCDns_0.1/bcDns/conf"
+	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
 	"encoding/json"
 	"fmt"
+	"log"
 )
 
 const (
@@ -19,102 +21,144 @@ var (
 
 type LeaderT struct {
 	OnChanging bool
-	LeaderID int64
-	LeaderMsgChan chan LeaderMsg
-	DeadMsgMap []DeadMsg
-	//key is PId'String
-	TranMissMsgMap map[string][]TranMissMsg
-	BlockOvertimeMsgMap map[int64][]BlockOvertimeMsg
+	LeaderId int64
+	TermId int64
+	ViewChangeMsgChan chan []byte
+	RetrieveMsgChan chan []byte
+	RetrieveMsgs map[string]ViewRetrieveMsg
+	ViewChangeMsgs map[ViewChangeMsgData][]ViewChangeMsg
 }
 
-func (leader *LeaderT) ProcessLeaderMsg() {
+func (leader *LeaderT) ProcessViewChangeMsg() {
+	var msg ViewChangeMsg
 	for {
-		msg := <- leader.LeaderMsgChan
-		if msg.LeaderID != leader.LeaderID {
+		msgByte := <- leader.ViewChangeMsgChan
+		err := json.Unmarshal(msgByte, msg)
+		if err != nil {
+			fmt.Println("Process viewchange msg failed", err)
+			continue
+		}
+		if msg.TermId != leader.TermId {
 			fmt.Println("Outdated msg")
 			continue
 		}
-		switch msg.Type {
-		case DeadType:
-			var deadMsg DeadMsg
-			err := json.Unmarshal(msg.Data, deadMsg)
-			if err != nil {
-				fmt.Println("Process LeaderMsg failed", err)
-				continue
+		if !checkType(msg.ViewChangeType) {
+			fmt.Println("Illegal msg type")
+			continue
+		}
+		dataBytes, err := json.Marshal(msg.ViewChangeMsgData)
+		if err != nil {
+			fmt.Println("Process viewchange msg failed", err)
+			continue
+		}
+		if service.CertificateAuthorityX509.VerifySignature(msg.Sig, dataBytes, msg.HostName) {
+			if _, ok := leader.ViewChangeMsgs[msg.ViewChangeMsgData]; !ok {
+				leader.ViewChangeMsgs[msg.ViewChangeMsgData] = append(leader.ViewChangeMsgs[msg.ViewChangeMsgData],
+					msg)
+				if len(leader.ViewChangeMsgs[msg.ViewChangeMsgData]) > 2 * service.CertificateAuthorityX509.GetF() + 1 {
+					go leader.LeaderVote(msg.ViewChangeMsgData)
+				}
 			}
-		case TranMiss:
-		case BlockOvertime:
-		default:
-			fmt.Println("Unknown LeaderMsg Type")
 		}
 	}
 }
 
-func (*LeaderT) Parse(data []byte) *LeaderMsg {
-	var msg LeaderMsg
-	err := json.Unmarshal(data, msg)
+func (leader *LeaderT) LeaderVote(id ViewChangeMsgData) {
+	msg := LeaderVoteMsg{
+		Msgs: leader.ViewChangeMsgs[id],
+	}
+	msgByte, err := json.Marshal(msg)
 	if err != nil {
-		fmt.Println("Parse Leader Msg failed", err)
-		return nil
+		fmt.Println("LeaderVote failed", err)
+		return
 	}
-	return &msg
+	P2PNet.BroadcastMsg(msgByte)
 }
 
-func (leader *LeaderT) LeaderVote(t int, id interface{}) {
-	switch t {
-	case DeadType:
-
-	case TranMiss:
-		var msg LeaderVoteMsg
-		tId := id.(messages.PId).String()
-		msg.Data = []byte(leader.TranMissMsgMap[tId][0].TId.String())
-		for _, val := range leader.TranMissMsgMap[tId] {
-			msg.Sigs = append(msg.Sigs, val.Sig)
+func (leader *LeaderT) ProcessRetrieveMsg() {
+	var msg ViewRetrieveMsg
+	for {
+		msgByte := <- leader.RetrieveMsgChan
+		err := json.Unmarshal(msgByte, msg)
+		if err != nil {
+			fmt.Println("Process retrieve msg failed", err)
+			continue
 		}
-
-	case BlockOvertime:
-	default:
-		fmt.Println("Unknown LeaderVote type")
+		if msg.Retrieve {
+			msg.LeaderId, msg.TermId, msg.HostName = leader.LeaderId, leader.TermId, conf.BCDnsConfig.HostName
+		} else {
+			if _, ok := leader.RetrieveMsgs[msg.HostName]; !ok {
+				leader.RetrieveMsgs[msg.HostName] = msg
+				if len(leader.RetrieveMsgs) >= service.CertificateAuthorityX509.GetF() + 1 {
+					leader.LeaderId, leader.TermId = msg.LeaderId, msg.TermId
+				}
+			}
+		}
 	}
 }
 
-type LeaderMsg struct {
-	Type int
-	LeaderID int64
-	Data []byte
-}
-
-type DeadMsg struct {
+type ViewChangeMsg struct {
+	ViewChangeMsgData
 	Sig []byte
 }
 
-type TranMissMsg struct {
+type ViewChangeMsgData struct {
+	Type uint8
+	HostName string
+	ViewChangeType int
+	TermId, BId int64
+	//key is PId'String
 	TId messages.PId
-	Sig []byte
-}
-
-type BlockOvertimeMsg struct {
-	BId int64
-	Sig []byte
 }
 
 type LeaderVoteMsg struct {
-	Data []byte
-	Sigs [][]byte
+	Type uint8
+	Msgs []ViewChangeMsg
 }
 
 type LeaderTInterface interface {
-	ProcessLeaderMsg()
-	Parse(data []byte) *LeaderMsg
-	LeaderVote(t int, id interface{})
+	ProcessViewChangeMsg()
+	LeaderVote(ViewChangeMsgData)
+	ProcessRetrieveMsg()
+}
+
+type ViewRetrieveMsg struct {
+	Type uint8
+	Retrieve bool
+	HostName string
+	TermId, LeaderId int64
 }
 
 func init() {
+	msg := ViewRetrieveMsg{
+		Type:ViewRetrieve,
+		Retrieve:true,
+	}
+	msgByte, err := json.Marshal(msg)
+	if err != nil {
+		log.Fatal("Leader init failed", err)
+	}
+	P2PNet.BroadcastMsg(msgByte)
 	Leader = LeaderT{
-		LeaderMsgChan: make(chan LeaderMsg, conf.BCDnsConfig.LeaderMsgBufferSize),
+		OnChanging: false,
+		LeaderId: -1,
+		TermId: -1,
+		ViewChangeMsgChan: make(chan []byte, conf.BCDnsConfig.LeaderMsgBufferSize),
+		ViewChangeMsgs: make(map[ViewChangeMsgData][]ViewChangeMsg),
 	}
 }
 
+//static method
 func TurnLeader () {
+	service.CertificateAuthorityX509.Mutex.Lock()
+	defer service.CertificateAuthorityX509.Mutex.Unlock()
 
+	Leader.LeaderId = (Leader.LeaderId + 1) % int64(service.CertificateAuthorityX509.GetNetworkSize())
+}
+
+func checkType(t int) bool {
+	if t >= DeadType && t <= BlockOvertime {
+		return true
+	}
+	return false
 }

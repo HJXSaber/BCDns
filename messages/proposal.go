@@ -96,7 +96,7 @@ func (p *ProposalMassage) Response(pass bool) ([]byte, error) {
 type PId struct {
 	//Name is hostname
 	Name string
-	SequenceNumber []byte
+	SequenceNumber string
 }
 
 
@@ -156,7 +156,7 @@ func NewProposal(zoneName string, t int) *ProposalMassage {
 		return &ProposalMassage{
 			PId: PId{
 				Name: conf.BCDnsConfig.HostName,
-				SequenceNumber: xid.New().Bytes(),
+				SequenceNumber: xid.New().String(),
 			},
 			Operation: Operation{
 				Type: Add,
@@ -181,7 +181,7 @@ func NewProposal(zoneName string, t int) *ProposalMassage {
 		return &ProposalMassage{
 			PId: PId{
 				Name: conf.BCDnsConfig.HostName,
-				SequenceNumber: xid.New().Bytes(),
+				SequenceNumber: xid.New().String(),
 			},
 			Operation: Operation{
 				Type: Del,

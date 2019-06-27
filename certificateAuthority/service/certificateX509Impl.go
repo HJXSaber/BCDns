@@ -43,6 +43,11 @@ type CheckSigFailedErr struct {
 	Msg string
 }
 
+type Node struct {
+	Cert x509.Certificate
+	Member interface{}
+}
+
 func (err CheckSigFailedErr) Error() string {
 	return err.Msg
 }
@@ -50,11 +55,11 @@ func (err CheckSigFailedErr) Error() string {
 type CAX509 struct {
 	Mutex sync.Mutex
 	Certificates map[string]x509.Certificate
-
+	CertificatesOrder []Node
 }
 
 func init() {
-	certs := make(map[string]x509.Certificate)
+	certs, certsOrder := make(map[string]x509.Certificate), make([]Node, 0)
 	dir, err := ioutil.ReadDir(CertificatesPath)
 	if err != nil {
 		log.Fatal(err)
@@ -72,11 +77,13 @@ func init() {
 			}
 			names := strings.Split(fileName, ".")
 			certs[names[0]] = *cert
+			insertCertificateByOrder(certsOrder, cert)
 		}
 	}
 	CertificateAuthorityX509 = &CAX509{
 		Mutex: sync.Mutex{},
 		Certificates: certs,
+		CertificatesOrder:certsOrder,
 	}
 }
 
@@ -154,6 +161,7 @@ func (ca *CAX509) AddCert(data []byte) error {
 		}
 		ca.Mutex.Lock()
 		ca.Certificates[id] = *cert
+		insertCertificateByOrder(ca.CertificatesOrder, cert)
 		ca.Mutex.Unlock()
 		return nil
 	}
@@ -297,4 +305,15 @@ func getDigest2(msg []byte) ([]byte, error) {
 	}
 	digest := hash.Sum(nil)
 	return digest, nil
+}
+
+func insertCertificateByOrder(certs []Node, cert *x509.Certificate) {
+	for i, c := range certs {
+		if c.Cert.SerialNumber.Cmp(cert.SerialNumber) > 0 {
+			certs = append(certs[:i + 1], certs[i:]...)
+			certs[i] = Node{
+				Cert: *cert,
+			}
+		}
+	}
 }
