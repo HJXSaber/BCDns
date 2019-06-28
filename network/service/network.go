@@ -18,11 +18,19 @@ type DnsNet struct {
 func (net DnsNet) BroadcastMsg(jsonData []byte) {
 	if len(jsonData) >= 1350 {
 		//TODO
+		for _, node := range net.Network.Members() {
+			err := net.Network.SendReliable(node, jsonData)
+			if err != nil {
+				fmt.Println("Broadcast msg failed", err)
+				continue
+			}
+		}
+	} else {
+		net.broadCasts.QueueBroadcast(&Broadcast{
+			Msg: jsonData,
+			Notify:nil,
+		})
 	}
-	net.broadCasts.QueueBroadcast(&Broadcast{
-		Msg: jsonData,
-		Notify:nil,
-	})
 }
 
 var (
@@ -44,6 +52,13 @@ func init() {
 
 	seeds := service.CertificateAuthorityX509.GetSeeds()
 	_, err = P2PNet.Network.Join(seeds)
+	for _, member := range P2PNet.Network.Members() {
+		for i, cert := range service.CertificateAuthorityX509.CertificatesOrder {
+			if cert.Cert.IPAddresses[0].Equal(member.Addr) {
+				service.CertificateAuthorityX509.CertificatesOrder[i].Member = member
+			}
+		}
+	}
 	if err != nil {
 		//TODO
 		log.Fatal("Join failed ", err)
@@ -56,7 +71,6 @@ func init() {
 		RetransmitMult: 3,
 	}
 }
-
 
 type Broadcast struct {
 	Msg    []byte

@@ -1,5 +1,7 @@
 package service
 
+import "testing"
+
 //var (
 //	bindPort = flag.Int("port", 8001, "gossip port")
 //)
@@ -50,3 +52,12 @@ package service
 //
 //	}
 //}
+
+type T struct {
+	tt []byte
+}
+
+func TestSlice(t *testing.T) {
+	var tt T
+	tt.tt = append(tt.tt, '0')
+}

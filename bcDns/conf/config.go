@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Config struct {
@@ -14,11 +15,20 @@ type Config struct {
 	//system info
 	Port int
 	HostName string
+
+	ProposalBufferSize int
+	ProposalOvertime time.Duration
+
+	LeaderMsgBufferSize int
 }
 
 var (
 	path string
 	BCDnsConfig Config
+)
+
+const (
+	ViewRetrieve = iota
 )
 
 func init() {
@@ -39,4 +49,6 @@ func init() {
 
 	BCDnsConfig.Port = viper.GetInt("PORT")
 	BCDnsConfig.HostName = viper.GetString("HOSTNAME")
+	BCDnsConfig.ProposalBufferSize = 10000
+	BCDnsConfig.ProposalOvertime = time.Second
 }

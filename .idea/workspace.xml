@@ -6,6 +6,19 @@
   <component name="ChangeListManager">
     <list default="true" id="fbfcbd6c-bbbf-483e-be28-d812ad211721" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+<<<<<<< HEAD
+=======
+      <change beforePath="$PROJECT_DIR$/bcDns/conf/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/bcDns/conf/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/certificateAuthority/service/certificateX509Impl.go" beforeDir="false" afterPath="$PROJECT_DIR$/certificateAuthority/service/certificateX509Impl.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/consensus/service/endorsement.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/service/endorsement.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/messages/proposal.go" beforeDir="false" afterPath="$PROJECT_DIR$/messages/proposal.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/network/service/leader.go" beforeDir="false" afterPath="$PROJECT_DIR$/network/service/leader.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/network/service/network.go" beforeDir="false" afterPath="$PROJECT_DIR$/network/service/network.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/channel_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/channel_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/mySequence_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/mySequence_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/transport.go" beforeDir="false" afterPath="$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/transport.go" afterDir="false" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -30,8 +43,9 @@
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/certificateAuthority/service/certificateX509Impl.go">
+        <entry file="file://$PROJECT_DIR$/network/service/network.go">
           <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
 <<<<<<< HEAD
             <state relative-caret-position="2091">
               <caret line="141" column="58" selection-start-line="141" selection-start-column="58" selection-end-line="141" selection-end-column="58" />
@@ -39,13 +53,27 @@
             <state relative-caret-position="948">
               <caret line="282" selection-start-line="282" selection-end-line="282" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+            <state relative-caret-position="51">
+              <caret line="9" lean-forward="true" selection-start-line="9" selection-end-line="9" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/network/service/leader.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="690">
+              <caret line="101" column="14" lean-forward="true" selection-start-line="101" selection-start-column="14" selection-end-line="101" selection-end-column="14" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/network/service/network.go">
+        <entry file="file://$PROJECT_DIR$/consensus/service/endorsement.go">
           <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
 <<<<<<< HEAD
             <state relative-caret-position="799">
               <caret line="50" column="27" selection-start-line="50" selection-start-column="27" selection-end-line="50" selection-end-column="27" />
@@ -53,29 +81,10 @@
             <state relative-caret-position="1540">
               <caret line="106" column="1" selection-start-line="106" selection-start-column="1" selection-end-line="106" selection-end-column="1" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/network/service/networkInterface.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="68">
-              <caret line="4" column="1" selection-start-line="4" selection-start-column="1" selection-end-line="4" selection-end-column="1" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/messages/dns.go">
-          <provider selected="true" editor-type-id="text-editor">
-<<<<<<< HEAD
-            <state relative-caret-position="2754">
-              <caret line="172" column="43" selection-start-line="172" selection-start-column="40" selection-end-line="172" selection-end-column="43" />
 =======
-            <state relative-caret-position="34">
-              <caret line="2" selection-start-line="2" selection-end-line="2" />
->>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+            <state relative-caret-position="986">
+              <caret line="65" column="39" lean-forward="true" selection-start-line="65" selection-start-column="39" selection-end-line="65" selection-end-column="39" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
             </state>
           </provider>
         </entry>
@@ -83,6 +92,38 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/memberlist.go">
           <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="552">
+              <caret line="48" column="20" selection-start-line="48" selection-start-column="20" selection-end-line="48" selection-end-column="20" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/messages/proposal.go">
+          <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
+<<<<<<< HEAD
+            <state relative-caret-position="2754">
+              <caret line="172" column="43" selection-start-line="172" selection-start-column="40" selection-end-line="172" selection-end-column="43" />
+=======
+            <state relative-caret-position="34">
+              <caret line="2" selection-start-line="2" selection-end-line="2" />
+>>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+            <state relative-caret-position="-2659">
+              <caret line="2" selection-start-line="2" selection-end-line="2" />
+              <folding>
+                <element signature="e#18#167#0" expanded="true" />
+              </folding>
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/transport.go">
+          <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
 <<<<<<< HEAD
             <state relative-caret-position="1292">
               <caret line="76" column="34" selection-start-line="76" selection-start-column="21" selection-end-line="76" selection-end-column="34" />
@@ -90,13 +131,18 @@
             <state relative-caret-position="1489">
               <caret line="194" column="16" selection-start-line="194" selection-start-column="9" selection-end-line="194" selection-end-column="21" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+            <state relative-caret-position="1054">
+              <caret line="66" column="84" selection-start-line="66" selection-start-column="84" selection-end-line="66" selection-end-column="84" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/messages/proposal.go">
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net.go">
           <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
 <<<<<<< HEAD
             <state relative-caret-position="297">
               <caret line="711" column="29" selection-start-line="711" selection-start-column="29" selection-end-line="711" selection-end-column="29" />
@@ -114,12 +160,20 @@
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="442">
               <caret line="32" column="37" selection-start-line="32" selection-start-column="37" selection-end-line="32" selection-end-column="37" />
+=======
+            <state relative-caret-position="569">
+              <caret line="762" column="10" selection-start-line="762" selection-start-column="10" selection-end-line="762" selection-end-column="10" />
+              <folding>
+                <element signature="e#20#239#0" expanded="true" />
+              </folding>
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/bcDns/conf/config.go">
+<<<<<<< HEAD
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="323">
               <caret line="24" column="45" selection-start-line="24" selection-start-column="32" selection-end-line="24" selection-end-column="45" />
@@ -130,22 +184,28 @@
             <state relative-caret-position="409">
               <caret line="235" column="5" selection-start-line="235" selection-start-column="5" selection-end-line="235" selection-end-column="5" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="408">
+              <caret line="30" column="16" selection-start-line="30" selection-start-column="4" selection-end-line="30" selection-end-column="16" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net_transport.go">
+        <entry file="file:///usr/local/go/src/crypto/tls/tls.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="698">
-              <caret line="172" column="43" selection-start-line="172" selection-start-column="40" selection-end-line="172" selection-end-column="43" />
+            <state relative-caret-position="748">
+              <caret line="179" column="19" lean-forward="true" selection-start-line="179" selection-start-column="19" selection-end-line="179" selection-end-column="19" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net.go">
+        <entry file="file:///usr/local/go/src/crypto/tls/conn.go">
           <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
 <<<<<<< HEAD
             <state relative-caret-position="8891">
               <caret line="533" column="37" selection-start-line="533" selection-start-column="37" selection-end-line="533" selection-end-column="37" />
@@ -153,6 +213,10 @@
             <state relative-caret-position="654">
               <caret line="196" selection-start-line="196" selection-end-line="206" selection-end-column="1" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+            <state relative-caret-position="204">
+              <caret line="24" column="5" selection-start-line="24" selection-start-column="5" selection-end-line="24" selection-end-column="5" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
             </state>
           </provider>
         </entry>
@@ -168,10 +232,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>loadCertificate</find>
-      <find>validateCert</find>
-      <find>GetCertificate</find>
-      <find>ProposalCert</find>
       <find>AuditResponse</find>
       <find>ShowUnreviewedCert</find>
       <find>AuditCert</find>
@@ -198,9 +258,14 @@
       <find>Certificates</find>
       <find>BroadcastMsg</find>
       <find>streamListen</find>
+      <find>init</find>
+      <find>../conf/</find>
+      <find>stru</find>
+      <find>SendReliable</find>
     </findStrings>
     <dirStrings>
       <dir>$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist</dir>
+      <dir>$PROJECT_DIR$</dir>
     </dirStrings>
   </component>
   <component name="GOROOT" path="/usr/local/go" />
@@ -210,25 +275,17 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/bcDns/config.go" />
-        <option value="$PROJECT_DIR$/main/main.go" />
-        <option value="$PROJECT_DIR$/bcDns/bcDns.go" />
-        <option value="$PROJECT_DIR$/bcDns/model/test.go" />
-        <option value="$PROJECT_DIR$/bcDns/model/test.proto" />
-        <option value="$PROJECT_DIR$/certificateAuthority/certificate.go" />
         <option value="$PROJECT_DIR$/network/network.go" />
         <option value="$PROJECT_DIR$/network/model/network.go" />
         <option value="$PROJECT_DIR$/protos/digital_certificate.pb.go" />
         <option value="$PROJECT_DIR$/bcDns/cmd/main.go" />
         <option value="$PROJECT_DIR$/utils/mission.go" />
-        <option value="$PROJECT_DIR$/utils/mySequence_test.go" />
         <option value="$PROJECT_DIR$/utils/mySequence.go" />
         <option value="$PROJECT_DIR$/protos/digital_certificate.proto" />
         <option value="$PROJECT_DIR$/utils/error.go" />
         <option value="$PROJECT_DIR$/certificateAuthority/service/interfaces.go" />
         <option value="$PROJECT_DIR$/certificateAuthority/model/model.go" />
         <option value="$PROJECT_DIR$/certificateAuthority/service/certificate_x509.go" />
-        <option value="$PROJECT_DIR$/utils/channel_test.go" />
         <option value="$PROJECT_DIR$/bcDns/model/model.go" />
         <option value="$PROJECT_DIR$/tests/modules/m.go" />
         <option value="$PROJECT_DIR$/tests/module2/m2.go" />
@@ -239,36 +296,50 @@
         <option value="$PROJECT_DIR$/certificateAuthority/conf/LocalCert.json" />
         <option value="$PROJECT_DIR$/certificateAuthority/conf/s1.cnf" />
         <option value="$PROJECT_DIR$/certificateAuthority/conf/s2.cnf" />
-        <option value="$PROJECT_DIR$/network/service/networkTest.go" />
         <option value="$PROJECT_DIR$/bcDns/conf/BCDNS.cnf" />
         <option value="$PROJECT_DIR$/bcDns/conf/BCDNS.json" />
         <option value="$PROJECT_DIR$/network/cmd/main.go" />
-        <option value="$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net.go" />
         <option value="$PROJECT_DIR$/network/model/model.go" />
         <option value="$PROJECT_DIR$/messages/dns.go" />
-        <option value="$PROJECT_DIR$/messages/proposal_test.go" />
         <option value="$PROJECT_DIR$/dao/dao.go" />
-        <option value="$PROJECT_DIR$/certificateAuthority/service/certificateX509Interface.go" />
         <option value="$PROJECT_DIR$/certificateAuthority/conf/s2/v3.txt" />
         <option value="$PROJECT_DIR$/certificateAuthority/service/certificate_test.go" />
         <option value="$PROJECT_DIR$/certificateAuthority/conf/s1/tst" />
         <option value="$PROJECT_DIR$/bcDns/conf/s2/BCDNS.json" />
-        <option value="$PROJECT_DIR$/bcDns/conf/config.go" />
         <option value="$PROJECT_DIR$/bcDns/conf/s1/BCDNS.json" />
         <option value="$PROJECT_DIR$/utils/certificateTools.go" />
-        <option value="$PROJECT_DIR$/certificateAuthority/service/certificateX509Impl.go" />
+        <option value="$PROJECT_DIR$/utils/uuid.go" />
+        <option value="$PROJECT_DIR$/messages/proposal_test.go" />
+        <option value="$PROJECT_DIR$/consensus/service/transaction.go" />
         <option value="$PROJECT_DIR$/network/service/networkInterface.go" />
-        <option value="$PROJECT_DIR$/consensus/service/endorsement.go" />
+        <option value="$PROJECT_DIR$/network/service/networkTest.go" />
+        <option value="$PROJECT_DIR$/network/service/network_test.go" />
+        <option value="$PROJECT_DIR$/certificateAuthority/service/certificateX509Interface.go" />
+        <option value="$PROJECT_DIR$/utils/channel_test.go" />
+        <option value="$PROJECT_DIR$/utils/mySequence_test.go" />
+        <option value="$PROJECT_DIR$/certificateAuthority/service/certificateX509Impl.go" />
+        <option value="$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/state.go" />
         <option value="$PROJECT_DIR$/network/service/network.go" />
+        <option value="$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net.go" />
+        <option value="$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/transport.go" />
         <option value="$PROJECT_DIR$/messages/proposal.go" />
+        <option value="$PROJECT_DIR$/consensus/service/endorsement.go" />
+        <option value="$PROJECT_DIR$/bcDns/conf/config.go" />
+        <option value="$PROJECT_DIR$/network/service/leader.go" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
+<<<<<<< HEAD
     <option name="x" value="1507" />
     <option name="y" value="25" />
     <option name="width" value="1853" />
     <option name="height" value="1055" />
+=======
+    <option name="y" value="28" />
+    <option name="width" value="1080" />
+    <option name="height" value="894" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -293,8 +364,44 @@
               <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
               <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
 <<<<<<< HEAD
+<<<<<<< HEAD
               <item name="certificateAuthority" type="462c0819:PsiDirectoryNode" />
 =======
+=======
+              <item name="bcDns" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="BCDns_0.1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
+              <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
+              <item name="bcDns" type="462c0819:PsiDirectoryNode" />
+              <item name="conf" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="BCDns_0.1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
+              <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
+              <item name="certificateAuthority" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="BCDns_0.1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
+              <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
+              <item name="certificateAuthority" type="462c0819:PsiDirectoryNode" />
+              <item name="conf" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="BCDns_0.1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
+              <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
+              <item name="certificateAuthority" type="462c0819:PsiDirectoryNode" />
+              <item name="service" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="BCDns_0.1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
+              <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
               <item name="consensus" type="462c0819:PsiDirectoryNode" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
             </path>
@@ -303,9 +410,19 @@
               <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
               <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
 <<<<<<< HEAD
+<<<<<<< HEAD
               <item name="certificateAuthority" type="462c0819:PsiDirectoryNode" />
               <item name="service" type="462c0819:PsiDirectoryNode" />
 =======
+=======
+              <item name="consensus" type="462c0819:PsiDirectoryNode" />
+              <item name="service" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="BCDns_0.1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
+              <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
               <item name="messages" type="462c0819:PsiDirectoryNode" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
             </path>
@@ -327,7 +444,14 @@
 <<<<<<< HEAD
 =======
               <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
-              <item name="memberlist" type="462c0819:PsiDirectoryNode" />
+              <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
+              <item name="protos" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="BCDns_0.1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="BCDns_0.1" type="47feb1d3:ProjectViewModuleNode" />
+              <item name="BCDns_0.1" type="462c0819:PsiDirectoryNode" />
+              <item name="utils" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="BCDns_0.1" type="b2602c69:ProjectViewProjectNode" />
@@ -352,7 +476,11 @@
     <property name="go.gopath.indexing.explicitly.defined" value="true" />
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.vendoring.notification.had.been.shown" value="true" />
+<<<<<<< HEAD
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+=======
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../github.com/hashicorp/raft" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
     <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
     <property name="nodejs_npm_path_reset_for_default_project" value="true" />
     <property name="nodejs_package_manager_path" value="npm" />
@@ -386,19 +514,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Go Test.TestGenerateCertificate in BCDns_0.1/certificateAuthority/service">
-    <configuration name="go build main.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
-      <module name="BCDns_0.1" />
-      <working_directory value="$PROJECT_DIR$/" />
-      <envs>
-        <env name="CertificatesPath" value="$PROJECT_DIR$/certificateAuthority/conf/s1/" />
-      </envs>
-      <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/network/cmd/main.go" />
-      <package value="BCDns_0.1" />
-      <directory value="$PROJECT_DIR$/" />
-      <method v="2" />
-    </configuration>
+  <component name="RunManager" selected="Go Test.TestGob in BCDns_0.1/utils">
     <configuration name="TestCAX509_VerifyCertificate in BCDns_0.1/certificateAuthority/service" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="BCDns_0.1" />
       <working_directory value="$PROJECT_DIR$/certificateAuthority/service" />
@@ -424,75 +540,90 @@
       <pattern value="^TestGenerateCertificate$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestJson in BCDns_0.1/messages" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestGob in BCDns_0.1/utils" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="BCDns_0.1" />
+      <working_directory value="$PROJECT_DIR$/utils" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="BCDns_0.1/utils" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestGob$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestSlice in BCDns_0.1/network/service" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="BCDns_0.1" />
+      <working_directory value="$PROJECT_DIR$/network/service" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="BCDns_0.1/network/service" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestSlice$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestUUID in BCDns_0.1/messages" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="BCDns_0.1" />
       <working_directory value="$PROJECT_DIR$/messages" />
+      <envs>
+        <env name="BCDNSConfFile" value="$PROJECT_DIR$/bcDns/conf/BCDNS" />
+        <env name="CertificatesPath" value="$PROJECT_DIR$/certificateAuthority/conf" />
+      </envs>
       <framework value="gotest" />
       <kind value="PACKAGE" />
       <package value="BCDns_0.1/messages" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestJson$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="TestWhatever in BCDns_0.1/certificateAuthority/service" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="BCDns_0.1" />
-      <working_directory value="$PROJECT_DIR$/certificateAuthority/service" />
-      <framework value="gotest" />
-      <kind value="PACKAGE" />
-      <package value="BCDns_0.1/certificateAuthority/service" />
-      <directory value="$PROJECT_DIR$/" />
-      <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestWhatever$" />
+      <pattern value="^TestUUID$" />
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Go Build.go build main.go" />
       <item itemvalue="Go Test.TestCAX509_VerifyCertificate in BCDns_0.1/certificateAuthority/service" />
       <item itemvalue="Go Test.TestGenerateCertificate in BCDns_0.1/certificateAuthority/service" />
-      <item itemvalue="Go Test.TestJson in BCDns_0.1/messages" />
-      <item itemvalue="Go Test.TestWhatever in BCDns_0.1/certificateAuthority/service" />
+      <item itemvalue="Go Test.TestUUID in BCDns_0.1/messages" />
+      <item itemvalue="Go Test.TestSlice in BCDns_0.1/network/service" />
+      <item itemvalue="Go Test.TestGob in BCDns_0.1/utils" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Test.TestGob in BCDns_0.1/utils" />
+        <item itemvalue="Go Test.TestSlice in BCDns_0.1/network/service" />
+        <item itemvalue="Go Test.TestUUID in BCDns_0.1/messages" />
         <item itemvalue="Go Test.TestGenerateCertificate in BCDns_0.1/certificateAuthority/service" />
         <item itemvalue="Go Test.TestCAX509_VerifyCertificate in BCDns_0.1/certificateAuthority/service" />
-        <item itemvalue="Go Test.TestJson in BCDns_0.1/messages" />
-        <item itemvalue="Go Build.go build main.go" />
-        <item itemvalue="Go Test.TestWhatever in BCDns_0.1/certificateAuthority/service" />
       </list>
     </recent_temporary>
   </component>
   <component name="TestHistory">
-    <history-entry file="TestCAX509_VerifyCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.20 at 21h 17m 06s.xml">
-      <configuration name="TestCAX509_VerifyCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestUUID_in_BCDns_0_1_messages - 2019.06.23 at 14h 37m 58s.xml">
+      <configuration name="TestUUID in BCDns_0.1/messages" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="TestCAX509_VerifyCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.20 at 21h 17m 50s.xml">
-      <configuration name="TestCAX509_VerifyCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestUUID_in_BCDns_0_1_messages - 2019.06.23 at 14h 40m 52s.xml">
+      <configuration name="TestUUID in BCDns_0.1/messages" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="TestCAX509_VerifyCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.20 at 21h 19m 07s.xml">
-      <configuration name="TestCAX509_VerifyCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestUUID_in_BCDns_0_1_messages - 2019.06.23 at 14h 41m 12s.xml">
+      <configuration name="TestUUID in BCDns_0.1/messages" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="TestCAX509_VerifyCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.20 at 21h 19m 22s.xml">
-      <configuration name="TestCAX509_VerifyCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestUUID_in_BCDns_0_1_messages - 2019.06.23 at 14h 41m 28s.xml">
+      <configuration name="TestUUID in BCDns_0.1/messages" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="TestGenerateCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.20 at 21h 21m 14s.xml">
-      <configuration name="TestGenerateCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestUUID_in_BCDns_0_1_messages - 2019.06.23 at 16h 37m 44s.xml">
+      <configuration name="TestUUID in BCDns_0.1/messages" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="TestGenerateCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.20 at 21h 29m 37s.xml">
-      <configuration name="TestGenerateCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestUUID_in_BCDns_0_1_messages - 2019.06.23 at 16h 38m 02s.xml">
+      <configuration name="TestUUID in BCDns_0.1/messages" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="TestGenerateCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.20 at 21h 31m 55s.xml">
-      <configuration name="TestGenerateCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestUUID_in_BCDns_0_1_messages - 2019.06.23 at 16h 38m 40s.xml">
+      <configuration name="TestUUID in BCDns_0.1/messages" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="TestGenerateCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.20 at 21h 36m 28s.xml">
-      <configuration name="TestGenerateCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestSlice_in_BCDns_0_1_network_service - 2019.06.24 at 20h 42m 51s.xml">
+      <configuration name="TestSlice in BCDns_0.1/network/service" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="TestGenerateCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.21 at 10h 26m 32s.xml">
-      <configuration name="TestGenerateCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestSlice_in_BCDns_0_1_network_service - 2019.06.24 at 20h 46m 08s.xml">
+      <configuration name="TestSlice in BCDns_0.1/network/service" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="TestGenerateCertificate_in_BCDns_0_1_certificateAuthority_service - 2019.06.21 at 11h 31m 00s.xml">
-      <configuration name="TestGenerateCertificate in BCDns_0.1/certificateAuthority/service" configurationId="GoTestRunConfiguration" />
+    <history-entry file="TestGob_in_BCDns_0_1_utils - 2019.06.26 at 16h 24m 26s.xml">
+      <configuration name="TestGob in BCDns_0.1/utils" configurationId="GoTestRunConfiguration" />
     </history-entry>
   </component>
   <component name="TodoView">
@@ -517,12 +648,16 @@
     <layout>
       <window_info id="Structure" order="0" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="1" side_tool="true" />
+<<<<<<< HEAD
       <window_info active="true" content_ui="combo" id="Project" order="2" visible="true" weight="0.26213592" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+      <window_info content_ui="combo" id="Project" order="2" weight="0.23495145" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
       <window_info anchor="bottom" id="Message" order="0" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.327516" />
-      <window_info anchor="bottom" id="Debug" order="2" weight="0.2734148" />
-      <window_info anchor="bottom" id="Run" order="3" sideWeight="0.49902913" weight="0.22978476" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.32730454" />
+      <window_info anchor="bottom" id="Debug" order="2" weight="0.2730455" />
+      <window_info anchor="bottom" id="Run" order="3" sideWeight="0.49902913" weight="0.22928822" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.32904148" />
@@ -532,10 +667,14 @@
       <window_info anchor="bottom" id="Event Log" order="10" side_tool="true" />
       <window_info anchor="bottom" id="Thumbnails" order="11" weight="0.32984293" />
 <<<<<<< HEAD
+<<<<<<< HEAD
       <window_info active="true" anchor="bottom" id="Terminal" order="12" sideWeight="0.5009709" visible="true" weight="0.30186608" />
 =======
       <window_info anchor="bottom" id="Terminal" order="12" sideWeight="0.5009709" weight="0.26604435" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+      <window_info anchor="bottom" id="Terminal" order="12" sideWeight="0.5009709" weight="0.2922987" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
@@ -544,11 +683,11 @@
     <layout-to-restore>
       <window_info id="Structure" order="0" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="1" side_tool="true" />
-      <window_info active="true" content_ui="combo" id="Project" order="2" visible="true" weight="0.26213592" />
+      <window_info active="true" content_ui="combo" id="Project" order="2" visible="true" weight="0.23495145" />
       <window_info anchor="bottom" id="Message" order="0" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.327516" />
-      <window_info anchor="bottom" id="Debug" order="2" weight="0.2734148" />
-      <window_info anchor="bottom" id="Run" order="3" sideWeight="0.49902913" weight="0.22978476" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.32730454" />
+      <window_info anchor="bottom" id="Debug" order="2" weight="0.2730455" />
+      <window_info anchor="bottom" id="Run" order="3" sideWeight="0.49902913" weight="0.22928822" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.32904148" />
@@ -557,7 +696,7 @@
       <window_info anchor="bottom" id="Version Control" order="9" />
       <window_info anchor="bottom" id="Event Log" order="10" side_tool="true" />
       <window_info anchor="bottom" id="Thumbnails" order="11" weight="0.32984293" />
-      <window_info anchor="bottom" id="Terminal" order="12" sideWeight="0.5009709" visible="true" weight="0.26604435" />
+      <window_info anchor="bottom" id="Terminal" order="12" sideWeight="0.5009709" weight="0.2922987" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
@@ -578,10 +717,14 @@
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/certificateAuthority/service/certificateX509Impl.go</url>
 <<<<<<< HEAD
+<<<<<<< HEAD
           <line>183</line>
 =======
           <line>181</line>
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+          <line>190</line>
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
           <option name="timeStamp" value="43" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
@@ -635,6 +778,7 @@
   </component>
   <component name="editorHistoryManager">
 <<<<<<< HEAD
+<<<<<<< HEAD
     <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/LocalCert.json" />
     <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/RootCertificate.pem.cert" />
     <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/s1.conf" />
@@ -651,134 +795,22 @@
     <entry file="file://$PROJECT_DIR$/../github.com/beego/config/env/env.go" />
 =======
     <entry file="file://$PROJECT_DIR$/../github.com/beego/config/env/env.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="223">
-          <caret line="38" column="5" selection-start-line="38" selection-start-column="5" selection-end-line="38" selection-end-column="5" />
-          <folding>
-            <element signature="e#729#798#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
->>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
-    <entry file="file:///usr/local/go/src/os/env.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="213">
-          <caret line="111" column="5" selection-start-line="111" selection-start-column="5" selection-end-line="111" selection-end-column="5" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/queue.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="835">
-          <caret line="151" column="14" selection-start-line="149" selection-start-column="64" selection-end-line="151" selection-end-column="14" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/go/src/builtin/builtin.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="516">
-          <caret line="254" column="5" selection-start-line="254" selection-start-column="5" selection-end-line="254" selection-end-column="5" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/network/service/networkTest.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="34">
-          <caret line="2" selection-start-line="2" selection-start-column="2" selection-end-line="51" selection-end-column="3" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bcDns/conf/BCDNS.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="17">
-          <caret line="1" column="14" selection-start-line="1" selection-start-column="14" selection-end-line="1" selection-end-column="14" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/s2/s1.pem.cert" />
-    <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/s1/s1.pem.cert" />
-    <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/s2/s2.pem.cert" />
-    <entry file="file://$PROJECT_DIR$/vendor/github.com/miekg/dns/types.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="280">
-          <caret line="415" column="18" selection-start-line="415" selection-start-column="18" selection-end-line="415" selection-end-column="18" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/vendor/github.com/miekg/dns/dns.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="433">
-          <caret line="72" column="39" selection-start-line="72" selection-start-column="39" selection-end-line="72" selection-end-column="39" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/network/model/model.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="17">
-          <caret line="1" selection-start-line="1" selection-end-line="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/go/src/crypto/x509/x509.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1253">
-          <caret line="721" column="35" selection-start-line="721" selection-start-column="35" selection-end-line="721" selection-end-column="35" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/network/cmd/main.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="51">
-          <caret line="6" selection-start-line="6" selection-end-line="6" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/messages/proposal_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="17">
-          <caret line="1" selection-start-line="1" selection-end-line="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../github.com/syndtr/goleveldb/leveldb/db.go" />
-    <entry file="file://$PROJECT_DIR$/dao/dao.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="680">
-          <caret line="40" column="29" selection-start-line="40" selection-start-column="29" selection-end-line="40" selection-end-column="29" />
-          <folding>
-            <element signature="e#13#112#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/certificateAuthority/service/certificateX509Interface.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="85">
-          <caret line="7" column="8" selection-start-line="7" selection-start-column="8" selection-end-line="7" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/LocalCertificate.pem.cert" />
-    <entry file="file:///usr/local/go/src/runtime/panic.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="268">
-          <caret line="680" selection-start-line="680" selection-end-line="680" />
-        </state>
-      </provider>
-    </entry>
+=======
     <entry file="file:///usr/local/go/src/testing/testing.go">
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="369">
           <caret line="830" selection-start-line="830" selection-end-line="830" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/s1/s1.cnf" />
 <<<<<<< HEAD
-    <entry file="file://$PROJECT_DIR$/messages/proposal.go">
+>>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+    <entry file="file:///usr/local/go/src/os/env.go">
 =======
+    <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/s1/s1.cnf" />
     <entry file="file:///usr/local/go/src/os/sys.go">
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="119">
           <caret line="7" column="5" selection-start-line="7" selection-start-column="5" selection-end-line="7" selection-end-column="5" />
@@ -786,7 +818,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/delegate.go">
->>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="119">
           <caret line="7" column="46" selection-start-line="7" selection-start-column="28" selection-end-line="7" selection-end-column="46" />
@@ -805,24 +836,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="489">
           <caret line="76" column="34" selection-start-line="76" selection-start-column="21" selection-end-line="76" selection-end-column="34" />
-        </state>
-      </provider>
-    </entry>
-<<<<<<< HEAD
-    <entry file="file:///usr/local/go/src/os/sys.go">
-=======
-    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/state.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="910">
-          <caret line="533" column="37" selection-start-line="533" selection-start-column="37" selection-end-line="533" selection-end-column="37" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/transport.go">
->>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="741">
-          <caret line="50" column="27" selection-start-line="50" selection-start-column="27" selection-end-line="50" selection-end-column="27" />
         </state>
       </provider>
     </entry>
@@ -864,33 +877,6 @@
     <entry file="file://$PROJECT_DIR$/certificateAuthority/service/RootOri.pem.key">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/bcDns/conf/config.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="561">
-          <caret line="38" lean-forward="true" selection-start-line="38" selection-end-line="38" />
-        </state>
-      </provider>
-    </entry>
-<<<<<<< HEAD
-    <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/s2/v3.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="119">
-          <caret line="7" lean-forward="true" selection-start-line="7" selection-end-line="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/certificateAuthority/service/certificate_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2091">
-          <caret line="141" column="58" selection-start-line="141" selection-start-column="58" selection-end-line="141" selection-end-column="58" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/transport.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="799">
-          <caret line="50" column="27" selection-start-line="50" selection-start-column="27" selection-end-line="50" selection-end-column="27" />
-=======
     <entry file="file://$PROJECT_DIR$/bcDns/conf/s1/BCDNS.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="17">
@@ -912,6 +898,10 @@
         </state>
       </provider>
     </entry>
+<<<<<<< HEAD
+    <entry file="file://$PROJECT_DIR$/../github.com/syndtr/goleveldb/leveldb/db.go" />
+    <entry file="file://$PROJECT_DIR$/dao/dao.go">
+=======
     <entry file="file://$PROJECT_DIR$/utils/certificateTools.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1054">
@@ -922,15 +912,233 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/certificateAuthority/service/certificateX509Impl.go">
+    <entry file="file://$PROJECT_DIR$/messages/dns.go">
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="948">
-          <caret line="282" selection-start-line="282" selection-end-line="282" />
+        <state relative-caret-position="34">
+          <caret line="2" selection-start-line="2" selection-end-line="2" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/utils/mySequence.go">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net_transport.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2754">
+          <caret line="172" column="43" selection-start-line="172" selection-start-column="40" selection-end-line="172" selection-end-column="43" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../github.com/sony/sonyflake/sonyflake.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="421">
+          <caret line="36" column="22" selection-start-line="36" selection-start-column="22" selection-end-line="36" selection-end-column="22" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../github.com/segmentio/ksuid/ksuid.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="430">
+          <caret line="203" column="5" selection-start-line="203" selection-start-column="5" selection-end-line="203" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+<<<<<<< HEAD
+    <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/s1/s1.cnf" />
+<<<<<<< HEAD
+    <entry file="file://$PROJECT_DIR$/messages/proposal.go">
+=======
+    <entry file="file:///usr/local/go/src/os/sys.go">
+=======
+    <entry file="file://$PROJECT_DIR$/utils/uuid.go">
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="17">
+          <caret line="1" selection-start-line="1" selection-end-line="1" />
+        </state>
+      </provider>
+    </entry>
+<<<<<<< HEAD
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/delegate.go">
+>>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+    <entry file="file://$PROJECT_DIR$/../github.com/rs/xid/id.go">
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="421">
+          <caret line="63" column="8" selection-start-line="63" selection-start-column="8" selection-end-line="63" selection-end-column="20" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/messages/proposal_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="306">
+          <caret line="18" column="4" selection-start-line="18" selection-start-column="4" selection-end-line="18" selection-end-column="18" />
+          <folding>
+            <element signature="e#18#60#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/local/go/src/time/sleep.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1327">
+          <caret line="158" column="5" selection-start-line="158" selection-start-column="5" selection-end-line="158" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+<<<<<<< HEAD
+<<<<<<< HEAD
+    <entry file="file:///usr/local/go/src/os/sys.go">
+=======
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/state.go">
+=======
+    <entry file="file://$PROJECT_DIR$/network/service/networkInterface.go">
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="68">
+          <caret line="4" column="1" selection-start-line="4" selection-start-column="1" selection-end-line="4" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+<<<<<<< HEAD
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/transport.go">
+>>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+    <entry file="file://$PROJECT_DIR$/consensus/service/transaction.go">
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="68">
+          <caret line="4" selection-start-line="4" selection-end-line="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/README.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
+        <state split_layout="SECOND">
+          <first_editor />
+          <second_editor />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/queue.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="9">
+          <caret line="182" column="4" selection-start-line="182" selection-start-column="4" selection-end-line="182" selection-end-column="15" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/local/go/src/math/big/int.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="409">
+          <caret line="312" column="14" selection-start-line="312" selection-start-column="14" selection-end-line="312" selection-end-column="14" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/utils/channel_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="391">
+          <caret line="27" column="1" lean-forward="true" selection-start-line="27" selection-start-column="1" selection-end-line="27" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/utils/mySequence_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1061">
+          <caret line="87" column="32" lean-forward="true" selection-start-line="87" selection-start-column="32" selection-end-line="87" selection-end-column="32" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/network/service/network_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1037">
+          <caret line="61" column="30" selection-start-line="61" selection-start-column="30" selection-end-line="61" selection-end-column="30" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/config.go">
       <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="367">
+          <caret line="185" column="35" selection-start-line="185" selection-start-column="35" selection-end-line="185" selection-end-column="35" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/state.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1283">
+          <caret line="924" column="40" selection-start-line="924" selection-start-column="40" selection-end-line="924" selection-end-column="40" />
+        </state>
+      </provider>
+    </entry>
+<<<<<<< HEAD
+<<<<<<< HEAD
+    <entry file="file://$PROJECT_DIR$/certificateAuthority/conf/s2/v3.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="119">
+          <caret line="7" lean-forward="true" selection-start-line="7" selection-end-line="7" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/certificateAuthority/service/certificate_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2091">
+          <caret line="141" column="58" selection-start-line="141" selection-start-column="58" selection-end-line="141" selection-end-column="58" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/transport.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="799">
+          <caret line="50" column="27" selection-start-line="50" selection-start-column="27" selection-end-line="50" selection-end-column="27" />
+=======
+    <entry file="file://$PROJECT_DIR$/bcDns/conf/s1/BCDNS.json">
+=======
+    <entry file="file:///usr/local/go/src/net/net.go">
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-5202">
+          <caret line="78" column="11" lean-forward="true" selection-start-line="78" selection-start-column="11" selection-end-line="78" selection-end-column="11" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/merge_delegate.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="85">
+          <caret line="5" column="51" selection-start-line="5" selection-start-column="51" selection-end-line="5" selection-end-column="51" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/certificateAuthority/service/certificateX509Interface.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="272">
+          <caret line="18" column="14" lean-forward="true" selection-start-line="18" selection-start-column="14" selection-end-line="18" selection-end-column="14" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/certificateAuthority/service/certificateX509Impl.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="552">
+          <caret line="218" column="18" selection-start-line="218" selection-start-column="18" selection-end-line="218" selection-end-column="18" />
+          <folding>
+            <element signature="e#17#178#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="569">
+          <caret line="762" column="10" selection-start-line="762" selection-start-column="10" selection-end-line="762" selection-end-column="10" />
+          <folding>
+            <element signature="e#20#239#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/local/go/src/crypto/tls/conn.go">
+      <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
         <state relative-caret-position="409">
           <caret line="235" column="5" selection-start-line="235" selection-start-column="5" selection-end-line="235" selection-end-column="5" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
@@ -958,24 +1166,44 @@
           <caret line="76" column="34" selection-start-line="76" selection-start-column="21" selection-end-line="76" selection-end-column="34" />
 =======
     <entry file="file://$PROJECT_DIR$/messages/dns.go">
+=======
+        <state relative-caret-position="204">
+          <caret line="24" column="5" selection-start-line="24" selection-start-column="5" selection-end-line="24" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/local/go/src/crypto/tls/tls.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="34">
-          <caret line="2" selection-start-line="2" selection-end-line="2" />
+        <state relative-caret-position="748">
+          <caret line="179" column="19" lean-forward="true" selection-start-line="179" selection-start-column="19" selection-end-line="179" selection-end-column="19" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/transport.go">
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1054">
+          <caret line="66" column="84" selection-start-line="66" selection-start-column="84" selection-end-line="66" selection-end-column="84" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/memberlist.go">
       <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
         <state relative-caret-position="1489">
           <caret line="194" column="16" selection-start-line="194" selection-start-column="9" selection-end-line="194" selection-end-column="21" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+        <state relative-caret-position="552">
+          <caret line="48" column="20" selection-start-line="48" selection-start-column="20" selection-end-line="48" selection-end-column="20" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/vendor/github.com/hashicorp/memberlist/net.go">
+    <entry file="file://$PROJECT_DIR$/network/service/network.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="654">
-          <caret line="196" selection-start-line="196" selection-end-line="206" selection-end-column="1" />
+        <state relative-caret-position="51">
+          <caret line="9" lean-forward="true" selection-start-line="9" selection-end-line="9" />
         </state>
       </provider>
     </entry>
@@ -994,21 +1222,30 @@
 =======
     <entry file="file://$PROJECT_DIR$/consensus/service/endorsement.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="34">
-          <caret line="2" lean-forward="true" selection-start-line="2" selection-end-line="2" />
+        <state relative-caret-position="986">
+          <caret line="65" column="39" lean-forward="true" selection-start-line="65" selection-start-column="39" selection-end-line="65" selection-end-column="39" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/messages/proposal.go">
       <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
         <state relative-caret-position="383">
           <caret line="43" lean-forward="true" selection-start-line="43" selection-end-line="43" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+        <state relative-caret-position="-2659">
+          <caret line="2" selection-start-line="2" selection-end-line="2" />
+          <folding>
+            <element signature="e#18#167#0" expanded="true" />
+          </folding>
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/network/service/networkInterface.go">
+    <entry file="file://$PROJECT_DIR$/bcDns/conf/config.go">
       <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
 <<<<<<< HEAD
         <state relative-caret-position="51">
           <caret line="58" column="5" lean-forward="true" selection-start-line="58" selection-start-column="5" selection-end-line="58" selection-end-column="5" />
@@ -1029,14 +1266,23 @@
 =======
         <state relative-caret-position="68">
           <caret line="4" column="1" selection-start-line="4" selection-start-column="1" selection-end-line="4" selection-end-column="1" />
+=======
+        <state relative-caret-position="408">
+          <caret line="30" column="16" selection-start-line="30" selection-start-column="4" selection-end-line="30" selection-end-column="16" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/network/service/network.go">
+    <entry file="file://$PROJECT_DIR$/network/service/leader.go">
       <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
         <state relative-caret-position="1540">
           <caret line="106" column="1" selection-start-line="106" selection-start-column="1" selection-end-line="106" selection-end-column="1" />
 >>>>>>> 515e7ac7a53bb82947966e4ecab301f27eeb9b93
+=======
+        <state relative-caret-position="690">
+          <caret line="101" column="14" lean-forward="true" selection-start-line="101" selection-start-column="14" selection-end-line="101" selection-end-column="14" />
+>>>>>>> fffbc5977946ce56c6a36ec5d0078a82703fe7fb
         </state>
       </provider>
     </entry>

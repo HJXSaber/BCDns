@@ -1,6 +1,7 @@
 package memberlist
 
 import (
+	"crypto/tls"
 	"net"
 	"time"
 )
@@ -62,4 +63,7 @@ type Transport interface {
 	// Shutdown is called when memberlist is shutting down; this gives the
 	// transport a chance to clean up any listeners.
 	Shutdown() error
+
+	//DialTimeout is used to create a connection with encryption channel - 2019/6/27
+	DialTimeoutTls(addr string, timeout time.Duration) (*tls.Conn, error)
 }
