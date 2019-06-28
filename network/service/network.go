@@ -16,8 +16,8 @@ type DnsNet struct {
 //Can not broadcast msg whose size is longer than 1350B
 //When the size of msg os longer than 1350B. We have to transfer it by reliable channel
 func (net DnsNet) BroadcastMsg(jsonData []byte) {
-	if len(jsonData) >= 1300 {
-
+	if len(jsonData) >= 1350 {
+		//TODO
 	}
 	net.broadCasts.QueueBroadcast(&Broadcast{
 		Msg: jsonData,
@@ -33,6 +33,7 @@ func init() {
 	config := memberlist.DefaultLANConfig()
 	config.BindPort = conf.BCDnsConfig.Port
 	config.Delegate = &Delegate{}
+	config.Name = conf.BCDnsConfig.HostName
 
 	var err error
 	P2PNet.Network, err = memberlist.Create(config)

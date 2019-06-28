@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -68,11 +69,8 @@ func init() {
 			if cert == nil {
 				os.Exit(-1)
 			}
-			id, err := utils.GetCertId(*cert)
-			if err != nil {
-				log.Fatal(err)
-			}
-			certs[id] = *cert
+			names := strings.Split(fileName, ".")
+			certs[names[0]] = *cert
 		}
 	}
 	CertificateAuthorityX509 = &CAX509{
@@ -140,7 +138,7 @@ func (ca *CAX509) AddCert(data []byte) error {
 		if err != nil {
 			return err
 		}
-		filename := id + ".pem.cert"
+		filename := id + ".crt"
 		_, err = os.Stat(CertificatesPath + filename)
 		if err == nil {
 			return CheckSigFailedErr{"This certificate exits"}
@@ -167,7 +165,7 @@ func (ca *CAX509) DelCert(Id string) error {
 		delete(ca.Certificates, Id)
 		ca.Mutex.Unlock()
 	}
-	filename := Id + ".pem.cert"
+	filename := Id + ".crt"
 	_, err := os.Stat(filename)
 	if err == nil {
 		err = os.Remove(filename)
