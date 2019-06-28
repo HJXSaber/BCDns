@@ -25,7 +25,7 @@ type LeaderT struct {
 	TermId int64
 	ViewChangeMsgChan chan []byte
 	RetrieveMsgChan chan []byte
-	RetrieveMsgs map[string]ViewRetrieveMsg
+	RetrieveMsgs map[int64]map[string]ViewRetrieveMsg
 	ViewChangeMsgs map[ViewChangeMsgData][]ViewChangeMsg
 }
 
@@ -55,6 +55,7 @@ func (leader *LeaderT) ProcessViewChangeMsg() {
 			if _, ok := leader.ViewChangeMsgs[msg.ViewChangeMsgData]; !ok {
 				leader.ViewChangeMsgs[msg.ViewChangeMsgData] = append(leader.ViewChangeMsgs[msg.ViewChangeMsgData],
 					msg)
+
 				if len(leader.ViewChangeMsgs[msg.ViewChangeMsgData]) > 2 * service.CertificateAuthorityX509.GetF() + 1 {
 					go leader.LeaderVote(msg.ViewChangeMsgData)
 				}
@@ -87,10 +88,27 @@ func (leader *LeaderT) ProcessRetrieveMsg() {
 		if msg.Retrieve {
 			msg.LeaderId, msg.TermId, msg.HostName = leader.LeaderId, leader.TermId, conf.BCDnsConfig.HostName
 		} else {
-			if _, ok := leader.RetrieveMsgs[msg.HostName]; !ok {
-				leader.RetrieveMsgs[msg.HostName] = msg
-				if len(leader.RetrieveMsgs) >= service.CertificateAuthorityX509.GetF() + 1 {
-					leader.LeaderId, leader.TermId = msg.LeaderId, msg.TermId
+			if v, ok := leader.RetrieveMsgs[msg.TermId]; ok {
+				if _, ok = v[msg.HostName]; !ok {
+					if leader.RetrieveMsgs[msg.TermId][msg.HostName] = msg; len(leader.RetrieveMsgs[msg.TermId]) >= service.CertificateAuthorityX509.GetF() + 1 {
+						if msg.TermId == -1 {
+							leader.TermId, leader.LeaderId = 0, 0
+						} else {
+							leader.TermId, leader.LeaderId = msg.TermId, msg.LeaderId
+						}
+						leader.RetrieveMsgs = make(map[int64]map[string]ViewRetrieveMsg)
+					}
+				}
+			} else {
+				leader.RetrieveMsgs[msg.TermId] = make(map[string]ViewRetrieveMsg)
+				leader.RetrieveMsgs[msg.TermId][msg.HostName] = msg
+				if leader.RetrieveMsgs[msg.TermId][msg.HostName] = msg; len(leader.RetrieveMsgs[msg.TermId]) >= service.CertificateAuthorityX509.GetF() + 1 {
+					if msg.TermId == -1 {
+						leader.TermId, leader.LeaderId = 0, 0
+					} else {
+						leader.TermId, leader.LeaderId = msg.TermId, msg.LeaderId
+					}
+					leader.RetrieveMsgs = make(map[int64]map[string]ViewRetrieveMsg)
 				}
 			}
 		}
@@ -131,7 +149,7 @@ type ViewRetrieveMsg struct {
 
 func init() {
 	msg := ViewRetrieveMsg{
-		Type:ViewRetrieve,
+		Type:conf.ViewRetrieve,
 		Retrieve:true,
 	}
 	msgByte, err := json.Marshal(msg)

@@ -29,6 +29,7 @@ var (
 
 const (
 	ViewRetrieve = iota
+	ProposalMsg
 )
 
 func init() {
