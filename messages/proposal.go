@@ -25,6 +25,10 @@ type ProposalMassage struct {
 	Operation
 }
 
+type ProposalMassage struct {
+
+}
+
 type ProposalResult struct {
 	Body ResultBody
 	Sig []byte
@@ -46,12 +50,12 @@ func (err ProposalDealFailed) Error() string {
 func (p *ProposalMassage) Do() error {
 	switch p.Type {
 	case Add:
-		if err := doAdd(p.data, p.GetIssuer()); err != nil {
+		if err := doAdd(p.Data, p.GetIssuer()); err != nil {
 			fmt.Println("Process proposal failed", err)
 			return err
 		}
 	case Del:
-		if err := doDel(p.data, p.GetIssuer()); err != nil {
+		if err := doDel(p.Data, p.GetIssuer()); err != nil {
 			fmt.Println("Process proposal failed", err)
 		}
 	default:
@@ -107,7 +111,7 @@ func (p PId) String() string {
 type Operation struct {
 	Type int
 	//json data. Deal the data by Type
-	data []byte
+	Data []byte
 }
 
 type ProposalFunc interface {
@@ -160,7 +164,7 @@ func NewProposal(zoneName string, t int) *ProposalMassage {
 			},
 			Operation: Operation{
 				Type: Add,
-				data: msgData,
+				Data: msgData,
 			},
 		}
 	case Del:
@@ -185,7 +189,7 @@ func NewProposal(zoneName string, t int) *ProposalMassage {
 			},
 			Operation: Operation{
 				Type: Del,
-				data: msgData,
+				Data: msgData,
 			},
 		}
 	default:

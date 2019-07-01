@@ -4,7 +4,6 @@ import (
 	"BCDns_0.1/certificateAuthority/service"
 	"bufio"
 	"bytes"
-	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
@@ -760,7 +759,6 @@ func (m *Memberlist) rawSendMsgStream(conn net.Conn, sendBuf []byte) error {
 
 // sendUserMsg is used to stream a user message to another host.
 func (m *Memberlist) sendUserMsg(addr string, sendBuf []byte) error {
-	tls.Dial()
 	conn, err := m.transport.DialTimeout(addr, m.config.TCPTimeout)
 	if err != nil {
 		return err
