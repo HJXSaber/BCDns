@@ -14,7 +14,7 @@ type DnsNet struct {
 }
 
 //Can not broadcast msg whose size is longer than 1350B
-//When the size of msg os longer than 1350B. We have to transfer it by reliable channel
+//When the size of msg is longer than 1350B. We have to transfer it by reliable channel
 func (net DnsNet) BroadcastMsg(jsonData []byte) {
 	if len(jsonData) >= 1350 {
 		//TODO

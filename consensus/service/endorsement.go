@@ -3,9 +3,9 @@ package service
 import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/messages"
+	"BCDns_0.1/network/service"
 	"encoding/json"
 	"fmt"
-	"runtime/debug"
 	"time"
 )
 
@@ -38,6 +38,11 @@ func init() {
 func (endorsement *EndorsementT) ProcessProposal() {
 	for {
 		msg := <- endorsement.ProposalChan
+		msgByte, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Print("Process Proposal failed", err)
+			continue
+		}
 		if _, ok := endorsement.Responses[msg.PId]; ok {
 			fmt.Printf("Proposal %s exits", msg.PId)
 			continue
@@ -49,9 +54,9 @@ func (endorsement *EndorsementT) ProcessProposal() {
 			Timer:time.AfterFunc(conf.BCDnsConfig.ProposalOvertime, func() {
 				delete(endorsement.Responses, msg.PId)
 			}),
-
 		}
 		endorsement.Responses[msg.PId] = proposal
+		service.P2PNet.BroadcastMsg(msgByte)
 	}
 }
 
@@ -89,7 +94,9 @@ func (endorsement *EndorsementT) AuditProposal() {
 
 type EndorsementInterface interface {
 	PutProposal(massage messages.ProposalMassage)
+	//Deal the proposal intern
 	ProcessProposal()
+	//Deal the proposal send by other peer
 	AuditProposal()
 }
 
