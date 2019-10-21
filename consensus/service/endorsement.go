@@ -64,7 +64,7 @@ func (endorsement *EndorsementT) PutProposal(massage messages.ProposalMassage) {
 	endorsement.ProposalChan <- massage
 }
 
-func (endorsement *EndorsementT) AuditProposal() {
+func (endorsement *EndorsementT) EnqueueAuditProposal() {
 	var (
 		msg messages.ProposalMassage
 	)
@@ -97,6 +97,6 @@ type EndorsementInterface interface {
 	//Deal the proposal intern
 	ProcessProposal()
 	//Deal the proposal send by other peer
-	AuditProposal()
+	EnqueueAuditProposal()
 }
 

@@ -2,17 +2,22 @@ package messages
 
 import (
 	"BCDns_0.1/bcDns/conf"
+	"BCDns_0.1/certificateAuthority/model"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
 	"encoding/json"
 	"fmt"
 	"github.com/rs/xid"
 	"reflect"
+	"strings"
 )
 
 //Define operation types
+
+type OperationType int
+
 const (
-	Add = iota
+	Add OperationType = iota
 	Del
 )
 
@@ -21,12 +26,11 @@ var (
 )
 
 type ProposalMassage struct {
-	PId
-	Operation
-}
-
-type ProposalMassage struct {
-
+	PId string
+	Type OperationType
+	ZoneName string
+	HashCode []byte
+	Signature []byte
 }
 
 type ProposalResult struct {
@@ -140,33 +144,11 @@ func Parse(data []byte) *ProposalMassage {
 	return &msg
 }
 
-func NewProposal(zoneName string, t int) *ProposalMassage {
+func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 	switch t {
 	case Add:
-		sig := service.CertificateAuthorityX509.Sign([]byte(zoneName))
-		if sig == nil {
-			fmt.Println("Generate proposal failed: sign failed")
-			return nil
-		}
-		msg := AddMsg{
-			ZoneName:zoneName,
-			Sig:sig,
-		}
-		msgData, err := json.Marshal(msg)
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		}
-		return &ProposalMassage{
-			PId: PId{
-				Name: conf.BCDnsConfig.HostName,
-				SequenceNumber: xid.New().String(),
-			},
-			Operation: Operation{
-				Type: Add,
-				Data: msgData,
-			},
-		}
+		PId := strings.Join([]string{conf.BCDnsConfig.HostName, xid.New().String()}, ":")
+		":"":"
 	case Del:
 		sig := service.CertificateAuthorityX509.Sign([]byte(zoneName))
 		if sig == nil {
@@ -251,3 +233,5 @@ func doDel(data []byte, id string) error {
 	}
 	return nil
 }
+
+func getHashCode()

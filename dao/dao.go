@@ -19,6 +19,7 @@ type DAO struct {
 type DAOInterface interface {
 	Get(key []byte) ([]byte, error)
 	Has(key []byte) (bool, error)
+	Add(key, value []byte) error
 }
 
 func init() {
@@ -39,6 +40,10 @@ func (d *DAO) Get(key []byte) ([]byte, error) {
 
 func (d *DAO) Has(key []byte) (bool, error) {
 	return d.db.Has(key, nil)
+}
+
+func (d *DAO) Add(key, value []byte) error {
+	return d.db.Put(key, value, nil)
 }
 
 func test() {
