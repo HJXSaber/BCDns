@@ -5,16 +5,18 @@ import (
 	"BCDns_0.1/certificateAuthority/model"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
+	"crypto"
 	"encoding/json"
 	"fmt"
 	"github.com/rs/xid"
+	"math"
 	"reflect"
 	"strings"
 )
 
 //Define operation types
 
-type OperationType int
+type OperationType uint8
 
 const (
 	Add OperationType = iota
@@ -148,7 +150,7 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 	switch t {
 	case Add:
 		PId := strings.Join([]string{conf.BCDnsConfig.HostName, xid.New().String()}, ":")
-		":"":"
+
 	case Del:
 		sig := service.CertificateAuthorityX509.Sign([]byte(zoneName))
 		if sig == nil {
@@ -234,4 +236,18 @@ func doDel(data []byte, id string) error {
 	return nil
 }
 
-func getHashCode()
+func getHashCode(pId, zoneName string, operationType OperationType) ([]byte, error) {
+	hash := crypto.SHA512
+	hash.Write([]byte(pId))
+	hash.Write([]byte(zoneName))
+	hash.Write([]byte{byte(operationType)})
+	sum1 := hash.Sum(nil)
+	for i := 1; i < math.MaxInt64; i++ {
+		hash.Reset()
+		hash.Write([]byte{byte(i)})
+		sum2 := hash.Sum(nil)
+		for i, v := range sum1 {
+
+		}
+	}
+}
