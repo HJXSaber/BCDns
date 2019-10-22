@@ -11,6 +11,7 @@ import (
 	"github.com/rs/xid"
 	"math"
 	"reflect"
+	"time"
 )
 
 //Define operation types
@@ -32,10 +33,11 @@ type ProposalMassage struct {
 }
 
 type ProposalBody struct {
-	PId      PId
-	Type     OperationType
-	ZoneName string
-	HashCode []byte
+	Timestamp int64
+	PId       PId
+	Type      OperationType
+	ZoneName  string
+	HashCode  []byte
 }
 
 type ProposalResult struct {
@@ -54,28 +56,6 @@ type ProposalDealFailed struct {
 
 func (err ProposalDealFailed) Error() string {
 	return err.Msg
-}
-
-func (p *ProposalMassage) Do() error {
-	switch p.Body.Type {
-	case Add:
-		if err := doAdd(p.Data, p.GetIssuer()); err != nil {
-			fmt.Println("Process proposal failed", err)
-			return err
-		}
-	case Del:
-		if err := doDel(p.Data, p.GetIssuer()); err != nil {
-			fmt.Println("Process proposal failed", err)
-		}
-	default:
-		return ProposalDealFailed{"Do: Unknown proposal massage type"}
-
-	}
-	return nil
-}
-
-func (p *ProposalMassage) GetIssuer() string {
-	return p.Body.PId.Name
 }
 
 func (*ProposalMassage) Marshal() []byte {
@@ -156,10 +136,11 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 			return nil
 		}
 		msg := ProposalBody{
-			PId:      pId,
-			ZoneName: zoneName,
-			Type:     Add,
-			HashCode: hashCode,
+			Timestamp: time.Now().Unix(),
+			PId:       pId,
+			ZoneName:  zoneName,
+			Type:      Add,
+			HashCode:  hashCode,
 		}
 		msgByte, err := json.Marshal(msg)
 		if err != nil {
@@ -175,7 +156,8 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 		return nil
 	case Del:
 		msg := ProposalBody{
-			ZoneName: zoneName,
+			Timestamp: time.Now().Unix(),
+			ZoneName:  zoneName,
 		}
 		msgByte, err := json.Marshal(msg)
 		if err != nil {
@@ -258,4 +240,30 @@ func getHashCode(pId PId, zoneName string, operationType OperationType) ([]byte,
 		}
 	}
 	return nil, errors.New("[getHashCode]Cannot find appropriate value")
+}
+
+type ProposalSlice []ProposalMassage
+
+func (slice ProposalSlice) Len() int {
+	return len(slice)
+}
+
+func (slice ProposalSlice) Exits(pm ProposalMassage) bool {
+	for _, p := range slice {
+		if reflect.DeepEqual(p.Signature, pm.Signature) {
+			return true
+		}
+	}
+	return false
+}
+
+func (slice ProposalSlice) AddTransaction(pm ProposalMassage) ProposalSlice {
+	// Inserted sorted by timestamp
+	for i, p := range slice {
+		if p.Body.Timestamp >= pm.Body.Timestamp {
+			return append(append(slice[:i], pm), slice[i:]...)
+		}
+	}
+
+	return append(slice, pm)
 }

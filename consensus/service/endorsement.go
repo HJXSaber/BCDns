@@ -77,30 +77,29 @@ func (endorsement *EndorsementT) EnqueueAuditProposal() {
 			fmt.Println("Audit proposal failed", err)
 			continue
 		}
+		bodyByte, err := json.Marshal(msg.Body)
+		if err != nil {
+			fmt.Printf("[EnqueueAuditProposal] json.Marshal failed err=%v\n", err)
+			continue
+		}
+		if !service2.CertificateAuthorityX509.VerifySignature(msg.Signature, bodyByte, msg.Body.PId.Name) {
+			fmt.Printf("[EnqueueAuditProposal] Wrong request msg=%v\n", msg)
+			continue
+		}
 		switch msg.Body.Type {
 		case messages.Add:
-			err = dao.Dao.Add(msg.Body.HashCode, msgByte)
-			if err != nil {
-				fmt.Printf("[EnqueueAuditProposal] Add msg failed err=%v", err)
-				return
-			}
+			if dao.Dao.Has()
 		case messages.Del:
-			bodyByte, err := json.Marshal(msg.Body)
+			recordByte, err := dao.Dao.Get([]byte(msg.Body.ZoneName))
 			if err != nil {
-				fmt.Printf("[EnqueueAuditProposal] json.Marshal failed err=%v", err)
-				return
+				fmt.Printf("[EnqueueAuditProposal] ")
 			}
-			if service2.CertificateAuthorityX509.VerifySignature(msg.Signature, bodyByte, msg.Body.PId.Name) {
-				if err := dao.Dao.DelEX(msg.Body.HashCode); err != nil {
-					fmt.Printf("[EnqueueAuditProposal] Del dns record failed err=%v", err)
-					return
-				}
-			} else {
-				fmt.Printf("[EnqueueAuditProposal] Wrong request msg=%v", msg)
-				return
+			if err := dao.Dao.DelEX(msg.Body.HashCode); err != nil {
+				fmt.Printf("[EnqueueAuditProposal] Del dns record failed err=%v\n", err)
+				continue
 			}
 		default:
-			fmt.Println("Audit proposal: unknown operation type")
+			fmt.Println("[EnqueueAuditProposal] Audit proposal: unknown operation type")
 			continue
 		}
 	}

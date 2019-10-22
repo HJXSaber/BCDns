@@ -1,9 +1,7 @@
 package dao
 
 import (
-	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
-	"os"
 	"sync"
 )
 
@@ -16,6 +14,11 @@ type DAO struct {
 	db    *leveldb.DB
 }
 
+type Record struct {
+	ZoneName string
+	HostName string
+}
+
 type DAOInterface interface {
 	Get(key []byte) ([]byte, error)
 	Has(key []byte) (bool, error)
@@ -25,8 +28,7 @@ type DAOInterface interface {
 func init() {
 	db, err := leveldb.OpenFile("db", nil)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
+		panic(err)
 	}
 	Dao = DAO{
 		mutex: sync.Mutex{},
@@ -48,9 +50,4 @@ func (d *DAO) Add(key, value []byte) error {
 
 func (d *DAO) DelEX(key []byte) error {
 	return d.db.Delete(key, nil)
-}
-
-func test() {
-	//d, _ := leveldb.OpenFile("db", nil)
-
 }

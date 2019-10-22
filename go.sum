@@ -67,6 +67,10 @@ github.com/hashicorp/memberlist v0.1.5 h1:AYBsgJOW9gab/toO5tEB8lWetVgDKZycqkebJ8
 github.com/hashicorp/memberlist v0.1.5/go.mod h1:ajVTdAv/9Im8oMAAj5G31PhhMCZJV2pPBoIllUwCN7I=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
+github.com/izqui/functional v0.0.0-20160607200733-33eb58a9d05d h1:REoCyytaQ6268cNxLU3OFDHfRyBTXKCpUNYIFyacv6I=
+github.com/izqui/functional v0.0.0-20160607200733-33eb58a9d05d/go.mod h1:KLC4XGxlYk+c6JZPF2hRSKenxEFpZmBSCkqNBnpFiSo=
+github.com/izqui/helpers v0.0.0-20150821122028-c69cdb8bbd19 h1:C054dPZenDrO050x7LedyKFV+0OMjoJt57joHTgRZGc=
+github.com/izqui/helpers v0.0.0-20150821122028-c69cdb8bbd19/go.mod h1:T37xToJI45Zrox8+kXrYCs4trsJ2SpqesRuAHDPeLFk=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
