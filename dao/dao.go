@@ -13,7 +13,7 @@ var (
 
 type DAO struct {
 	mutex sync.Mutex
-	db *leveldb.DB
+	db    *leveldb.DB
 }
 
 type DAOInterface interface {
@@ -30,7 +30,7 @@ func init() {
 	}
 	Dao = DAO{
 		mutex: sync.Mutex{},
-		db: db,
+		db:    db,
 	}
 }
 
@@ -44,6 +44,10 @@ func (d *DAO) Has(key []byte) (bool, error) {
 
 func (d *DAO) Add(key, value []byte) error {
 	return d.db.Put(key, value, nil)
+}
+
+func (d *DAO) DelEX(key []byte) error {
+	return d.db.Delete(key, nil)
 }
 
 func test() {

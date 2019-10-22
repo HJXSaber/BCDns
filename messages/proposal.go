@@ -4,7 +4,6 @@ import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
-	"crypto"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
@@ -12,7 +11,6 @@ import (
 	"github.com/rs/xid"
 	"math"
 	"reflect"
-	"strings"
 )
 
 //Define operation types
@@ -29,12 +27,12 @@ var (
 )
 
 type ProposalMassage struct {
-	Msg       ProposalBody
+	Body      ProposalBody
 	Signature []byte
 }
 
 type ProposalBody struct {
-	PId      string
+	PId      PId
 	Type     OperationType
 	ZoneName string
 	HashCode []byte
@@ -59,7 +57,7 @@ func (err ProposalDealFailed) Error() string {
 }
 
 func (p *ProposalMassage) Do() error {
-	switch p.Type {
+	switch p.Body.Type {
 	case Add:
 		if err := doAdd(p.Data, p.GetIssuer()); err != nil {
 			fmt.Println("Process proposal failed", err)
@@ -77,7 +75,7 @@ func (p *ProposalMassage) Do() error {
 }
 
 func (p *ProposalMassage) GetIssuer() string {
-	return p.Name
+	return p.Body.PId.Name
 }
 
 func (*ProposalMassage) Marshal() []byte {
@@ -131,11 +129,6 @@ type ProposalFunc interface {
 	Response() ([]byte, error)
 }
 
-type AddMsg struct {
-	ZoneName string
-	Sig      []byte
-}
-
 type DelMsg struct {
 	ZoneName string
 	Sig      []byte
@@ -153,7 +146,10 @@ func Parse(data []byte) *ProposalMassage {
 func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 	switch t {
 	case Add:
-		pId := strings.Join([]string{conf.BCDnsConfig.HostName, xid.New().String()}, ":")
+		pId := PId{
+			SequenceNumber: xid.New().String(),
+			Name:           conf.BCDnsConfig.HostName,
+		}
 		hashCode, err := getHashCode(pId, zoneName, Add)
 		if err != nil {
 			fmt.Printf("[NewProposal] err=%v", err)
@@ -172,38 +168,29 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 		}
 		if sig := service.CertificateAuthorityX509.Sign(msgByte); sig != nil {
 			return &ProposalMassage{
-				Msg:       msg,
+				Body:      msg,
 				Signature: sig,
 			}
 		}
 		return nil
 	case Del:
-		msg
-		sig := service.CertificateAuthorityX509.Sign([]byte(zoneName))
+		msg := ProposalBody{
+			ZoneName: zoneName,
+		}
+		msgByte, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Printf("[NewProposal] json.Marshal failed err=%v", err)
+			return nil
+		}
+		sig := service.CertificateAuthorityX509.Sign(msgByte)
 		if sig == nil {
 			fmt.Println("Generate proposal failed: sign failed")
 			return nil
 		}
-		msg := DelMsg{
-			ZoneName: zoneName,
-			Sig:      sig,
-		}
-		msgData, err := json.Marshal(msg)
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		}
 		return &ProposalMassage{
-			PId: PId{
-				Name:           conf.BCDnsConfig.HostName,
-				SequenceNumber: xid.New().String(),
-			},
-			Operation: Operation{
-				Type: Del,
-				Data: msgData,
-			},
+			Body:      msg,
+			Signature: sig,
 		}
-
 	default:
 		fmt.Println("Unknown proposal type")
 		return nil
@@ -216,25 +203,6 @@ type AddReqFailed struct {
 
 func (e AddReqFailed) Error() string {
 	return e.Msg
-}
-
-func doAdd(data []byte, id string) error {
-	var msg AddMsg
-	err := json.Unmarshal(data, msg)
-	if err != nil {
-		return err
-	}
-	ok, err := dao.Dao.Has([]byte(msg.ZoneName))
-	if err != nil {
-		return err
-	}
-	if ok {
-		return AddReqFailed{"Domain name is occupied"}
-	}
-	if !service.CertificateAuthorityX509.VerifySignature(msg.Sig, []byte(msg.ZoneName), id) {
-		return AddReqFailed{"Signature is invalid"}
-	}
-	return nil
 }
 
 type DelReqFailed struct {
@@ -264,9 +232,14 @@ func doDel(data []byte, id string) error {
 	return nil
 }
 
-func getHashCode(pId, zoneName string, operationType OperationType) ([]byte, error) {
+func getHashCode(pId PId, zoneName string, operationType OperationType) ([]byte, error) {
 	hash := sha1.New()
-	hash.Write([]byte(pId))
+	pIdByte, err := json.Marshal(pId)
+	if err != nil {
+		fmt.Printf("[getHashCode] json.Marshal failed err=%v", err)
+		return nil, err
+	}
+	hash.Write(pIdByte)
 	hash.Write([]byte(zoneName))
 	hash.Write([]byte{byte(operationType)})
 	sum1 := hash.Sum(nil)
