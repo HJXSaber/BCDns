@@ -13,17 +13,18 @@ type Config struct {
 	CAPort int64
 
 	//system info
-	Port int
+	Port     int
 	HostName string
 
 	ProposalBufferSize int
-	ProposalOvertime time.Duration
+	ProposalOvertime   time.Duration
 
 	LeaderMsgBufferSize int
+	PowDifficult        int
 }
 
 var (
-	path string
+	path        string
 	BCDnsConfig Config
 )
 

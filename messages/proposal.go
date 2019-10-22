@@ -2,11 +2,12 @@ package messages
 
 import (
 	"BCDns_0.1/bcDns/conf"
-	"BCDns_0.1/certificateAuthority/model"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
 	"crypto"
+	"crypto/sha1"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/rs/xid"
 	"math"
@@ -28,16 +29,20 @@ var (
 )
 
 type ProposalMassage struct {
-	PId string
-	Type OperationType
+	Msg       ProposalBody
+	Signature []byte
+}
+
+type ProposalBody struct {
+	PId      string
+	Type     OperationType
 	ZoneName string
 	HashCode []byte
-	Signature []byte
 }
 
 type ProposalResult struct {
 	Body ResultBody
-	Sig []byte
+	Sig  []byte
 }
 
 type ResultBody struct {
@@ -66,7 +71,7 @@ func (p *ProposalMassage) Do() error {
 		}
 	default:
 		return ProposalDealFailed{"Do: Unknown proposal massage type"}
-		
+
 	}
 	return nil
 }
@@ -82,7 +87,7 @@ func (*ProposalMassage) Marshal() []byte {
 func (p *ProposalMassage) Response(pass bool) ([]byte, error) {
 	body := ResultBody{
 		ProposalMassage: *p,
-		Result: pass,
+		Result:          pass,
 	}
 	data, err := json.Marshal(body)
 	if err != nil {
@@ -94,7 +99,7 @@ func (p *ProposalMassage) Response(pass bool) ([]byte, error) {
 	}
 	var msg ProposalResult = ProposalResult{
 		Body: body,
-		Sig: sig,
+		Sig:  sig,
 	}
 	data, err = json.Marshal(msg)
 	if err != nil {
@@ -105,10 +110,9 @@ func (p *ProposalMassage) Response(pass bool) ([]byte, error) {
 
 type PId struct {
 	//Name is hostname
-	Name string
+	Name           string
 	SequenceNumber string
 }
-
 
 func (p PId) String() string {
 	return p.Name + ":" + string(p.SequenceNumber)
@@ -129,12 +133,12 @@ type ProposalFunc interface {
 
 type AddMsg struct {
 	ZoneName string
-	Sig []byte
+	Sig      []byte
 }
 
 type DelMsg struct {
 	ZoneName string
-	Sig []byte
+	Sig      []byte
 }
 
 func Parse(data []byte) *ProposalMassage {
@@ -149,17 +153,40 @@ func Parse(data []byte) *ProposalMassage {
 func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 	switch t {
 	case Add:
-		PId := strings.Join([]string{conf.BCDnsConfig.HostName, xid.New().String()}, ":")
-
+		pId := strings.Join([]string{conf.BCDnsConfig.HostName, xid.New().String()}, ":")
+		hashCode, err := getHashCode(pId, zoneName, Add)
+		if err != nil {
+			fmt.Printf("[NewProposal] err=%v", err)
+			return nil
+		}
+		msg := ProposalBody{
+			PId:      pId,
+			ZoneName: zoneName,
+			Type:     Add,
+			HashCode: hashCode,
+		}
+		msgByte, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Printf("[NewProposal] json.Marshal failed err=%v", err)
+			return nil
+		}
+		if sig := service.CertificateAuthorityX509.Sign(msgByte); sig != nil {
+			return &ProposalMassage{
+				Msg:       msg,
+				Signature: sig,
+			}
+		}
+		return nil
 	case Del:
+		msg
 		sig := service.CertificateAuthorityX509.Sign([]byte(zoneName))
 		if sig == nil {
 			fmt.Println("Generate proposal failed: sign failed")
 			return nil
 		}
 		msg := DelMsg{
-			ZoneName:zoneName,
-			Sig:sig,
+			ZoneName: zoneName,
+			Sig:      sig,
 		}
 		msgData, err := json.Marshal(msg)
 		if err != nil {
@@ -168,7 +195,7 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 		}
 		return &ProposalMassage{
 			PId: PId{
-				Name: conf.BCDnsConfig.HostName,
+				Name:           conf.BCDnsConfig.HostName,
 				SequenceNumber: xid.New().String(),
 			},
 			Operation: Operation{
@@ -176,6 +203,7 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 				Data: msgData,
 			},
 		}
+
 	default:
 		fmt.Println("Unknown proposal type")
 		return nil
@@ -237,7 +265,7 @@ func doDel(data []byte, id string) error {
 }
 
 func getHashCode(pId, zoneName string, operationType OperationType) ([]byte, error) {
-	hash := crypto.SHA512
+	hash := sha1.New()
 	hash.Write([]byte(pId))
 	hash.Write([]byte(zoneName))
 	hash.Write([]byte{byte(operationType)})
@@ -246,8 +274,15 @@ func getHashCode(pId, zoneName string, operationType OperationType) ([]byte, err
 		hash.Reset()
 		hash.Write([]byte{byte(i)})
 		sum2 := hash.Sum(nil)
+		count := 0
 		for i, v := range sum1 {
-
+			if sum2[i]+v == uint8(0) {
+				count++
+				if count >= conf.BCDnsConfig.PowDifficult {
+					return sum2, nil
+				}
+			}
 		}
 	}
+	return nil, errors.New("[getHashCode]Cannot find appropriate value")
 }
