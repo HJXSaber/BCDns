@@ -3,6 +3,7 @@ package blockChain
 import (
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
+	"BCDns_0.1/utils"
 	"bytes"
 	"encoding/binary"
 	"reflect"
@@ -74,23 +75,9 @@ func (b *Block) VerifyBlock(prefix []byte) bool {
 func (b *Block) Hash() []byte {
 
 	headerHash, _ := b.BlockHeader.MarshalBinary()
-	return helpers.SHA256(headerHash)
+	return utils.SHA256(headerHash)
 }
 
-func (b *Block) GenerateNonce(prefix []byte) uint32 {
-
-	newB := b
-	for {
-
-		if CheckProofOfWork(prefix, newB.Hash()) {
-			break
-		}
-
-		newB.BlockHeader.Nonce++
-	}
-
-	return newB.BlockHeader.Nonce
-}
 func (b *Block) GenerateMerkelRoot() []byte {
 
 	var merkell func(hashes [][]byte) []byte
@@ -111,7 +98,7 @@ func (b *Block) GenerateMerkelRoot() []byte {
 			bs := make([][]byte, l/2)
 			for i, _ := range bs {
 				j, k := i*2, (i*2)+1
-				bs[i] = helpers.SHA256(append(hashes[j], hashes[k]...))
+				bs[i] = utils.SHA256(append(hashes[j], hashes[k]...))
 			}
 			return merkell(bs)
 		}
