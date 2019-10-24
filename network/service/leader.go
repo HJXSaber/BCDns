@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/fanliao/go-concurrentMap"
 	"log"
 	"sync"
 )
@@ -27,7 +28,7 @@ type LeaderT struct {
 	OnChanging     sync.Mutex
 	LeaderId       int64
 	TermId         int64
-	RetrieveMsgs   map[int64]map[string]ViewRetrieveMsg
+	RetrieveMsgs   map[int64]map[string]int64
 	ViewChangeMsgs map[ViewChangeMsgData][]ViewChangeMsg
 }
 
@@ -137,7 +138,7 @@ func (leader *LeaderT) ProcessRetrieveMsg() {
 			var msg ViewRetrieveResponse
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
-				fmt.Println("[ProcessRetrieveMsg] json.Unmarshal msg failed", err)
+				fmt.Printf("[ProcessRetrieveMsg] json.Unmarshal msg failed err=%v\n", err)
 				continue
 			}
 
