@@ -3,23 +3,54 @@ package service
 import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
+	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/memberlist"
 	"log"
 )
 
 type DnsNet struct {
-	Network *memberlist.Memberlist
+	Network    *memberlist.Memberlist
 	broadCasts *memberlist.TransmitLimitedQueue
 }
 
+type MessageTypeT uint8
+
+const (
+	Proposal MessageTypeT = iota + 1
+	AuditResponse
+	ViewChange
+	RetrieveLeader
+)
+
+type BroadCastMassage struct {
+	MessageType MessageTypeT
+	Payload     []byte
+}
+
+var (
+	AuditResponseChan     chan []byte
+	ProposalChan          chan []byte
+	ViewChangeMsgChan     chan []byte
+	RetrieveLeaderMsgChan chan []byte
+)
+
 //Can not broadcast msg whose size is longer than 1350B
 //When the size of msg is longer than 1350B. We have to transfer it by reliable channel
-func (net DnsNet) BroadcastMsg(jsonData []byte) {
-	if len(jsonData) >= 1350 {
+func (net DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
+	msg := BroadCastMassage{
+		MessageType: t,
+		Payload:     jsonData,
+	}
+	msgByte, err := json.Marshal(msg)
+	if err != nil {
+		fmt.Printf("[BroadcastMsg] json.Marshal failed err=%v\n", err)
+		return
+	}
+	if len(msgByte) >= 1350 {
 		//TODO
 		for _, node := range net.Network.Members() {
-			err := net.Network.SendReliable(node, jsonData)
+			err := net.Network.SendReliable(node, msgByte)
 			if err != nil {
 				fmt.Println("Broadcast msg failed", err)
 				continue
@@ -27,9 +58,30 @@ func (net DnsNet) BroadcastMsg(jsonData []byte) {
 		}
 	} else {
 		net.broadCasts.QueueBroadcast(&Broadcast{
-			Msg: jsonData,
-			Notify:nil,
+			Msg:    msgByte,
+			Notify: nil,
 		})
+	}
+}
+
+func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to string) {
+	msg := BroadCastMassage{
+		MessageType: t,
+		Payload:     jsonData,
+	}
+	msgByte, err := json.Marshal(msg)
+	if err != nil {
+		fmt.Printf("[BroadcastMsg] json.Marshal failed err=%v\n", err)
+		return
+	}
+	for _, node := range net.Network.Members() {
+		if node.Name == to {
+			err := net.Network.SendReliable(node, msgByte)
+			if err != nil {
+				fmt.Println("Broadcast msg failed", err)
+				break
+			}
+		}
 	}
 }
 
@@ -70,6 +122,9 @@ func init() {
 		},
 		RetransmitMult: 3,
 	}
+
+	AuditResponseChan = make(chan []byte, 1024)
+	ProposalChan = make(chan []byte, 1024)
 }
 
 type Broadcast struct {
@@ -91,14 +146,29 @@ func (b *Broadcast) Message() []byte {
 	return b.Msg
 }
 
-type Delegate struct {}
+type Delegate struct{}
 
 func (*Delegate) NodeMeta(limit int) []byte {
 	return []byte{}
 }
 
 func (*Delegate) NotifyMsg(data []byte) {
-
+	var msg BroadCastMassage
+	err := json.Unmarshal(data, &msg)
+	if err != nil {
+		fmt.Printf("[NotifyMsg] json.Marshal failed err=%v\n", err)
+		return
+	}
+	switch msg.MessageType {
+	case Proposal:
+		ProposalChan <- msg.Payload
+	case AuditResponse:
+		AuditResponseChan <- msg.Payload
+	case ViewChange:
+		ViewChangeMsgChan <- msg.Payload
+	case RetrieveLeader:
+		RetrieveLeaderMsgChan <- msg.Payload
+	}
 }
 
 func (*Delegate) GetBroadcasts(overhead, limit int) [][]byte {

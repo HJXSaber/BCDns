@@ -14,7 +14,7 @@ import (
 
 var (
 	ModelCertT = reflect.TypeOf(Certificate{})
-	PbCertT = reflect.TypeOf(protos.Certificate{})
+	PbCertT    = reflect.TypeOf(protos.Certificate{})
 )
 
 //certificate begin
@@ -52,13 +52,13 @@ func (cert Certificate) MarshalBinary() (data []byte, err error) {
 }
 
 type RawCertificate struct {
-	Version int64
-	SerialNumber *big.Int
+	Version            int64
+	SerialNumber       *big.Int
 	ValidFrom, ValidTo timestamp.Timestamp
 	Subject
 	PublicKey
 	Addr
-	NetworkSize int64
+	//NetworkSize int64
 }
 
 func (certRaw RawCertificate) MarshalBinary() (data []byte, err error) {
@@ -89,17 +89,17 @@ func (subject Subject) String() (string, error) {
 }
 
 type PublicKey struct {
-	N	*big.Int
-	E	int64
+	N *big.Int
+	E int64
 }
 
 type Signature struct {
 	Subject
-	Signature            []byte
+	Signature []byte
 }
 
 type Addr struct {
-	Ip string
+	Ip   string
 	Port int32
 }
 

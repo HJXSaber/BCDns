@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	LocalPrivateName = "LocalPrivate.pem"
-	RootCertificateName = "RootCertificate.crt"
-	LocalCertificateName = "LocalCertificate.crt"
-	CertificatesPath = "../conf/"
+	LocalPrivateName         = "LocalPrivate.pem"
+	RootCertificateName      = "RootCertificate.crt"
+	LocalCertificateName     = "LocalCertificate.crt"
+	CertificatesPath         = "../conf/"
 	CertificateAuthorityX509 *CAX509
 )
 
@@ -44,7 +44,7 @@ type CheckSigFailedErr struct {
 }
 
 type Node struct {
-	Cert x509.Certificate
+	Cert   x509.Certificate
 	Member interface{}
 }
 
@@ -53,8 +53,8 @@ func (err CheckSigFailedErr) Error() string {
 }
 
 type CAX509 struct {
-	Mutex sync.Mutex
-	Certificates map[string]x509.Certificate
+	Mutex             sync.Mutex
+	Certificates      map[string]x509.Certificate
 	CertificatesOrder []Node
 }
 
@@ -81,9 +81,9 @@ func init() {
 		}
 	}
 	CertificateAuthorityX509 = &CAX509{
-		Mutex: sync.Mutex{},
-		Certificates: certs,
-		CertificatesOrder:certsOrder,
+		Mutex:             sync.Mutex{},
+		Certificates:      certs,
+		CertificatesOrder: certsOrder,
 	}
 }
 
@@ -139,8 +139,8 @@ func (ca *CAX509) AddCert(data []byte) error {
 			return err
 		}
 		block := pem.Block{
-			Type: "Certificate",
-			Bytes:data,
+			Type:  "Certificate",
+			Bytes: data,
 		}
 		id, err := utils.GetCertId(*cert)
 		if err != nil {
@@ -222,6 +222,11 @@ func (ca *CAX509) GetNetworkSize() int {
 
 func (ca *CAX509) GetF() int {
 	return (ca.GetNetworkSize() - 1) / 3
+}
+
+func (ca *CAX509) Exits(id string) bool {
+	_, ok := ca.Certificates[id]
+	return ok
 }
 
 func loadPrivateKey2() *rsa.PrivateKey {
@@ -310,7 +315,7 @@ func getDigest2(msg []byte) ([]byte, error) {
 func insertCertificateByOrder(certs []Node, cert *x509.Certificate) {
 	for i, c := range certs {
 		if c.Cert.SerialNumber.Cmp(cert.SerialNumber) > 0 {
-			certs = append(certs[:i + 1], certs[i:]...)
+			certs = append(certs[:i+1], certs[i:]...)
 			certs[i] = Node{
 				Cert: *cert,
 			}

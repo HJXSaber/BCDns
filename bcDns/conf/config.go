@@ -28,11 +28,6 @@ var (
 	BCDnsConfig Config
 )
 
-const (
-	ViewRetrieve = iota
-	ProposalMsg
-)
-
 func init() {
 	if val, ok := os.LookupEnv("BCDNSConfFile"); ok {
 		path = val

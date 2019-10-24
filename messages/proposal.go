@@ -4,7 +4,9 @@ import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
-	"crypto/sha1"
+	"bytes"
+	"crypto/sha256"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -86,6 +88,38 @@ func (p *ProposalMassage) Response(pass bool) ([]byte, error) {
 	return data, nil
 }
 
+func (p ProposalMassage) ValidateAdd() bool {
+	if !service.CertificateAuthorityX509.Exits(p.Body.PId.Name) {
+		fmt.Printf("[Validate] Invalid HostName=%v", p.Body.PId.Name)
+		return false
+	}
+	bodyByte, err := json.Marshal(p.Body)
+	if err != nil {
+		fmt.Printf("[Validate] json.Marshal failed err=%v\n", err)
+		return false
+	}
+	if time.Now().Before(time.Unix(p.Body.Timestamp, 0)) {
+		fmt.Printf("[Validate] TimeStamp is invalid t=%v\n", p.Body.Timestamp)
+		return false
+	}
+	if exit, err := dao.Dao.Has([]byte(p.Body.ZoneName)); exit {
+		fmt.Printf("[Validate] ZoneName exits\n")
+		return false
+	} else if err != nil {
+		fmt.Printf("[Validate] db Has failed err=%v\n", err)
+		return false
+	}
+	if !service.CertificateAuthorityX509.VerifySignature(p.Signature, bodyByte, p.Body.PId.Name) {
+		fmt.Printf("[Validate] validate signature falied\n")
+		return false
+	}
+	if !p.Body.ValidatePow() {
+		fmt.Printf("[Validate] validate Pow faliled\n")
+		return false
+	}
+	return true
+}
+
 type PId struct {
 	//Name is hostname
 	Name           string
@@ -124,23 +158,23 @@ func Parse(data []byte) *ProposalMassage {
 }
 
 func NewProposal(zoneName string, t OperationType) *ProposalMassage {
+	var err error
 	switch t {
 	case Add:
 		pId := PId{
 			SequenceNumber: xid.New().String(),
 			Name:           conf.BCDnsConfig.HostName,
 		}
-		hashCode, err := getHashCode(pId, zoneName, Add)
-		if err != nil {
-			fmt.Printf("[NewProposal] err=%v", err)
-			return nil
-		}
 		msg := ProposalBody{
 			Timestamp: time.Now().Unix(),
 			PId:       pId,
 			ZoneName:  zoneName,
 			Type:      Add,
-			HashCode:  hashCode,
+		}
+		msg.HashCode, err = msg.Hash()
+		if err != nil {
+			fmt.Printf("[NewProposal] Hash Failed\n")
+			return nil
 		}
 		msgByte, err := json.Marshal(msg)
 		if err != nil {
@@ -214,32 +248,77 @@ func doDel(data []byte, id string) error {
 	return nil
 }
 
-func getHashCode(pId PId, zoneName string, operationType OperationType) ([]byte, error) {
-	hash := sha1.New()
-	pIdByte, err := json.Marshal(pId)
-	if err != nil {
-		fmt.Printf("[getHashCode] json.Marshal failed err=%v", err)
+func (p ProposalBody) Hash() ([]byte, error) {
+	var err error
+	hash := sha256.New()
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err = enc.Encode(p.Timestamp); err != nil {
+		fmt.Printf("[Hash] Encode failed err=%v", err)
 		return nil, err
 	}
-	hash.Write(pIdByte)
-	hash.Write([]byte(zoneName))
-	hash.Write([]byte{byte(operationType)})
-	sum1 := hash.Sum(nil)
-	for i := 1; i < math.MaxInt64; i++ {
+	if err = enc.Encode(p.ZoneName); err != nil {
+		fmt.Printf("[Hash] Encode failed err=%v", err)
+		return nil, err
+	}
+	if err = enc.Encode(p.Type); err != nil {
+		fmt.Printf("[Hash] Encode failed err=%v", err)
+		return nil, err
+	}
+	if err = enc.Encode(p.PId); err != nil {
+		fmt.Printf("[Hash] Encode failed err=%v", err)
+		return nil, err
+	}
+	hash.Write(buf.Bytes())
+	return hash.Sum(nil), nil
+}
+
+func (p ProposalBody) GetPowHash() ([]byte, error) {
+	bodyHash, err := p.Hash()
+	if err != nil {
+		return nil, err
+	}
+	hash := sha256.New()
+	for i := 0; i <= math.MaxInt64; i++ {
 		hash.Reset()
-		hash.Write([]byte{byte(i)})
-		sum2 := hash.Sum(nil)
+		buf := &bytes.Buffer{}
+		enc := gob.NewEncoder(buf)
+		_ = enc.Encode(i)
+		hash.Write(buf.Bytes())
+		sum := hash.Sum(nil)
 		count := 0
-		for i, v := range sum1 {
-			if sum2[i]+v == uint8(0) {
+		for i, v := range bodyHash {
+			if sum[i]+v == uint8(0) {
 				count++
 				if count >= conf.BCDnsConfig.PowDifficult {
-					return sum2, nil
+					return sum, nil
 				}
+			} else {
+				break
 			}
 		}
 	}
 	return nil, errors.New("[getHashCode]Cannot find appropriate value")
+}
+
+func (p ProposalBody) ValidatePow() bool {
+	bodyHash, err := p.Hash()
+	if err != nil {
+		return false
+	}
+	count := 0
+	for i, v := range bodyHash {
+		if p.HashCode[i]+v == uint8(0) {
+			count++
+		} else {
+			break
+		}
+	}
+	if count >= conf.BCDnsConfig.PowDifficult {
+		return true
+	} else {
+		return false
+	}
 }
 
 type ProposalSlice []ProposalMassage
@@ -266,4 +345,53 @@ func (slice ProposalSlice) AddTransaction(pm ProposalMassage) ProposalSlice {
 	}
 
 	return append(slice, pm)
+}
+
+type ProposalAuditResponse struct {
+	ProposalHash []byte
+	Auditor      string
+	Signature    []byte
+}
+
+func NewProposalAuditResponse(proposal ProposalMassage) *ProposalAuditResponse {
+	proposalHash, err := proposal.Body.Hash()
+	if err != nil {
+		fmt.Printf("[NewProposalAuditResponse] generate failed err=%v\n", err)
+		return nil
+	}
+	if sig := service.CertificateAuthorityX509.Sign(proposalHash); sig != nil {
+		return &ProposalAuditResponse{
+			ProposalHash: proposalHash,
+			Auditor:      conf.BCDnsConfig.HostName,
+			Signature:    sig,
+		}
+	}
+	fmt.Printf("[NewProposalAuditResponse] Generate signature failed")
+	return nil
+}
+
+func (pr *ProposalAuditResponse) Verify() bool {
+	return service.CertificateAuthorityX509.VerifySignature(pr.Signature, pr.ProposalHash, pr.Auditor)
+}
+
+type ProposalAuditResponses map[string]ProposalAuditResponse
+
+func (prs *ProposalAuditResponses) Check() bool {
+	return len(*prs) > 2*service.CertificateAuthorityX509.GetF()
+}
+
+type AuditedProposal struct {
+	Proposal   ProposalMassage
+	Signatures map[string][]byte
+}
+
+func NewAuditedProposal(p ProposalMassage, responses ProposalAuditResponses) *AuditedProposal {
+	signatures := make(map[string][]byte)
+	for hostName, response := range responses {
+		signatures[hostName] = response.Signature
+	}
+	return &AuditedProposal{
+		Proposal:   p,
+		Signatures: signatures,
+	}
 }
