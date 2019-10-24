@@ -1,11 +1,17 @@
 package service
 
 import (
+	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
+	"bytes"
+	"crypto/sha256"
+	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"sync"
 )
 
 const (
@@ -19,7 +25,7 @@ var (
 )
 
 type LeaderT struct {
-	OnChanging     bool
+	OnChanging     sync.Mutex
 	LeaderId       int64
 	TermId         int64
 	RetrieveMsgs   map[int64]map[string]ViewRetrieveMsg
@@ -109,8 +115,19 @@ func (leader *LeaderT) ProcessRetrieveMsg() {
 		//		}
 		//	}
 		//}
+		leader.OnChanging.Lock()
+		defer leader.OnChanging.Unlock()
+		msg := ViewRetrieveResponse{
+			TermId:	leader.TermId,
+			LeaderId: leader.LeaderId,
+			From: conf.BCDnsConfig.HostName,
 
+		}
 	}
+}
+
+func (leader *LeaderT) Run() {
+
 }
 
 type ViewChangeMsg struct {
@@ -136,6 +153,7 @@ type LeaderTInterface interface {
 	ProcessViewChangeMsg()
 	LeaderVote(ViewChangeMsgData)
 	ProcessRetrieveMsg()
+	Run()
 }
 
 type ViewRetrieveMsg struct {
@@ -150,6 +168,45 @@ type ViewRetrieveResponse struct {
 	Signature        []byte
 }
 
+func (r ViewRetrieveResponse) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(r.TermId); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(r.LeaderId); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(r.From); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+
+}
+
+func (r ViewRetrieveResponse) Sign() ([]byte, error) {
+	hash, err := r.Hash()
+	if err != nil {
+		return nil, err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		return sig, nil
+	}
+	return nil, errors.New("Generate signature failed")
+}
+
+func (r ViewRetrieveResponse) VerifySignature() bool {
+	hash, err := r.Hash()
+	if err != nil {
+		fmt.Printf("[VerifySignature] ViewRetrieveResponse's signature is illegle err=%v\n", err)
+		return false
+	}
+	if service.CertificateAuthorityX509.VerifySignature(r.Signature, hash, r.From) {
+		return true
+	}
+	return false
+}
+
 func init() {
 	msg := ViewRetrieveMsg{}
 	msgByte, err := json.Marshal(msg)
@@ -158,7 +215,6 @@ func init() {
 	}
 	P2PNet.BroadcastMsg(msgByte, RetrieveLeader)
 	Leader = LeaderT{
-		OnChanging:     false,
 		LeaderId:       -1,
 		TermId:         -1,
 		ViewChangeMsgs: make(map[ViewChangeMsgData][]ViewChangeMsg),
@@ -166,9 +222,12 @@ func init() {
 }
 
 //static method
-func TurnLeader() {
+func (leader *LeaderT) TurnLeader() {
 	service.CertificateAuthorityX509.Mutex.Lock()
 	defer service.CertificateAuthorityX509.Mutex.Unlock()
+
+	leader.OnChanging.Lock()
+	defer leader.OnChanging.Unlock()
 
 	Leader.LeaderId = (Leader.LeaderId + 1) % int64(service.CertificateAuthorityX509.GetNetworkSize())
 }
