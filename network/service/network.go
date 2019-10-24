@@ -21,6 +21,7 @@ const (
 	AuditResponse
 	ViewChange
 	RetrieveLeader
+	RetrieveLeaderResponse
 )
 
 type BroadCastMassage struct {
@@ -29,10 +30,11 @@ type BroadCastMassage struct {
 }
 
 var (
-	AuditResponseChan     chan []byte
-	ProposalChan          chan []byte
-	ViewChangeMsgChan     chan []byte
-	RetrieveLeaderMsgChan chan []byte
+	AuditResponseChan          chan []byte
+	ProposalChan               chan []byte
+	ViewChangeMsgChan          chan []byte
+	RetrieveLeaderMsgChan      chan []byte
+	RetrieveLeaderResponseChan chan []byte
 )
 
 //Can not broadcast msg whose size is longer than 1350B
@@ -168,6 +170,8 @@ func (*Delegate) NotifyMsg(data []byte) {
 		ViewChangeMsgChan <- msg.Payload
 	case RetrieveLeader:
 		RetrieveLeaderMsgChan <- msg.Payload
+	case RetrieveLeaderResponse:
+		RetrieveLeaderResponseChan <- msg.Payload
 	}
 }
 

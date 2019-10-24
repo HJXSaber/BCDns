@@ -5,7 +5,6 @@ import (
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
 	"bytes"
-	"crypto/sha256"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
@@ -80,47 +79,67 @@ func (leader *LeaderT) LeaderVote(id ViewChangeMsgData) {
 }
 
 func (leader *LeaderT) ProcessRetrieveMsg() {
-	var msg ViewRetrieveMsg
 	for {
-		msgByte := <-RetrieveLeaderMsgChan
-		err := json.Unmarshal(msgByte, msg)
-		if err != nil {
-			fmt.Println("[ProcessRetrieveMsg] json.Unmarshal msg failed", err)
-			continue
-		}
-		//if msg.Retrieve {
-		//	msg.LeaderId, msg.TermId, msg.HostName = leader.LeaderId, leader.TermId, conf.BCDnsConfig.HostName
-		//} else {
-		//	if v, ok := leader.RetrieveMsgs[msg.TermId]; ok {
-		//		if _, ok = v[msg.HostName]; !ok {
-		//			if leader.RetrieveMsgs[msg.TermId][msg.HostName] = msg; len(leader.RetrieveMsgs[msg.TermId]) >= service.CertificateAuthorityX509.GetF()+1 {
-		//				if msg.TermId == -1 {
-		//					leader.TermId, leader.LeaderId = 0, 0
-		//				} else {
-		//					leader.TermId, leader.LeaderId = msg.TermId, msg.LeaderId
-		//				}
-		//				leader.RetrieveMsgs = make(map[int64]map[string]ViewRetrieveMsg)
-		//			}
-		//		}
-		//	} else {
-		//		leader.RetrieveMsgs[msg.TermId] = make(map[string]ViewRetrieveMsg)
-		//		leader.RetrieveMsgs[msg.TermId][msg.HostName] = msg
-		//		if leader.RetrieveMsgs[msg.TermId][msg.HostName] = msg; len(leader.RetrieveMsgs[msg.TermId]) >= service.CertificateAuthorityX509.GetF()+1 {
-		//			if msg.TermId == -1 {
-		//				leader.TermId, leader.LeaderId = 0, 0
-		//			} else {
-		//				leader.TermId, leader.LeaderId = msg.TermId, msg.LeaderId
-		//			}
-		//			leader.RetrieveMsgs = make(map[int64]map[string]ViewRetrieveMsg)
-		//		}
-		//	}
-		//}
-		leader.OnChanging.Lock()
-		defer leader.OnChanging.Unlock()
-		msg := ViewRetrieveResponse{
-			TermId:	leader.TermId,
-			LeaderId: leader.LeaderId,
-			From: conf.BCDnsConfig.HostName,
+		select {
+		case msgByte := <-RetrieveLeaderMsgChan:
+			var msg ViewRetrieveMsg
+			err := json.Unmarshal(msgByte, msg)
+			if err != nil {
+				fmt.Println("[ProcessRetrieveMsg] json.Unmarshal msg failed", err)
+				continue
+			}
+			//if msg.Retrieve {
+			//	msg.LeaderId, msg.TermId, msg.HostName = leader.LeaderId, leader.TermId, conf.BCDnsConfig.HostName
+			//} else {
+			//	if v, ok := leader.RetrieveMsgs[msg.TermId]; ok {
+			//		if _, ok = v[msg.HostName]; !ok {
+			//			if leader.RetrieveMsgs[msg.TermId][msg.HostName] = msg; len(leader.RetrieveMsgs[msg.TermId]) >= service.CertificateAuthorityX509.GetF()+1 {
+			//				if msg.TermId == -1 {
+			//					leader.TermId, leader.LeaderId = 0, 0
+			//				} else {
+			//					leader.TermId, leader.LeaderId = msg.TermId, msg.LeaderId
+			//				}
+			//				leader.RetrieveMsgs = make(map[int64]map[string]ViewRetrieveMsg)
+			//			}
+			//		}
+			//	} else {
+			//		leader.RetrieveMsgs[msg.TermId] = make(map[string]ViewRetrieveMsg)
+			//		leader.RetrieveMsgs[msg.TermId][msg.HostName] = msg
+			//		if leader.RetrieveMsgs[msg.TermId][msg.HostName] = msg; len(leader.RetrieveMsgs[msg.TermId]) >= service.CertificateAuthorityX509.GetF()+1 {
+			//			if msg.TermId == -1 {
+			//				leader.TermId, leader.LeaderId = 0, 0
+			//			} else {
+			//				leader.TermId, leader.LeaderId = msg.TermId, msg.LeaderId
+			//			}
+			//			leader.RetrieveMsgs = make(map[int64]map[string]ViewRetrieveMsg)
+			//		}
+			//	}
+			//}
+			leader.OnChanging.Lock()
+			defer leader.OnChanging.Unlock()
+			response := ViewRetrieveResponse{
+				TermId:   leader.TermId,
+				LeaderId: leader.LeaderId,
+				From:     conf.BCDnsConfig.HostName,
+			}
+			response.Signature, err = response.Sign()
+			if err != nil {
+				fmt.Printf("[ProcessRetrieveMsg] err=%v\n", err)
+				continue
+			}
+			responseByte, err := json.Marshal(msg)
+			if err != nil {
+				fmt.Printf("[ProcessRetrieveMsg] json.Marshal failed err=%v\n", err)
+				continue
+			}
+			P2PNet.SendTo(responseByte, RetrieveLeaderResponse, msg.From)
+		case msgByte := <-RetrieveLeaderResponseChan:
+			var msg ViewRetrieveResponse
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				fmt.Println("[ProcessRetrieveMsg] json.Unmarshal msg failed", err)
+				continue
+			}
 
 		}
 	}
@@ -157,8 +176,6 @@ type LeaderTInterface interface {
 }
 
 type ViewRetrieveMsg struct {
-	//HostName         string
-	//TermId, LeaderId int64
 	From string
 }
 
