@@ -20,11 +20,12 @@ const (
 	Proposal MessageTypeT = iota + 1
 	AuditResponse
 	ViewChange
+	ViewChangeResult
 	RetrieveLeader
 	RetrieveLeaderResponse
 )
 
-type BroadCastMassage struct {
+type Massage struct {
 	MessageType MessageTypeT
 	Payload     []byte
 }
@@ -33,6 +34,7 @@ var (
 	AuditResponseChan          chan []byte
 	ProposalChan               chan []byte
 	ViewChangeMsgChan          chan []byte
+	ViewChangeResultChan       chan []byte
 	RetrieveLeaderMsgChan      chan []byte
 	RetrieveLeaderResponseChan chan []byte
 )
@@ -40,7 +42,7 @@ var (
 //Can not broadcast msg whose size is longer than 1350B
 //When the size of msg is longer than 1350B. We have to transfer it by reliable channel
 func (net DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
-	msg := BroadCastMassage{
+	msg := Massage{
 		MessageType: t,
 		Payload:     jsonData,
 	}
@@ -66,24 +68,37 @@ func (net DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
 	}
 }
 
-func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to string) {
-	msg := BroadCastMassage{
+func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to int) {
+	msg := Massage{
 		MessageType: t,
 		Payload:     jsonData,
 	}
 	msgByte, err := json.Marshal(msg)
 	if err != nil {
-		fmt.Printf("[BroadcastMsg] json.Marshal failed err=%v\n", err)
+		fmt.Printf("[SendTo] json.Marshal failed err=%v\n", err)
 		return
 	}
-	for _, node := range net.Network.Members() {
-		if node.Name == to {
-			err := net.Network.SendReliable(node, msgByte)
-			if err != nil {
-				fmt.Println("Broadcast msg failed", err)
-				break
-			}
-		}
+	err = net.Network.SendReliable(
+		service.CertificateAuthorityX509.CertificatesOrder[to].Member.(*memberlist.Node), msgByte)
+	if err != nil {
+		fmt.Println("[SendTo] msg failed", err)
+	}
+}
+
+func (net DnsNet) SendToLeader(jsonData []byte, t MessageTypeT) {
+	msg := Massage{
+		MessageType: t,
+		Payload:     jsonData,
+	}
+	msgByte, err := json.Marshal(msg)
+	if err != nil {
+		fmt.Printf("[SendToLeader] json.Marshal failed err=%v\n", err)
+		return
+	}
+	err = net.Network.SendReliable(
+		service.CertificateAuthorityX509.CertificatesOrder[Leader.LeaderId].Member.(*memberlist.Node), msgByte)
+	if err != nil {
+		fmt.Println("[SendToLeader] msg failed", err)
 	}
 }
 
@@ -109,7 +124,7 @@ func init() {
 	for _, member := range P2PNet.Network.Members() {
 		for i, cert := range service.CertificateAuthorityX509.CertificatesOrder {
 			if cert.Cert.IPAddresses[0].Equal(member.Addr) {
-				service.CertificateAuthorityX509.CertificatesOrder[i].Member = member
+				service.CertificateAuthorityX509.CertificatesOrder[i].Member = &member
 			}
 		}
 	}
@@ -168,6 +183,8 @@ func (*Delegate) NotifyMsg(data []byte) {
 		AuditResponseChan <- msg.Payload
 	case ViewChange:
 		ViewChangeMsgChan <- msg.Payload
+	case ViewChangeResult:
+		ViewChangeResultChan <- msg.Payload
 	case RetrieveLeader:
 		RetrieveLeaderMsgChan <- msg.Payload
 	case RetrieveLeaderResponse:

@@ -5,15 +5,18 @@ import (
 	"BCDns_0.1/network/service"
 	"encoding/json"
 	"fmt"
+	"github.com/fanliao/go-concurrentMap"
 	"net"
 	"time"
 )
 
 type Proposer struct {
-	TimeOut        time.Duration
-	Conn           *net.UDPConn
-	Proposals      map[string]*messages.ProposalMassage
-	AuditResponses map[string]messages.ProposalAuditResponses
+	TimeOut time.Duration
+	Conn    *net.UDPConn
+	//Proposals      map[string]*messages.ProposalMassage
+	Proposals *concurrent.ConcurrentMap
+	//AuditResponses map[string]messages.ProposalAuditResponses
+	AuditResponses *concurrent.ConcurrentMap
 }
 
 type ProposerInterface interface {
@@ -52,7 +55,11 @@ func (p *Proposer) handleOrder(data []byte) {
 			fmt.Printf("[handleOrder] json.Marshal failed err=%v\n", err)
 			return
 		}
-		p.Proposals[string(proposal.Body.HashCode)] = proposal
+		_, err = p.Proposals.Put(string(proposal.Body.HashCode), proposal)
+		if err != nil {
+			fmt.Printf("[handleOrder] concurrentMap error=%v\n", err)
+			return
+		}
 		service.P2PNet.BroadcastMsg(proposalByte, service.Proposal)
 		done := make(chan int)
 		go func() {
@@ -60,12 +67,15 @@ func (p *Proposer) handleOrder(data []byte) {
 			case <-time.After(p.TimeOut):
 
 			case <-done:
-				auditedResponse := messages.NewAuditedProposal(*proposal, p.AuditResponses[proposal.Body.ZoneName])
+				auditedResponse := messages.NewAuditedProposal(*proposal,
+					p.AuditResponses.Get(proposal.Body.ZoneName).(messages.ProposalAuditResponses))
 
 			}
 		}()
-		if _, ok := p.AuditResponses[proposal.Body.ZoneName]; ok {
-			p.AuditResponses[proposal.Body.ZoneName] = messages.ProposalAuditResponses{}
+		_, err = p.AuditResponses.Put(proposal.Body.ZoneName, messages.ProposalAuditResponses{})
+		if err != nil {
+			fmt.Printf("[handleOrder] concurrentMap error=%v\n", err)
+			return
 		}
 		for true {
 			select {
@@ -98,7 +108,9 @@ func NewProposer(timeOut time.Duration) *Proposer {
 		return nil
 	}
 	return &Proposer{
-		TimeOut: timeOut,
-		Conn:    conn,
+		TimeOut:        timeOut,
+		Conn:           conn,
+		Proposals:      concurrent.NewConcurrentMap(),
+		AuditResponses: concurrent.NewConcurrentMap(),
 	}
 }
