@@ -23,6 +23,9 @@ const (
 	ViewChangeResult
 	RetrieveLeader
 	RetrieveLeaderResponse
+	Commit
+	Block
+	ProposalResult
 )
 
 type Massage struct {
@@ -37,6 +40,9 @@ var (
 	ViewChangeResultChan       chan []byte
 	RetrieveLeaderMsgChan      chan []byte
 	RetrieveLeaderResponseChan chan []byte
+	CommitChan                 chan []byte
+	BlockChan                  chan []byte
+	ProposalResultChan         chan []byte
 )
 
 //Can not broadcast msg whose size is longer than 1350B
@@ -68,7 +74,7 @@ func (net DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
 	}
 }
 
-func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to int) {
+func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to int64) {
 	msg := Massage{
 		MessageType: t,
 		Payload:     jsonData,
@@ -170,7 +176,7 @@ func (*Delegate) NodeMeta(limit int) []byte {
 }
 
 func (*Delegate) NotifyMsg(data []byte) {
-	var msg BroadCastMassage
+	var msg Massage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		fmt.Printf("[NotifyMsg] json.Marshal failed err=%v\n", err)
@@ -189,6 +195,12 @@ func (*Delegate) NotifyMsg(data []byte) {
 		RetrieveLeaderMsgChan <- msg.Payload
 	case RetrieveLeaderResponse:
 		RetrieveLeaderResponseChan <- msg.Payload
+	case Commit:
+		CommitChan <- msg.Payload
+	case Block:
+		BlockChan <- msg.Payload
+	case ProposalResult:
+		ProposalResultChan <- msg.Payload
 	}
 }
 

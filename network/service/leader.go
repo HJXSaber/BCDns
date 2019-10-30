@@ -151,6 +151,13 @@ func (leader *LeaderT) Run() {
 
 }
 
+func (leader *LeaderT) CheckTermId(termId int64) bool {
+	leader.OnChanging.Lock()
+	defer leader.OnChanging.Unlock()
+
+	return termId == leader.TermId
+}
+
 type ViewChangeMsg struct {
 	ViewChangeMsgData
 	Signature []byte
@@ -216,7 +223,7 @@ type LeaderTInterface interface {
 }
 
 type ViewRetrieveMsg struct {
-	From string
+	From int64
 }
 
 type ViewInfo struct {

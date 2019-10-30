@@ -1,6 +1,7 @@
 package service
 
 import (
+	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/utils"
 	"crypto"
 	"crypto/rand"
@@ -56,6 +57,7 @@ type CAX509 struct {
 	Mutex             sync.Mutex
 	Certificates      map[string]x509.Certificate
 	CertificatesOrder []Node
+	NodeId            int64
 }
 
 func init() {
@@ -80,10 +82,27 @@ func init() {
 			insertCertificateByOrder(certsOrder, cert)
 		}
 	}
+	nodeid := int64(-1)
+	for i, c := range certsOrder {
+		id, err := utils.GetCertId(c.Cert)
+		if err != nil {
+			fmt.Printf("[Load certificates] error=%v\n", err)
+			continue
+		}
+		if id == conf.BCDnsConfig.HostName {
+			nodeid = int64(i)
+			break
+		}
+	}
+	if nodeid == -1 {
+		fmt.Printf("[Load certificates]\n")
+		panic("Can not find local certificate")
+	}
 	CertificateAuthorityX509 = &CAX509{
 		Mutex:             sync.Mutex{},
 		Certificates:      certs,
 		CertificatesOrder: certsOrder,
+		NodeId:            nodeid,
 	}
 }
 

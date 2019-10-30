@@ -5,11 +5,8 @@ import (
 	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
 	"bytes"
-	"encoding/binary"
+	"encoding/gob"
 	"reflect"
-
-	"github.com/izqui/functional"
-	"github.com/izqui/helpers"
 )
 
 type BlockSlice []Block
@@ -40,11 +37,12 @@ func (bs BlockSlice) PreviousBlock() *Block {
 
 type Block struct {
 	*BlockHeader
+	Signature []byte
 	*messages.ProposalSlice
 }
 
 type BlockHeader struct {
-	Origin     []byte
+	From       string
 	PrevBlock  []byte
 	MerkelRoot []byte
 	Timestamp  uint32
@@ -52,13 +50,12 @@ type BlockHeader struct {
 }
 
 func NewBlock(previousBlock []byte) Block {
-
 	header := &BlockHeader{PrevBlock: previousBlock}
-	return Block{header, new(messages.ProposalSlice)}
+	return Block{header, nil, new(messages.ProposalSlice)}
 }
 
-func (b *Block) AddTransaction(t *messages.ProposalMassage) {
-	newSlice := b.ProposalSlice.AddTransaction(*t)
+func (b *Block) AddProposal(t *messages.ProposalMassage) {
+	newSlice := b.ProposalSlice.AddProposal(*t)
 	b.ProposalSlice = &newSlice
 }
 
@@ -67,13 +64,13 @@ func (b *Block) Sign() []byte {
 	return s
 }
 
-func (b *Block) VerifyBlock(prefix []byte) bool {
+func (b *Block) VerifyBlock() bool {
 	merkel := b.GenerateMerkelRoot()
-	return reflect.DeepEqual(merkel, b.BlockHeader.MerkelRoot)
+	return reflect.DeepEqual(merkel, b.BlockHeader.MerkelRoot) &&
+		service.CertificateAuthorityX509.VerifySignature(b.Signature, b.Hash(), b.From)
 }
 
 func (b *Block) Hash() []byte {
-
 	headerHash, _ := b.BlockHeader.MarshalBinary()
 	return utils.SHA256(headerHash)
 }
@@ -104,70 +101,65 @@ func (b *Block) GenerateMerkelRoot() []byte {
 		}
 	}
 
-	ts := functional.Map(func(t Transaction) []byte { return t.Hash() }, []Transaction(*b.TransactionSlice)).([][]byte)
+	ts := Map(func(t messages.ProposalMassage) []byte { return t.Body.HashCode },
+		[]messages.ProposalMassage(*b.ProposalSlice)).([][]byte)
 	return merkell(ts)
 
 }
 func (b *Block) MarshalBinary() ([]byte, error) {
-
-	bhb, err := b.BlockHeader.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	sig := helpers.FitBytesInto(b.Signature, NETWORK_KEY_SIZE)
-	tsb, err := b.TransactionSlice.MarshalBinary()
-	if err != nil {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(*b); err != nil {
 		return nil, err
 	}
 
-	return append(append(bhb, sig...), tsb...), nil
+	return buf.Bytes(), nil
 }
 
 func (b *Block) UnmarshalBinary(d []byte) error {
-
-	buf := bytes.NewBuffer(d)
-
-	header := new(BlockHeader)
-	err := header.UnmarshalBinary(buf.Next(BLOCK_HEADER_SIZE))
-	if err != nil {
+	dec := gob.NewDecoder(bytes.NewBuffer(d))
+	if err := dec.Decode(b); err != nil {
 		return err
 	}
-
-	b.BlockHeader = header
-	b.Signature = helpers.StripByte(buf.Next(NETWORK_KEY_SIZE), 0)
-
-	ts := new(TransactionSlice)
-	err = ts.UnmarshalBinary(buf.Next(helpers.MaxInt))
-	if err != nil {
-		return err
-	}
-
-	b.TransactionSlice = ts
 
 	return nil
 }
 
 func (h *BlockHeader) MarshalBinary() ([]byte, error) {
-
 	buf := new(bytes.Buffer)
-
-	buf.Write(helpers.FitBytesInto(h.Origin, NETWORK_KEY_SIZE))
-	binary.Write(buf, binary.LittleEndian, h.Timestamp)
-	buf.Write(helpers.FitBytesInto(h.PrevBlock, 32))
-	buf.Write(helpers.FitBytesInto(h.MerkelRoot, 32))
-	binary.Write(buf, binary.LittleEndian, h.Nonce)
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(*h); err != nil {
+		return nil, err
+	}
 
 	return buf.Bytes(), nil
 }
 
 func (h *BlockHeader) UnmarshalBinary(d []byte) error {
-
-	buf := bytes.NewBuffer(d)
-	h.Origin = helpers.StripByte(buf.Next(NETWORK_KEY_SIZE), 0)
-	binary.Read(bytes.NewBuffer(buf.Next(4)), binary.LittleEndian, &h.Timestamp)
-	h.PrevBlock = buf.Next(32)
-	h.MerkelRoot = buf.Next(32)
-	binary.Read(bytes.NewBuffer(buf.Next(4)), binary.LittleEndian, &h.Nonce)
+	dec := gob.NewDecoder(bytes.NewBuffer(d))
+	err := dec.Decode(h)
+	if err != nil {
+		return err
+	}
 
 	return nil
+}
+
+func Map(f interface{}, vs interface{}) interface{} {
+
+	vf := reflect.ValueOf(f)
+	vx := reflect.ValueOf(vs)
+
+	l := vx.Len()
+
+	tys := reflect.SliceOf(vf.Type().Out(0))
+	vys := reflect.MakeSlice(tys, l, l)
+
+	for i := 0; i < l; i++ {
+
+		y := vf.Call([]reflect.Value{vx.Index(i)})[0]
+		vys.Index(i).Set(y)
+	}
+
+	return vys.Interface()
 }

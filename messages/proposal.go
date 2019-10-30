@@ -42,51 +42,51 @@ type ProposalBody struct {
 	HashCode  []byte
 }
 
-type ProposalResult struct {
-	Body ResultBody
-	Sig  []byte
-}
-
-type ResultBody struct {
-	ProposalMassage
-	Result bool
-}
-
-type ProposalDealFailed struct {
-	Msg string
-}
-
-func (err ProposalDealFailed) Error() string {
-	return err.Msg
-}
-
-func (*ProposalMassage) Marshal() []byte {
-	panic("implement me")
-}
-
-func (p *ProposalMassage) Response(pass bool) ([]byte, error) {
-	body := ResultBody{
-		ProposalMassage: *p,
-		Result:          pass,
-	}
-	data, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	sig := service.CertificateAuthorityX509.Sign(data)
-	if sig == nil {
-		return nil, ProposalDealFailed{"Sign failed"}
-	}
-	var msg ProposalResult = ProposalResult{
-		Body: body,
-		Sig:  sig,
-	}
-	data, err = json.Marshal(msg)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
+//type ProposalResult struct {
+//	Body ResultBody
+//	Sig  []byte
+//}
+//
+//type ResultBody struct {
+//	ProposalMassage
+//	Result bool
+//}
+//
+//type ProposalDealFailed struct {
+//	Msg string
+//}
+//
+//func (err ProposalDealFailed) Error() string {
+//	return err.Msg
+//}
+//
+//func (*ProposalMassage) Marshal() []byte {
+//	panic("implement me")
+//}
+//
+//func (p *ProposalMassage) Response(pass bool) ([]byte, error) {
+//	body := ResultBody{
+//		ProposalMassage: *p,
+//		Result:          pass,
+//	}
+//	data, err := json.Marshal(body)
+//	if err != nil {
+//		return nil, err
+//	}
+//	sig := service.CertificateAuthorityX509.Sign(data)
+//	if sig == nil {
+//		return nil, ProposalDealFailed{"Sign failed"}
+//	}
+//	var msg ProposalResult = ProposalResult{
+//		Body: body,
+//		Sig:  sig,
+//	}
+//	data, err = json.Marshal(msg)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return data, nil
+//}
 
 func (p ProposalMassage) ValidateAdd() bool {
 	if !service.CertificateAuthorityX509.Exits(p.Body.PId.Name) {
@@ -120,9 +120,14 @@ func (p ProposalMassage) ValidateAdd() bool {
 	return true
 }
 
+func (p ProposalMassage) DeepEqual(pp ProposalMassage) bool {
+	return reflect.DeepEqual(p.Body.HashCode, pp.Body.HashCode)
+}
+
 type PId struct {
 	//Name is hostname
 	Name           string
+	NodeId         int64
 	SequenceNumber string
 }
 
@@ -336,7 +341,7 @@ func (slice ProposalSlice) Exits(pm ProposalMassage) bool {
 	return false
 }
 
-func (slice ProposalSlice) AddTransaction(pm ProposalMassage) ProposalSlice {
+func (slice ProposalSlice) AddProposal(pm ProposalMassage) ProposalSlice {
 	// Inserted sorted by timestamp
 	for i, p := range slice {
 		if p.Body.Timestamp >= pm.Body.Timestamp {
@@ -381,17 +386,136 @@ func (prs *ProposalAuditResponses) Check() bool {
 }
 
 type AuditedProposal struct {
+	TermId     int64
+	From       string
 	Proposal   ProposalMassage
 	Signatures map[string][]byte
+	Signature  []byte
 }
 
-func NewAuditedProposal(p ProposalMassage, responses ProposalAuditResponses) *AuditedProposal {
-	signatures := make(map[string][]byte)
-	for hostName, response := range responses {
-		signatures[hostName] = response.Signature
-	}
-	return &AuditedProposal{
+func NewAuditedProposal(p ProposalMassage, responses ProposalAuditResponses, termid int64) (*AuditedProposal, error) {
+	var err error
+	msg := AuditedProposal{
+		TermId:     termid,
+		From:       conf.BCDnsConfig.HostName,
 		Proposal:   p,
-		Signatures: signatures,
+		Signatures: map[string][]byte{},
 	}
+	for id, r := range responses {
+		msg.Signatures[id] = r.Signature
+	}
+	msg.Signature, err = msg.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
+
+func (m AuditedProposal) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(m.TermId); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(m.From); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(m.Proposal); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(m.Signatures); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (m AuditedProposal) Sign() ([]byte, error) {
+	hash, err := m.Hash()
+	if err != nil {
+		return nil, err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		return sig, nil
+	}
+	return nil, errors.New("Generate signature failed")
+}
+
+func (m AuditedProposal) VerifySignature() bool {
+	hash, err := m.Hash()
+	if err != nil {
+		return false
+	}
+	if service.CertificateAuthorityX509.Exits(m.From) &&
+		service.CertificateAuthorityX509.VerifySignature(m.Signature, hash, m.From) {
+		return true
+	}
+	return false
+}
+
+func (m AuditedProposal) VerifySignatures() bool {
+	count := 0
+	for id, sig := range m.Signatures {
+		if service.CertificateAuthorityX509.Exits(id) &&
+			service.CertificateAuthorityX509.VerifySignature(sig, m.Proposal.Body.HashCode, id) {
+			count++
+		}
+	}
+	if count >= 2*service.CertificateAuthorityX509.GetF()+1 {
+		return true
+	}
+	return false
+}
+
+type ProposalResult struct {
+	ProposalHash []byte
+	From         string
+	Signature    []byte
+}
+
+func (p ProposalResult) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(p.ProposalHash); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(p.From); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (p ProposalResult) Sign() ([]byte, error) {
+	hash, err := p.Hash()
+	if err != nil {
+		return nil, err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		return sig, nil
+	}
+	return nil, errors.New("Generate ProposalResult Signature failed")
+}
+
+func (p ProposalResult) VerifySignature() bool {
+	hash, err := p.Hash()
+	if err != nil {
+		fmt.Printf("[ProposalResult.VerifySignature] Generate Hash failed\n")
+		return false
+	}
+	if service.CertificateAuthorityX509.VerifySignature(p.Signature, hash, p.From) {
+		return true
+	}
+	return false
+}
+
+func NewProposalResult(p ProposalMassage) (*ProposalResult, error) {
+	var err error
+	msg := ProposalResult{
+		ProposalHash: p.Body.HashCode,
+		From:         conf.BCDnsConfig.HostName,
+	}
+	msg.Signature, err = msg.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return &msg, nil
 }
