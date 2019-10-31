@@ -18,6 +18,7 @@ type Proposer struct {
 	//AuditResponseChan map[string]chan messages.ProposalAuditResponses
 	AuditResponseChan *concurrent.ConcurrentMap
 	AuditResponses    map[string]messages.ProposalAuditResponses
+	ProposalResults   map[string]map[string]uint8
 }
 
 type ProposerInterface interface {
@@ -90,6 +91,7 @@ func (p *Proposer) handleOrder(data []byte) {
 		case <-time.After(p.TimeOut):
 			goto clean
 		case msgByte := <-service.ProposalResultChan:
+			var msg messages.ProposalResult
 
 		}
 	clean:
@@ -134,6 +136,19 @@ func (p *Proposer) ProcessAuditResponse() {
 				}
 			}
 		}
+	}
+}
+
+func (p *Proposer) ProcessProposalResult() {
+	var msg messages.ProposalResult
+	for true {
+		msgByte := <-service.ProposalResultChan
+		err := json.Unmarshal(msgByte, &msg)
+		if err != nil {
+			fmt.Printf("[ProcessProposalResult] json.Unmarshal failed err=%v\n", err)
+			continue
+		}
+
 	}
 }
 
