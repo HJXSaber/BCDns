@@ -1,6 +1,8 @@
 package service
 
 import (
+	"BCDns_0.1/certificateAuthority/model"
+	service2 "BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
 	"BCDns_0.1/network/service"
 	"encoding/json"
@@ -19,6 +21,7 @@ type Proposer struct {
 	AuditResponseChan *concurrent.ConcurrentMap
 	AuditResponses    map[string]messages.ProposalAuditResponses
 	ProposalResults   map[string]map[string]uint8
+	OrderChan []byte
 }
 
 type ProposerInterface interface {
@@ -41,6 +44,9 @@ func (p *Proposer) Run() {
 			continue
 		}
 		go p.handleOrder(data)
+		select {
+		case p.Conn.
+		}
 	}
 }
 
@@ -148,7 +154,14 @@ func (p *Proposer) ProcessProposalResult() {
 			fmt.Printf("[ProcessProposalResult] json.Unmarshal failed err=%v\n", err)
 			continue
 		}
+		if _, ok := p.ProposalResults[string(msg.ProposalHash)]; ok {
+			p.ProposalResults[string((msg.ProposalHash))][msg.From] = 0
+			if service2.CertificateAuthorityX509.Check(len(p.ProposalResults[string(msg.ProposalHash)])) {
 
+			}
+		} else {
+
+		}
 	}
 }
 

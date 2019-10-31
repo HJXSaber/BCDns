@@ -248,6 +248,13 @@ func (ca *CAX509) Exits(id string) bool {
 	return ok
 }
 
+func (ca *CAX509) Check(n int) bool {
+	ca.Mutex.Lock()
+	defer ca.Mutex.Unlock()
+
+	return n >= ca.GetF() * 2 + 1
+}
+
 func loadPrivateKey2() *rsa.PrivateKey {
 	fileInfo, err := os.Stat(CertificatesPath + LocalPrivateName)
 	if err != nil {
