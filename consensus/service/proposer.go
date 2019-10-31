@@ -22,6 +22,7 @@ type Proposer struct {
 	AuditResponses    map[string]messages.ProposalAuditResponses
 	ProposalResults   map[string]map[string]uint8
 	OrderChan chan []byte
+	Timers map[string]*time.Timer
 }
 
 type ProposerInterface interface {
@@ -79,6 +80,13 @@ func (p *Proposer) handleOrder(data []byte) {
 			return
 		}
 		service.P2PNet.BroadcastMsg(proposalByte, service.Proposal)
+		p.Timers[string(proposal.Body.HashCode)] = time.AfterFunc(p.TimeOut, func() {
+
+		})
+
+
+
+
 		done := make(chan messages.ProposalAuditResponses)
 		_, err = p.AuditResponseChan.Put(string(proposal.Body.HashCode), done)
 		if err != nil {
