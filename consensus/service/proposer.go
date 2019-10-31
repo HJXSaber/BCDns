@@ -21,7 +21,7 @@ type Proposer struct {
 	AuditResponseChan *concurrent.ConcurrentMap
 	AuditResponses    map[string]messages.ProposalAuditResponses
 	ProposalResults   map[string]map[string]uint8
-	OrderChan []byte
+	OrderChan chan []byte
 }
 
 type ProposerInterface interface {
@@ -38,15 +38,25 @@ func (p *Proposer) Run() {
 		data = make([]byte, 1024)
 	)
 	for true {
+		select {
+		case msgByte := <- p.OrderChan:
+			p.handleOrder(msgByte)
+		case msgByte := <-
+		}
+	}
+}
+
+func (p *Proposer) ReceiveOrder() {
+	var (
+		data = make([]byte, 1024)
+	)
+	for true {
 		_, err := p.Conn.Read(data)
 		if err != nil {
 			fmt.Printf("[Run] Proposer read order failed err=%v\n", err)
 			continue
 		}
-		go p.handleOrder(data)
-		select {
-		case p.Conn.
-		}
+		p.OrderChan <- data
 	}
 }
 
@@ -191,5 +201,6 @@ func NewProposer(timeOut time.Duration) *Proposer {
 		//AuditResponseChan: make(map[string]chan messages.ProposalAuditResponses),
 		AuditResponseChan: concurrent.NewConcurrentMap(),
 		AuditResponses:    make(map[string]messages.ProposalAuditResponses),
+		OrderChan:make(chan []byte, 1024),
 	}
 }
