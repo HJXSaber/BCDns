@@ -46,12 +46,16 @@ type BlockHeader struct {
 	PrevBlock  []byte
 	MerkelRoot []byte
 	Timestamp  uint32
-	Nonce      uint32
+	Height     uint
 }
 
-func NewBlock(previousBlock []byte) Block {
-	header := &BlockHeader{PrevBlock: previousBlock}
-	return Block{header, nil, new(messages.ProposalSlice)}
+func NewBlock(proposals messages.ProposalSlice, previousBlock []byte, height uint) *Block {
+	header := &BlockHeader{PrevBlock: previousBlock, Height: height}
+	return &Block{header, nil, &proposals}
+}
+
+func NewGenesisBlock() *Block {
+	return NewBlock(messages.ProposalSlice{}, []byte{}, 0)
 }
 
 func (b *Block) AddProposal(t *messages.ProposalMassage) {

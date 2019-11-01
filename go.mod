@@ -3,6 +3,7 @@ module BCDns_0.1
 go 1.13
 
 require (
+	github.com/boltdb/bolt v1.3.1
 	github.com/fanliao/go-concurrentMap v0.0.0-20141114143905-7d2d7a5ea67b // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/hashicorp/memberlist v0.1.5

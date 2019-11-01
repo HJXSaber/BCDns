@@ -1,96 +1,308 @@
 package blockChain
 
 import (
+	"BCDns_0.1/messages"
+	"bytes"
+	"errors"
 	"fmt"
-	"github.com/izqui/helpers"
-	"time"
+	"log"
+	"os"
+
+	"github.com/boltdb/bolt"
 )
 
-type BlocksQueue chan Block
+const dbFile = "blockchain_%s.db"
+const blocksBucket = "blocks"
 
-var (
-	Bl *Blockchain
-)
-
+// Blockchain implements interactions with a DB
 type Blockchain struct {
-	CurrentBlock Block
-	BlockSlice
-
-	BlocksQueue
+	tip []byte
+	db  *bolt.DB
 }
 
-func SetupBlockchan() *Blockchain {
-
-	bl := new(Blockchain)
-	bl.BlocksQueue = make(BlocksQueue)
-
-	//Read blockchain from file and stuff...
-
-	bl.CurrentBlock = bl.CreateNewBlock()
-
-	return bl
-}
-
-func (bl *Blockchain) CreateNewBlock() Block {
-
-	prevBlock := bl.BlockSlice.PreviousBlock()
-	prevBlockHash := []byte{}
-	if prevBlock != nil {
-		prevBlockHash = prevBlock.Hash()
+// CreateBlockchain creates a new blockchain DB
+func CreateBlockchain(address, nodeID string) (*Blockchain, error) {
+	dbFile := fmt.Sprintf(dbFile, nodeID)
+	if dbExists(dbFile) {
+		fmt.Println("Blockchain already exists.")
+		return nil, errors.New("Blockchain already exists.")
 	}
 
-	b := NewBlock(prevBlockHash)
-	return b
+	var tip []byte
+
+	genesis := NewGenesisBlock()
+
+	db, err := bolt.Open(dbFile, 0600, nil)
+	if err != nil {
+		fmt.Printf("[CreateBlockchain] error=%v\n", err)
+		return nil, err
+	}
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucket([]byte(blocksBucket))
+		if err != nil {
+			return err
+		}
+
+		bBytes, err := genesis.MarshalBinary()
+		if err != nil {
+			fmt.Printf("[CreateBlockchain] genesis.MarshalBinary error=%v\n", err)
+			return err
+		}
+		err = b.Put(genesis.Hash(), bBytes)
+		if err != nil {
+			return err
+		}
+
+		err = b.Put([]byte("l"), genesis.Hash())
+		if err != nil {
+			return err
+		}
+		tip = genesis.Hash()
+
+		return nil
+	})
+	if err != nil {
+		fmt.Printf("[CreateBlockchain] error=%v\n", err)
+		return nil, err
+	}
+
+	bc := Blockchain{tip, db}
+
+	return &bc, nil
 }
 
-func (bl *Blockchain) AddBlock(b Block) {
-	bl.BlockSlice = append(bl.BlockSlice, b)
+// NewBlockchain creates a new Blockchain with genesis Block
+func NewBlockchain(nodeID string) (*Blockchain, error) {
+	dbFile := fmt.Sprintf(dbFile, nodeID)
+	if dbExists(dbFile) == false {
+		fmt.Println("Blockchain already exists.")
+		return nil, errors.New("Blockchain already exists.")
+	}
+
+	var tip []byte
+	db, err := bolt.Open(dbFile, 0600, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		tip = b.Get([]byte("l"))
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bc := Blockchain{tip, db}
+
+	return &bc, nil
 }
 
-func (bl *Blockchain) GenerateBlocks() chan Block {
+// AddBlock saves the block into the blockchain
+func (bc *Blockchain) AddBlock(block *Block) error {
+	err := bc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		blockInDb := b.Get(block.Hash())
 
+		if blockInDb != nil {
+			return nil
+		}
 
-	interrupt := make(chan Block)
+		blockData, err := block.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		err = b.Put(block.Hash(), blockData)
+		if err != nil {
+			return err
+		}
 
-	go func() {
+		lastHash := b.Get([]byte("l"))
+		lastBlockData := b.Get(lastHash)
+		lastBlock := new(Block)
+		err = lastBlock.UnmarshalBinary(lastBlockData)
+		if err != nil {
+			return err
+		}
 
-		block := <-interrupt
-	loop:
-		fmt.Println("Starting Proof of Work...")
-		block.BlockHeader.MerkelRoot = block.GenerateMerkelRoot()
-		block.BlockHeader.Nonce = 0
-		block.BlockHeader.Timestamp = uint32(time.Now().Unix())
-
-		for true {
-
-			sleepTime := time.Nanosecond
-			if block.TransactionSlice.Len() > 0 {
-
-				if CheckProofOfWork(BLOCK_POW, block.Hash()) {
-
-					block.Signature = block.Sign(Core.Keypair)
-					bl.BlocksQueue <- block
-					sleepTime = time.Hour * 24
-					fmt.Println("Found Block!")
-
-				} else {
-
-					block.BlockHeader.Nonce += 1
-				}
-
-			} else {
-				sleepTime = time.Hour * 24
-				fmt.Println("No trans sleep")
+		if block.Height > lastBlock.Height {
+			err = b.Put([]byte("l"), block.Hash())
+			if err != nil {
+				return err
 			}
+			bc.tip = block.Hash()
+		}
 
-			select {
-			case block = <-interrupt:
-				goto loop
-			case <-helpers.Timeout(sleepTime):
-				continue
+		return nil
+	})
+	if err != nil {
+		fmt.Printf("[AddBlock] error=%v\n", err)
+		return err
+	}
+	return nil
+}
+
+// FindTransaction finds a transaction by its ID
+func (bc *Blockchain) FindProposal(ID []byte) (messages.ProposalMassage, error) {
+	bci := bc.Iterator()
+
+	for {
+		block := bci.Next()
+
+		for _, p := range *block.ProposalSlice {
+			if bytes.Compare(p.Body.Id, ID) == 0 {
+				return p, nil
 			}
 		}
-	}()
 
-	return interrupt
+		if len(block.PrevBlock) == 0 {
+			break
+		}
+	}
+
+	return messages.ProposalMassage{}, errors.New("Transaction is not found")
+}
+
+// Iterator returns a BlockchainIterat
+func (bc *Blockchain) Iterator() *BlockchainIterator {
+	bci := &BlockchainIterator{bc.tip, bc.db}
+
+	return bci
+}
+
+// GetBestHeight returns the height of the latest block
+func (bc *Blockchain) GetBestHeight() (uint, error) {
+	lastBlock := new(Block)
+
+	err := bc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		lastHash := b.Get([]byte("l"))
+		blockData := b.Get(lastHash)
+		err := lastBlock.UnmarshalBinary(blockData)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return lastBlock.Height, nil
+}
+
+// GetBlock finds a block by its hash and returns it
+func (bc *Blockchain) GetBlock(blockHash []byte) (Block, error) {
+	block := new(Block)
+
+	err := bc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		blockData := b.Get(blockHash)
+
+		if blockData == nil {
+			return errors.New("Block is not found.")
+		}
+
+		err := block.UnmarshalBinary(blockData)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return *block, err
+	}
+
+	return *block, nil
+}
+
+// GetBlockHashes returns a list of hashes of all the blocks in the chain
+func (bc *Blockchain) GetBlockHashes() [][]byte {
+	var blocks [][]byte
+	bci := bc.Iterator()
+
+	for {
+		block := bci.Next()
+
+		blocks = append(blocks, block.Hash())
+
+		if len(block.PrevBlock) == 0 {
+			break
+		}
+	}
+
+	return blocks
+}
+
+// MineBlock mines a new block with the provided transactions
+func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error) {
+	var lastHash []byte
+	var lastHeight uint
+
+	for _, p := range proposals {
+		// TODO: ignore transaction if it's not valid
+		if !p.VerifySignature() {
+			return nil, errors.New("[MineBlock] ERROR: Invalid Proposal")
+		}
+	}
+
+	block := new(Block)
+	err := bc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		lastHash = b.Get([]byte("l"))
+
+		blockData := b.Get(lastHash)
+		err := block.UnmarshalBinary(blockData)
+		if err != nil {
+			return err
+		}
+
+		lastHeight = block.Height
+
+		return nil
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+
+	newBlock := NewBlock(proposals, lastHash, lastHeight+1)
+
+	err = bc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		blockData, err := newBlock.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		err = b.Put(newBlock.Hash(), blockData)
+		if err != nil {
+			return err
+		}
+
+		err = b.Put([]byte("l"), newBlock.Hash())
+		if err != nil {
+			return err
+		}
+
+		bc.tip = newBlock.Hash()
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return newBlock, nil
+}
+
+func dbExists(dbFile string) bool {
+	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
 }

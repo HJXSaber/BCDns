@@ -36,9 +36,10 @@ type ProposalBody struct {
 	Type      OperationType
 	ZoneName  string
 	Nonce     uint32 //Pow hashcode
+	Id        []byte
 }
 
-func (p ProposalMassage) ValidateAdd() bool {
+func (p *ProposalMassage) ValidateAdd() bool {
 	if !service.CertificateAuthorityX509.Exits(p.Body.PId.Name) {
 		fmt.Printf("[Validate] Invalid HostName=%v", p.Body.PId.Name)
 		return false
@@ -70,7 +71,7 @@ func (p ProposalMassage) ValidateAdd() bool {
 	return true
 }
 
-func (p ProposalMassage) DeepEqual(pp ProposalMassage) bool {
+func (p *ProposalMassage) DeepEqual(pp ProposalMassage) bool {
 	h1, err := p.Body.Hash()
 	if err != nil {
 		return false
@@ -80,6 +81,27 @@ func (p ProposalMassage) DeepEqual(pp ProposalMassage) bool {
 		return false
 	}
 	return reflect.DeepEqual(h1, h2)
+}
+
+func (p *ProposalMassage) Sign() error {
+	hash, err := p.Body.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		p.Signature = sig
+		return nil
+	}
+	return errors.New("[ProposalMassage.Sign] Generate signature failed")
+}
+
+func (p *ProposalMassage) VerifySignature() bool {
+	hash, err := p.Body.Hash()
+	if err != nil {
+		fmt.Printf("[ProposalMassage.VerifySignature] Hash error=%v\n", err)
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(p.Signature, hash, p.Body.PId.Name)
 }
 
 type PId struct {
@@ -128,30 +150,32 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 			SequenceNumber: xid.New().String(),
 			Name:           conf.BCDnsConfig.HostName,
 		}
-		msg := ProposalBody{
+		body := ProposalBody{
 			Timestamp: time.Now().Unix(),
 			PId:       pId,
 			ZoneName:  zoneName,
 			Type:      Add,
-			Nonce:0,
+			Nonce:     0,
 		}
-		err = msg.GetPowHash()
+		err = body.GetPowHash()
 		if err != nil {
 			fmt.Printf("[NewProposal] GetPowHash Failed err=%v\n", err)
 			return nil
 		}
-		msgByte, err := json.Marshal(msg)
+		body.Id, err = body.Hash()
 		if err != nil {
-			fmt.Printf("[NewProposal] json.Marshal failed err=%v", err)
+			fmt.Printf("[NewProposal] Hash Failed err=%v\n", err)
 			return nil
 		}
-		if sig := service.CertificateAuthorityX509.Sign(msgByte); sig != nil {
-			return &ProposalMassage{
-				Body:      msg,
-				Signature: sig,
-			}
+		msg := &ProposalMassage{
+			Body: body,
 		}
-		return nil
+		err = msg.Sign()
+		if err != nil {
+			fmt.Printf("[NewProposal] msg.Sign error=%v\n", err)
+			return nil
+		}
+		return msg
 	case Del:
 		msg := ProposalBody{
 			Timestamp: time.Now().Unix(),

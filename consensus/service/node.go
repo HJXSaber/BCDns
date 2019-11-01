@@ -27,7 +27,7 @@ func (n Node) Run() {
 			}
 			switch proposal.Body.Type {
 			case messages.Add:
-				go handleAddProposal(proposal)
+				go handleAddProposal(&proposal)
 			case messages.Del:
 				go handleDelProposal(proposal)
 			}
@@ -46,11 +46,11 @@ func (n Node) Run() {
 	}
 }
 
-func handleAddProposal(proposal messages.ProposalMassage) {
+func handleAddProposal(proposal *messages.ProposalMassage) {
 	if !proposal.ValidateAdd() {
 		return
 	}
-	if auditResponse := messages.NewProposalAuditResponse(proposal); auditResponse != nil {
+	if auditResponse := messages.NewProposalAuditResponse(*proposal); auditResponse != nil {
 		auditResponseByte, err := json.Marshal(auditResponse)
 		if err != nil {
 			fmt.Printf("[handleAddProposal] json.Marshal failed err=%v\n", err)
