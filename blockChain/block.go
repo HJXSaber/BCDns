@@ -101,7 +101,7 @@ func (b *Block) GenerateMerkelRoot() []byte {
 		}
 	}
 
-	ts := Map(func(t messages.ProposalMassage) []byte { return t.Body.HashCode },
+	ts := Map(func(t messages.ProposalMassage) []byte { return t.Body.Hash() },
 		[]messages.ProposalMassage(*b.ProposalSlice)).([][]byte)
 	return merkell(ts)
 

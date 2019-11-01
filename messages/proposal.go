@@ -39,7 +39,7 @@ type ProposalBody struct {
 	PId       PId
 	Type      OperationType
 	ZoneName  string
-	HashCode  []byte
+	HashCode  []byte //Pow hashcode
 }
 
 //type ProposalResult struct {
@@ -284,23 +284,22 @@ func (p ProposalBody) GetPowHash() ([]byte, error) {
 		return nil, err
 	}
 	hash := sha256.New()
+	buf := &bytes.Buffer{}
 	for i := 0; i <= math.MaxInt64; i++ {
 		hash.Reset()
-		buf := &bytes.Buffer{}
+		buf.Reset()
 		enc := gob.NewEncoder(buf)
 		_ = enc.Encode(i)
 		hash.Write(buf.Bytes())
 		sum := hash.Sum(nil)
-		count := 0
-		for i, v := range bodyHash {
-			if sum[i]+v == uint8(0) {
-				count++
-				if count >= conf.BCDnsConfig.PowDifficult {
-					return sum, nil
-				}
-			} else {
-				break
-			}
+		buf.Reset()
+		buf.Write(bodyHash)
+		buf.Write(sum)
+		hash.Reset()
+		hash.Write(buf.Bytes())
+		target := hash.Sum(nil)
+		for i := 0; i < conf.BCDnsConfig.PowDifficult; i++ {
+
 		}
 	}
 	return nil, errors.New("[getHashCode]Cannot find appropriate value")
@@ -382,6 +381,7 @@ func (pr *ProposalAuditResponse) Verify() bool {
 type ProposalAuditResponses map[string]ProposalAuditResponse
 
 func (prs *ProposalAuditResponses) Check() bool {
+
 	return len(*prs) > 2*service.CertificateAuthorityX509.GetF()
 }
 
