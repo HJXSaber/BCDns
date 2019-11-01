@@ -4,6 +4,7 @@ import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
+	"BCDns_0.1/utils"
 	"bytes"
 	"crypto/sha256"
 	"encoding/gob"
@@ -39,7 +40,7 @@ type ProposalBody struct {
 	PId       PId
 	Type      OperationType
 	ZoneName  string
-	HashCode  []byte //Pow hashcode
+	Nonce     uint32 //Pow hashcode
 }
 
 //type ProposalResult struct {
@@ -121,7 +122,15 @@ func (p ProposalMassage) ValidateAdd() bool {
 }
 
 func (p ProposalMassage) DeepEqual(pp ProposalMassage) bool {
-	return reflect.DeepEqual(p.Body.HashCode, pp.Body.HashCode)
+	h1, err := p.Body.Hash()
+	if err != nil {
+		return false
+	}
+	h2, err := pp.Body.Hash()
+	if err != nil {
+		return false
+	}
+	return reflect.DeepEqual(h1, h2)
 }
 
 type PId struct {
@@ -176,9 +185,9 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 			ZoneName:  zoneName,
 			Type:      Add,
 		}
-		msg.HashCode, err = msg.Hash()
+		msg.HashCode, err = msg.GetPowHash()
 		if err != nil {
-			fmt.Printf("[NewProposal] Hash Failed\n")
+			fmt.Printf("[NewProposal] GetPowHash Failed err=%v\n", err)
 			return nil
 		}
 		msgByte, err := json.Marshal(msg)
@@ -253,7 +262,7 @@ func doDel(data []byte, id string) error {
 	return nil
 }
 
-func (p ProposalBody) Hash() ([]byte, error) {
+func (p *ProposalBody) Hash() ([]byte, error) {
 	var err error
 	hash := sha256.New()
 	buf := &bytes.Buffer{}
@@ -274,55 +283,38 @@ func (p ProposalBody) Hash() ([]byte, error) {
 		fmt.Printf("[Hash] Encode failed err=%v", err)
 		return nil, err
 	}
+	if err = enc.Encode(p.Nonce); err != nil {
+		fmt.Printf("[Hash] Encode failed err=%v", err)
+		return nil, err
+	}
 	hash.Write(buf.Bytes())
 	return hash.Sum(nil), nil
 }
 
-func (p ProposalBody) GetPowHash() ([]byte, error) {
-	bodyHash, err := p.Hash()
-	if err != nil {
-		return nil, err
-	}
-	hash := sha256.New()
-	buf := &bytes.Buffer{}
-	for i := 0; i <= math.MaxInt64; i++ {
-		hash.Reset()
-		buf.Reset()
-		enc := gob.NewEncoder(buf)
-		_ = enc.Encode(i)
-		hash.Write(buf.Bytes())
-		sum := hash.Sum(nil)
-		buf.Reset()
-		buf.Write(bodyHash)
-		buf.Write(sum)
-		hash.Reset()
-		hash.Write(buf.Bytes())
-		target := hash.Sum(nil)
-		for i := 0; i < conf.BCDnsConfig.PowDifficult; i++ {
-
+func (p *ProposalBody) GetPowHash() error {
+	for {
+		hash, err := p.Hash()
+		if err != nil {
+			return err
+		}
+		if utils.CheckProofOfWork(utils.ProposalPOW, hash) {
+			break
+		} else {
+			p.Nonce++
 		}
 	}
-	return nil, errors.New("[getHashCode]Cannot find appropriate value")
+	return nil
 }
 
-func (p ProposalBody) ValidatePow() bool {
-	bodyHash, err := p.Hash()
+func (p *ProposalBody) ValidatePow() bool {
+	hash, err := p.Hash()
 	if err != nil {
 		return false
 	}
-	count := 0
-	for i, v := range bodyHash {
-		if p.HashCode[i]+v == uint8(0) {
-			count++
-		} else {
-			break
-		}
-	}
-	if count >= conf.BCDnsConfig.PowDifficult {
+	if utils.CheckProofOfWork(utils.ProposalPOW, hash) {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 type ProposalSlice []ProposalMassage

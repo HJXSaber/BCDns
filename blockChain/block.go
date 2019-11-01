@@ -101,8 +101,11 @@ func (b *Block) GenerateMerkelRoot() []byte {
 		}
 	}
 
-	ts := Map(func(t messages.ProposalMassage) []byte { return t.Body.Hash() },
+	ts, ok := Map(func(t messages.ProposalMassage) ([]byte, error) { return t.Body.Hash() },
 		[]messages.ProposalMassage(*b.ProposalSlice)).([][]byte)
+	if !ok {
+		return nil
+	}
 	return merkell(ts)
 
 }
@@ -157,7 +160,11 @@ func Map(f interface{}, vs interface{}) interface{} {
 
 	for i := 0; i < l; i++ {
 
-		y := vf.Call([]reflect.Value{vx.Index(i)})[0]
+		res := vf.Call([]reflect.Value{vx.Index(i)})
+		y, err := res[0], res[1]
+		if err.Interface() != nil {
+			return nil
+		}
 		vys.Index(i).Set(y)
 	}
 
