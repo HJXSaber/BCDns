@@ -51,7 +51,6 @@ func (l LeaderNode) Run() {
 				continue
 			}
 			service.P2PNet.BroadcastMsg(blockBytes, service.Block)
-
 		}
 	}
 }

@@ -59,8 +59,8 @@ func (p *Proposer) Run() {
 				responses[msg.Auditor] = msg
 				if service2.CertificateAuthorityX509.Check(len(responses)) {
 					p.Mutex.Lock()
-					p.Timers[string(proposal.Body.HashCode)].Stop()
-					delete(p.Timers, string(proposal.Body.HashCode))
+					p.Timers[string(proposal.Body.ZoneName)].Stop()
+					delete(p.Timers, string(proposal.Body.ZoneName))
 					p.Mutex.Unlock()
 					auditedResponse, err := messages.NewAuditedProposal(*proposal, responses, service.Leader.TermId)
 					if err != nil {
@@ -73,7 +73,7 @@ func (p *Proposer) Run() {
 						fmt.Printf("[Proposer.Run] ConcurrentMap error=%v\n", err)
 						continue
 					}
-					p.Timers[string(proposal.Body.HashCode)] = time.AfterFunc(p.TimeOut, func() {
+					p.Timers[string(proposal.Body.ZoneName)] = time.AfterFunc(p.TimeOut, func() {
 						p.Mutex.Lock()
 						defer p.Mutex.Unlock()
 						resultsI, err := p.ProposalResults.Get(proposal.Body.ZoneName)
@@ -111,8 +111,8 @@ func (p *Proposer) Run() {
 				results[msg.From] = 0
 				if service2.CertificateAuthorityX509.Check(len(results)) {
 					p.Mutex.Lock()
-					p.Timers[string(proposal.Body.HashCode)].Stop()
-					delete(p.Timers, string(proposal.Body.HashCode))
+					p.Timers[string(proposal.Body.ZoneName)].Stop()
+					delete(p.Timers, string(proposal.Body.ZoneName))
 					p.Mutex.Unlock()
 					fmt.Printf("[Proposer.Run] Proposal execute successfully %v\n", proposal)
 				}
@@ -148,14 +148,14 @@ func (p *Proposer) handleOrder(data []byte) {
 			fmt.Printf("[handleOrder] json.Marshal failed err=%v\n", err)
 			return
 		}
-		p.Proposals[string(proposal.Body.HashCode)] = proposal
+		p.Proposals[string(proposal.Body.ZoneName)] = proposal
 		service.P2PNet.BroadcastMsg(proposalByte, service.Proposal)
 		_, err = p.AuditResponses.Put(proposal.Body.ZoneName, messages.ProposalAuditResponses{})
 		if err != nil {
 			fmt.Printf("[handleOrder] ConcurrentMap error=%v\n", err)
 			return
 		}
-		p.Timers[string(proposal.Body.HashCode)] = time.AfterFunc(p.TimeOut, func() {
+		p.Timers[string(proposal.Body.ZoneName)] = time.AfterFunc(p.TimeOut, func() {
 			p.Mutex.Lock()
 			defer p.Mutex.Unlock()
 			responsesI, err := p.AuditResponses.Get(proposal.Body.ZoneName)

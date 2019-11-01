@@ -49,6 +49,7 @@ func (bl *Blockchain) AddBlock(b Block) {
 
 func (bl *Blockchain) GenerateBlocks() chan Block {
 
+
 	interrupt := make(chan Block)
 
 	go func() {

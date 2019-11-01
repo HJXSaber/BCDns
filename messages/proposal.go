@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rs/xid"
-	"math"
 	"reflect"
 	"time"
 )
@@ -24,10 +23,6 @@ type OperationType uint8
 const (
 	Add OperationType = iota
 	Del
-)
-
-var (
-	AddReqFailedType = reflect.TypeOf(AddReqFailed{})
 )
 
 type ProposalMassage struct {
@@ -42,52 +37,6 @@ type ProposalBody struct {
 	ZoneName  string
 	Nonce     uint32 //Pow hashcode
 }
-
-//type ProposalResult struct {
-//	Body ResultBody
-//	Sig  []byte
-//}
-//
-//type ResultBody struct {
-//	ProposalMassage
-//	Result bool
-//}
-//
-//type ProposalDealFailed struct {
-//	Msg string
-//}
-//
-//func (err ProposalDealFailed) Error() string {
-//	return err.Msg
-//}
-//
-//func (*ProposalMassage) Marshal() []byte {
-//	panic("implement me")
-//}
-//
-//func (p *ProposalMassage) Response(pass bool) ([]byte, error) {
-//	body := ResultBody{
-//		ProposalMassage: *p,
-//		Result:          pass,
-//	}
-//	data, err := json.Marshal(body)
-//	if err != nil {
-//		return nil, err
-//	}
-//	sig := service.CertificateAuthorityX509.Sign(data)
-//	if sig == nil {
-//		return nil, ProposalDealFailed{"Sign failed"}
-//	}
-//	var msg ProposalResult = ProposalResult{
-//		Body: body,
-//		Sig:  sig,
-//	}
-//	data, err = json.Marshal(msg)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return data, nil
-//}
 
 func (p ProposalMassage) ValidateAdd() bool {
 	if !service.CertificateAuthorityX509.Exits(p.Body.PId.Name) {
@@ -184,8 +133,9 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 			PId:       pId,
 			ZoneName:  zoneName,
 			Type:      Add,
+			Nonce:0,
 		}
-		msg.HashCode, err = msg.GetPowHash()
+		err = msg.GetPowHash()
 		if err != nil {
 			fmt.Printf("[NewProposal] GetPowHash Failed err=%v\n", err)
 			return nil
@@ -227,40 +177,40 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 	}
 }
 
-type AddReqFailed struct {
-	Msg string
-}
-
-func (e AddReqFailed) Error() string {
-	return e.Msg
-}
-
-type DelReqFailed struct {
-	Msg string
-}
-
-func (err DelReqFailed) Error() string {
-	return err.Msg
-}
-
-func doDel(data []byte, id string) error {
-	var msg DelMsg
-	err := json.Unmarshal(data, msg)
-	if err != nil {
-		return err
-	}
-	ok, err := dao.Dao.Has([]byte(msg.ZoneName))
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return DelReqFailed{"Domain name is not exited"}
-	}
-	if !service.CertificateAuthorityX509.VerifySignature(msg.Sig, []byte(msg.ZoneName), id) {
-		return DelReqFailed{"Signature is invalid"}
-	}
-	return nil
-}
+//type AddReqFailed struct {
+//	Msg string
+//}
+//
+//func (e AddReqFailed) Error() string {
+//	return e.Msg
+//}
+//
+//type DelReqFailed struct {
+//	Msg string
+//}
+//
+//func (err DelReqFailed) Error() string {
+//	return err.Msg
+//}
+//
+//func doDel(data []byte, id string) error {
+//	var msg DelMsg
+//	err := json.Unmarshal(data, msg)
+//	if err != nil {
+//		return err
+//	}
+//	ok, err := dao.Dao.Has([]byte(msg.ZoneName))
+//	if err != nil {
+//		return err
+//	}
+//	if !ok {
+//		return DelReqFailed{"Domain name is not exited"}
+//	}
+//	if !service.CertificateAuthorityX509.VerifySignature(msg.Sig, []byte(msg.ZoneName), id) {
+//		return DelReqFailed{"Signature is invalid"}
+//	}
+//	return nil
+//}
 
 func (p *ProposalBody) Hash() ([]byte, error) {
 	var err error
@@ -446,9 +396,14 @@ func (m AuditedProposal) VerifySignature() bool {
 
 func (m AuditedProposal) VerifySignatures() bool {
 	count := 0
+	hash, err := m.Proposal.Body.Hash()
+	if err != nil {
+		fmt.Printf("[AuditedProposal.VerifySignatures] Hash error=%v\n", err)
+		return false
+	}
 	for id, sig := range m.Signatures {
 		if service.CertificateAuthorityX509.Exits(id) &&
-			service.CertificateAuthorityX509.VerifySignature(sig, m.Proposal.Body.HashCode, id) {
+			service.CertificateAuthorityX509.VerifySignature(sig, hash, id) {
 			count++
 		}
 	}
@@ -501,8 +456,12 @@ func (p ProposalResult) VerifySignature() bool {
 
 func NewProposalResult(p ProposalMassage) (*ProposalResult, error) {
 	var err error
+	hash, err := p.Body.Hash()
+	if err != nil {
+		return nil, err
+	}
 	msg := ProposalResult{
-		ProposalHash: p.Body.HashCode,
+		ProposalHash: hash,
 		From:         conf.BCDnsConfig.HostName,
 	}
 	msg.Signature, err = msg.Sign()
