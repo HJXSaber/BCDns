@@ -43,7 +43,7 @@ func (l LeaderNode) Run() {
 				fmt.Printf("[LeaderNode] Signatures is illegal\n")
 				continue
 			}
-			blockChain.Bl.CurrentBlock.AddProposal(&msg.Proposal)
+			blockChain.ProposalPool.AddProposal(msg.Proposal)
 		case <-time.After(10 * time.Second):
 			blockBytes, err := blockChain.Bl.CurrentBlock.MarshalBinary()
 			if err != nil {

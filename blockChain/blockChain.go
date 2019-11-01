@@ -14,6 +14,10 @@ import (
 const dbFile = "blockchain_%s.db"
 const blocksBucket = "blocks"
 
+var (
+	ProposalPool messages.ProposalPool
+)
+
 // Blockchain implements interactions with a DB
 type Blockchain struct {
 	tip []byte

@@ -57,7 +57,7 @@ func handleAddProposal(proposal *messages.ProposalMassage) {
 			return
 		}
 		service.P2PNet.SendTo(auditResponseByte, service.AuditResponse, proposal.Body.PId.NodeId)
-		blockChain.Bl.CurrentBlock.AddProposal(&proposal)
+		blockChain.ProposalPool.AddProposal(*proposal)
 	}
 }
 

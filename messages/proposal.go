@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/rs/xid"
 	"reflect"
+	"sync"
 	"time"
 )
 
@@ -293,12 +294,17 @@ func (p *ProposalBody) ValidatePow() bool {
 
 type ProposalSlice []ProposalMassage
 
-func (slice ProposalSlice) Len() int {
-	return len(slice)
+type ProposalPool struct {
+	Mutex sync.Mutex
+	ProposalSlice
 }
 
-func (slice ProposalSlice) Exits(pm ProposalMassage) bool {
-	for _, p := range slice {
+func (pool *ProposalPool) Len() int {
+	return len(pool.ProposalSlice)
+}
+
+func (pool *ProposalPool) Exits(pm ProposalMassage) bool {
+	for _, p := range pool.ProposalSlice {
 		if reflect.DeepEqual(p.Signature, pm.Signature) {
 			return true
 		}
@@ -306,15 +312,8 @@ func (slice ProposalSlice) Exits(pm ProposalMassage) bool {
 	return false
 }
 
-func (slice ProposalSlice) AddProposal(pm ProposalMassage) ProposalSlice {
-	// Inserted sorted by timestamp
-	for i, p := range slice {
-		if p.Body.Timestamp >= pm.Body.Timestamp {
-			return append(append(slice[:i], pm), slice[i:]...)
-		}
-	}
-
-	return append(slice, pm)
+func (pool *ProposalPool) AddProposal(pm ProposalMassage) ProposalSlice {
+	return append(pool.ProposalSlice, pm)
 }
 
 type ProposalAuditResponse struct {
