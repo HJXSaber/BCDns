@@ -145,9 +145,6 @@ func init() {
 		},
 		RetransmitMult: 3,
 	}
-
-	AuditResponseChan = make(chan []byte, 1024)
-	ProposalChan = make(chan []byte, 1024)
 }
 
 type Broadcast struct {

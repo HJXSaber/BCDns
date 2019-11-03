@@ -2,7 +2,6 @@ package dao
 
 import (
 	"github.com/syndtr/goleveldb/leveldb"
-	"sync"
 )
 
 var (
@@ -10,7 +9,6 @@ var (
 )
 
 type DAO struct {
-	mutex sync.Mutex
 	// key:zonename value:hostname
 	db *leveldb.DB
 }
@@ -32,31 +30,22 @@ func init() {
 		panic(err)
 	}
 	Dao = DAO{
-		mutex: sync.Mutex{},
-		db:    db,
+		db: db,
 	}
 }
 
 func (d *DAO) Get(key []byte) ([]byte, error) {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
 	return d.db.Get(key, nil)
 }
 
 func (d *DAO) Has(key []byte) (bool, error) {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
 	return d.db.Has(key, nil)
 }
 
 func (d *DAO) Add(key, value []byte) error {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
 	return d.db.Put(key, value, nil)
 }
 
 func (d *DAO) DelEX(key []byte) error {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
 	return d.db.Delete(key, nil)
 }

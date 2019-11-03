@@ -316,6 +316,19 @@ func (pool *ProposalPool) AddProposal(pm ProposalMassage) ProposalSlice {
 	return append(pool.ProposalSlice, pm)
 }
 
+func (pool *ProposalPool) Clear() {
+	pool.ProposalSlice = ProposalSlice{}
+}
+
+func (s *ProposalSlice) FindByZoneName(name string) *ProposalMassage {
+	for _, p := range *s {
+		if p.Body.ZoneName == name {
+			return &p
+		}
+	}
+	return nil
+}
+
 type ProposalAuditResponse struct {
 	ProposalHash []byte
 	Auditor      string

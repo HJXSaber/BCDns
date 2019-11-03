@@ -32,16 +32,21 @@ func (n Node) Run() {
 				go handleDelProposal(proposal)
 			}
 		case msgByte := <-service.BlockChan:
-			block := new(blockChain.Block)
-			if err := block.UnmarshalBinary(msgByte); err != nil {
-				fmt.Printf("[Node.RUn] block.UnmarshalBinary failed err=%v\n", err)
+			blockMsg := new(blockChain.BlockMessage)
+			err := json.Unmarshal(msgByte, blockMsg)
+			if err != nil {
+				fmt.Printf("[Node.RUn] json.Unmarshal failed err=%v\n", err)
 				continue
 			}
-			if !block.VerifyBlock() {
-				fmt.Printf("[Node.Run] Verify block failed block=%v\n", block)
+			if !blockMsg.VerifySignature() {
+				fmt.Printf("[Node.Run] VerifySignature failed msg=%v\n", blockMsg)
 				continue
 			}
-			ProcessBlock(block)
+			if !blockMsg.Block.VerifyBlock() {
+				fmt.Printf("[Node.Run] Verify block failed block=%v\n", blockMsg.Block)
+				continue
+			}
+			ProcessBlock(&blockMsg.Block)
 		}
 	}
 }
@@ -57,7 +62,7 @@ func handleAddProposal(proposal *messages.ProposalMassage) {
 			return
 		}
 		service.P2PNet.SendTo(auditResponseByte, service.AuditResponse, proposal.Body.PId.NodeId)
-		blockChain.ProposalPool.AddProposal(*proposal)
+		blockChain.NodeProposalPool.AddProposal(*proposal)
 	}
 }
 
@@ -66,9 +71,9 @@ func handleDelProposal(proposal messages.ProposalMassage) {
 }
 
 func ProcessBlock(block *blockChain.Block) {
-	b := blockChain.NewBlock(blockChain.Bl.PreviousBlock().Hash())
+	proposalsPool := new(messages.ProposalPool)
 	for _, p := range *block.ProposalSlice {
-		if blockChain.Bl.CurrentBlock.Exits(p) {
+		if blockChain.NodeProposalPool.Exits(p) {
 			msg, err := messages.NewProposalResult(p)
 			if err != nil {
 				fmt.Printf("[ProcessBlock] Generate proposalResult failed err=%v\n", err)
@@ -80,8 +85,18 @@ func ProcessBlock(block *blockChain.Block) {
 				continue
 			}
 			service.P2PNet.SendTo(msgByte, service.ProposalResult, p.Body.PId.NodeId)
-			b.AddProposal(&p)
+			proposalsPool.AddProposal(p)
 		}
 	}
-	blockChain.Bl.AddBlock(b)
+	newBlock, err := blockChain.BlockChain.MineBlock(proposalsPool.ProposalSlice)
+	if err != nil {
+		fmt.Printf("[ProcessBlock] error=%v\n", err)
+		return
+	}
+	err = blockChain.BlockChain.AddBlock(newBlock)
+	if err != nil {
+		fmt.Printf("[ProcessBlock] error=%v\n", err)
+		return
+	}
+	blockChain.NodeProposalPool.Clear()
 }

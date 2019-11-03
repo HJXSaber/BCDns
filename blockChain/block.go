@@ -6,6 +6,8 @@ import (
 	"BCDns_0.1/utils"
 	"bytes"
 	"encoding/gob"
+	"errors"
+	"go/ast"
 	"reflect"
 )
 
@@ -35,9 +37,13 @@ func (bs BlockSlice) PreviousBlock() *Block {
 	}
 }
 
+type BlockMessage struct {
+	Block
+	Signature []byte
+}
+
 type Block struct {
 	*BlockHeader
-	Signature []byte
 	*messages.ProposalSlice
 }
 
@@ -51,7 +57,7 @@ type BlockHeader struct {
 
 func NewBlock(proposals messages.ProposalSlice, previousBlock []byte, height uint) *Block {
 	header := &BlockHeader{PrevBlock: previousBlock, Height: height}
-	return &Block{header, nil, &proposals}
+	return &Block{header, &proposals}
 }
 
 func NewGenesisBlock() *Block {
@@ -63,15 +69,32 @@ func (b *Block) AddProposal(t *messages.ProposalMassage) {
 	b.ProposalSlice = &newSlice
 }
 
-func (b *Block) Sign() []byte {
-	s := service.CertificateAuthorityX509.Sign(b.Hash())
-	return s
-}
-
 func (b *Block) VerifyBlock() bool {
 	merkel := b.GenerateMerkelRoot()
-	return reflect.DeepEqual(merkel, b.BlockHeader.MerkelRoot) &&
-		service.CertificateAuthorityX509.VerifySignature(b.Signature, b.Hash(), b.From)
+	return reflect.DeepEqual(merkel, b.BlockHeader.MerkelRoot)
+}
+
+func NewBlockMessage(b *Block) (*BlockMessage, error) {
+	msg := &BlockMessage{
+		Block: *b,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func (b *BlockMessage) Sign() error {
+	if sig := service.CertificateAuthorityX509.Sign(b.Hash()); sig != nil {
+		b.Signature = sig
+		return nil
+	}
+	return errors.New("Generate Signature failed")
+}
+
+func (b *BlockMessage) VerifySignature() bool {
+	return service.CertificateAuthorityX509.VerifySignature(b.Signature, b.Hash(), b.From)
 }
 
 func (b *Block) Hash() []byte {

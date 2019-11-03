@@ -15,7 +15,9 @@ const dbFile = "blockchain_%s.db"
 const blocksBucket = "blocks"
 
 var (
-	ProposalPool messages.ProposalPool
+	BlockChain         = new(Blockchain)
+	LeaderProposalPool = new(messages.ProposalPool)
+	NodeProposalPool   = new(messages.ProposalPool)
 )
 
 // Blockchain implements interactions with a DB
@@ -309,4 +311,21 @@ func dbExists(dbFile string) bool {
 	}
 
 	return true
+}
+
+func (bc *Blockchain) FindDomain(name string) (*messages.ProposalMassage, error) {
+	bci := bc.Iterator()
+
+	for {
+		block := bci.Next()
+
+		if p := block.ProposalSlice.FindByZoneName(name); p != nil {
+			return p, nil
+		}
+
+		if len(block.PrevBlock) == 0 {
+			break
+		}
+	}
+	return nil, nil
 }

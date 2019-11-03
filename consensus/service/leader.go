@@ -43,14 +43,29 @@ func (l LeaderNode) Run() {
 				fmt.Printf("[LeaderNode] Signatures is illegal\n")
 				continue
 			}
-			blockChain.ProposalPool.AddProposal(msg.Proposal)
+			blockChain.LeaderProposalPool.AddProposal(msg.Proposal)
 		case <-time.After(10 * time.Second):
-			blockBytes, err := blockChain.Bl.CurrentBlock.MarshalBinary()
+			if blockChain.LeaderProposalPool.Len() <= 0 {
+				fmt.Printf("[LeaderNode] CurrentBlock is empty\n")
+				continue
+			}
+			b, err := blockChain.BlockChain.MineBlock(blockChain.LeaderProposalPool.ProposalSlice)
+			if err != nil {
+				fmt.Printf("[LeaderNode] MineBlock err=%v\n", err)
+				continue
+			}
+			blockMessage, err := blockChain.NewBlockMessage(b)
+			if err != nil {
+				fmt.Printf("[LeaderNode] NewBlockMessage failed err=%v\n", err)
+				continue
+			}
+			blockBytes, err := json.Marshal(*blockMessage)
 			if err != nil {
 				fmt.Printf("[LeaderNode] CurrentBlock marshal failed err=%v\n", err)
 				continue
 			}
 			service.P2PNet.BroadcastMsg(blockBytes, service.Block)
+			blockChain.LeaderProposalPool.Clear()
 		}
 	}
 }
