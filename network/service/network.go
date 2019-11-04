@@ -5,7 +5,7 @@ import (
 	"BCDns_0.1/certificateAuthority/service"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/memberlist"
+	"github.com/HJXSaber/memberlist"
 	"log"
 )
 
@@ -74,7 +74,7 @@ func (net DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
 	}
 }
 
-func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to int64) {
+func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to int) {
 	msg := Massage{
 		MessageType: t,
 		Payload:     jsonData,
@@ -84,6 +84,7 @@ func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to int64) {
 		fmt.Printf("[SendTo] json.Marshal failed err=%v\n", err)
 		return
 	}
+
 	err = net.Network.SendReliable(
 		service.CertificateAuthorityX509.CertificatesOrder[to].Member.(*memberlist.Node), msgByte)
 	if err != nil {
@@ -145,6 +146,15 @@ func init() {
 		},
 		RetransmitMult: 3,
 	}
+	AuditResponseChan = make(chan []byte, 1024)
+	ProposalChan = make(chan []byte, 1024)
+	ViewChangeMsgChan = make(chan []byte, 1024)
+	ViewChangeResultChan = make(chan []byte, 1024)
+	RetrieveLeaderMsgChan = make(chan []byte, 1024)
+	RetrieveLeaderResponseChan = make(chan []byte, 1024)
+	CommitChan = make(chan []byte, 1024)
+	BlockChan = make(chan []byte, 1024)
+	ProposalResultChan = make(chan []byte, 1024)
 }
 
 type Broadcast struct {
@@ -199,6 +209,7 @@ func (*Delegate) NotifyMsg(data []byte) {
 	case ProposalResult:
 		ProposalResultChan <- msg.Payload
 	}
+
 }
 
 func (*Delegate) GetBroadcasts(overhead, limit int) [][]byte {
@@ -218,4 +229,8 @@ func (*Delegate) MergeRemoteState(buf []byte, join bool) {
 	if !join {
 		fmt.Println("MergeState TODO")
 	}
+}
+
+func (*Delegate) ValidateCert(buf []byte) bool {
+	return service.CertificateAuthorityX509.VerifyCertificate(buf)
 }
