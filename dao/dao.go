@@ -10,7 +10,7 @@ var (
 )
 
 type DAO struct {
-	// key:zonename value:hostname
+	// key:zonename value:proposalMessage
 	*Storage
 }
 
@@ -24,30 +24,26 @@ type DAOInterface interface {
 	Set(key, value []byte) error
 }
 
-func init() {
-	db, err := leveldb.OpenFile("db", nil)
-	if err != nil {
-		panic(err)
-	}
-	Dao = DAO{
-		db: db,
-	}
+//func init() {
+//	db, err := leveldb.OpenFile("db", nil)
+//	if err != nil {
+//		panic(err)
+//	}
+//	Dao = DAO{
+//		db: db,
+//	}
+//}
+
+type DB struct {
+	leveldb.DB
 }
 
-func (d *DAO) Get(key []byte) ([]byte, error) {
-	return d.db.Get(key, nil)
+func (d *DB) Get(key []byte) ([]byte, error) {
+	return d.DB.Get(key, nil)
 }
 
-func (d *DAO) Set(key, value []byte) error {
-	return d.db.Put(key, value, nil)
-}
-
-func (d *DAO) Has(key []byte) (bool, error) {
-	return d.db.Has(key, nil)
-}
-
-func (d *DAO) DelEX(key []byte) error {
-	return d.db.Delete(key, nil)
+func (d *DB) Set(key, value []byte) error {
+	return d.DB.Put(key, value, nil)
 }
 
 type Storage struct {
