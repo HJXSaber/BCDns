@@ -7,26 +7,26 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
-	"go/ast"
 	"reflect"
 )
 
 type BlockSlice []Block
 
-func (bs BlockSlice) Exists(b Block) bool {
-
-	//Traverse array in reverse order because if a block exists is more likely to be on top.
-	l := len(bs)
-	for i := l - 1; i >= 0; i-- {
-
-		bb := bs[i]
-		if reflect.DeepEqual(b.Signature, bb.Signature) {
-			return true
-		}
-	}
-
-	return false
-}
+//
+//func (bs BlockSlice) Exists(b Block) bool {
+//
+//	//Traverse array in reverse order because if a block exists is more likely to be on top.
+//	l := len(bs)
+//	for i := l - 1; i >= 0; i-- {
+//
+//		bb := bs[i]
+//		if reflect.DeepEqual(bb.Signature, bb.Signature) {
+//			return true
+//		}
+//	}
+//
+//	return false
+//}
 
 func (bs BlockSlice) PreviousBlock() *Block {
 	l := len(bs)
@@ -48,6 +48,7 @@ type Block struct {
 }
 
 type BlockHeader struct {
+	ProposalSlice
 	From       string
 	PrevBlock  []byte
 	MerkelRoot []byte
@@ -64,10 +65,10 @@ func NewGenesisBlock() *Block {
 	return NewBlock(messages.ProposalSlice{}, []byte{}, 0)
 }
 
-func (b *Block) AddProposal(t *messages.ProposalMassage) {
-	newSlice := b.ProposalSlice.AddProposal(*t)
-	b.ProposalSlice = &newSlice
-}
+//func (b *Block) AddProposal(t *messages.ProposalMassage) {
+//	newSlice := b.ProposalSlice.AddProposal(*t)
+//	b.ProposalSlice = &newSlice
+//}
 
 func (b *Block) VerifyBlock() bool {
 	merkel := b.GenerateMerkelRoot()

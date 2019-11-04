@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
+	"github.com/syndtr/goleveldb/leveldb"
 	"os"
 
 	"github.com/boltdb/bolt"
@@ -273,7 +273,7 @@ func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error
 		return nil
 	})
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
 
 	newBlock := NewBlock(proposals, lastHash, lastHeight+1)
@@ -328,4 +328,41 @@ func (bc *Blockchain) FindDomain(name string) (*messages.ProposalMassage, error)
 		}
 	}
 	return nil, nil
+}
+
+func (bc *Blockchain) Get(key []byte) ([]byte, error) {
+	bci := bc.Iterator()
+
+	for {
+		block := bci.Next()
+
+		ps := ReverseSlice(*block.ProposalSlice)
+		for _, p := range ps {
+			if p.Body.ZoneName == string(key) {
+				data, err := p.MarshalBinary()
+				if err != nil {
+					return nil, err
+				}
+				return data, nil
+			}
+		}
+
+		if len(block.PrevBlock) == 0 {
+			break
+
+		}
+	}
+	return nil, leveldb.ErrNotFound
+}
+
+func (bc *Blockchain) Set(key, value []byte) error {
+	return nil
+}
+
+func ReverseSlice(s messages.ProposalSlice) messages.ProposalSlice {
+	ss := make(messages.ProposalSlice, len(s))
+	for i, j := 0, len(s)-1; i <= j; i, j = i+1, j-1 {
+		ss[i], ss[j] = s[j], s[i]
+	}
+	return ss
 }

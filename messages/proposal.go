@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rs/xid"
+	"github.com/syndtr/goleveldb/leveldb"
 	"reflect"
 	"sync"
 	"time"
@@ -37,6 +38,7 @@ type ProposalBody struct {
 	Type      OperationType
 	ZoneName  string
 	Nonce     uint32 //Pow hashcode
+	Values    map[string]string
 	Id        []byte
 }
 
@@ -54,11 +56,8 @@ func (p *ProposalMassage) ValidateAdd() bool {
 		fmt.Printf("[Validate] TimeStamp is invalid t=%v\n", p.Body.Timestamp)
 		return false
 	}
-	if exit, err := dao.Dao.Has([]byte(p.Body.ZoneName)); exit {
-		fmt.Printf("[Validate] ZoneName exits\n")
-		return false
-	} else if err != nil {
-		fmt.Printf("[Validate] db Has failed err=%v\n", err)
+	if _, err := dao.Dao.GetZoneName(p.Body.ZoneName); err != leveldb.ErrNotFound {
+		fmt.Printf("[Validate] ZoneName exits or get failed err=%v\n", err)
 		return false
 	}
 	if !service.CertificateAuthorityX509.VerifySignature(p.Signature, bodyByte, p.Body.PId.Name) {
@@ -103,6 +102,26 @@ func (p *ProposalMassage) VerifySignature() bool {
 		return false
 	}
 	return service.CertificateAuthorityX509.VerifySignature(p.Signature, hash, p.Body.PId.Name)
+}
+
+func (p *ProposalMassage) MarshalBinary() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(p.Body); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(p.Signature); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (p *ProposalMassage) UnMarshalBinary(data []byte) error {
+	dec := gob.NewDecoder(bytes.NewBuffer(data))
+	if err := dec.Decode(p); err != nil {
+		return err
+	}
+	return nil
 }
 
 type PId struct {
@@ -259,6 +278,10 @@ func (p *ProposalBody) Hash() ([]byte, error) {
 		return nil, err
 	}
 	if err = enc.Encode(p.Nonce); err != nil {
+		fmt.Printf("[Hash] Encode failed err=%v", err)
+		return nil, err
+	}
+	if err = enc.Encode(p.Values); err != nil {
 		fmt.Printf("[Hash] Encode failed err=%v", err)
 		return nil, err
 	}

@@ -73,7 +73,7 @@ func (leader *LeaderT) ProcessViewChangeMsg() {
 					}
 				}
 			}
-		case msgByte := <-ViewChangeResultChan:
+			//case msgByte := <-ViewChangeResultChan:
 
 		}
 	}
@@ -223,7 +223,7 @@ type LeaderTInterface interface {
 }
 
 type ViewRetrieveMsg struct {
-	From int64
+	From string
 }
 
 type ViewInfo struct {

@@ -13,7 +13,6 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"strings"
 	"sync"
 )
 
@@ -56,12 +55,12 @@ func (err CheckSigFailedErr) Error() string {
 type CAX509 struct {
 	Mutex             sync.Mutex
 	Certificates      map[string]x509.Certificate
-	CertificatesOrder []Node
+	CertificatesOrder []*x509.Certificate
 	NodeId            int64
 }
 
 func init() {
-	certs, certsOrder := make(map[string]x509.Certificate), make([]Node, 0)
+	certs, certsOrder := make(map[string]x509.Certificate), make([]*x509.Certificate, 0)
 	dir, err := ioutil.ReadDir(CertificatesPath)
 	if err != nil {
 		log.Fatal(err)
@@ -77,14 +76,18 @@ func init() {
 			if cert == nil {
 				os.Exit(-1)
 			}
-			names := strings.Split(fileName, ".")
-			certs[names[0]] = *cert
+			name, err := utils.GetCertId(*cert)
+			if err != nil {
+				fmt.Printf("[Load certificates] error=%v\n", err)
+				panic(err)
+			}
+			certs[name] = *cert
 			insertCertificateByOrder(certsOrder, cert)
 		}
 	}
 	nodeid := int64(-1)
 	for i, c := range certsOrder {
-		id, err := utils.GetCertId(c.Cert)
+		id, err := utils.GetCertId(*c)
 		if err != nil {
 			fmt.Printf("[Load certificates] error=%v\n", err)
 			continue
@@ -145,46 +148,6 @@ func (*CAX509) Decode(EncodeMsg []byte, Id string) []byte {
 
 func (ca *CAX509) GetCerts() map[string]x509.Certificate {
 	return ca.Certificates
-}
-
-func (ca *CAX509) AddCert(data []byte) error {
-	if rootCert := loadCertificate2(CertificatesPath + RootCertificateName); rootCert != nil {
-		cert, err := x509.ParseCertificate(data)
-		if err != nil {
-			return err
-		}
-		err = cert.CheckSignatureFrom(rootCert)
-		if err != nil {
-			return err
-		}
-		block := pem.Block{
-			Type:  "Certificate",
-			Bytes: data,
-		}
-		id, err := utils.GetCertId(*cert)
-		if err != nil {
-			return err
-		}
-		filename := id + ".crt"
-		_, err = os.Stat(CertificatesPath + filename)
-		if err == nil {
-			return CheckSigFailedErr{"This certificate exits"}
-		}
-		file, err := os.Create(filename)
-		if err != nil {
-			return err
-		}
-		err = pem.Encode(file, &block)
-		if err != nil {
-			return err
-		}
-		ca.Mutex.Lock()
-		ca.Certificates[id] = *cert
-		insertCertificateByOrder(ca.CertificatesOrder, cert)
-		ca.Mutex.Unlock()
-		return nil
-	}
-	return CheckSigFailedErr{"The input certificate's signature is invalid"}
 }
 
 func (ca *CAX509) DelCert(Id string) error {
@@ -252,7 +215,7 @@ func (ca *CAX509) Check(n int) bool {
 	ca.Mutex.Lock()
 	defer ca.Mutex.Unlock()
 
-	return n >= ca.GetF() * 2 + 1
+	return n >= ca.GetF()*2+1
 }
 
 func loadPrivateKey2() *rsa.PrivateKey {
@@ -338,13 +301,11 @@ func getDigest2(msg []byte) ([]byte, error) {
 	return digest, nil
 }
 
-func insertCertificateByOrder(certs []Node, cert *x509.Certificate) {
+func insertCertificateByOrder(certs []*x509.Certificate, cert *x509.Certificate) {
 	for i, c := range certs {
-		if c.Cert.SerialNumber.Cmp(cert.SerialNumber) > 0 {
+		if c.SerialNumber.Cmp(cert.SerialNumber) > 0 {
 			certs = append(certs[:i+1], certs[i:]...)
-			certs[i] = Node{
-				Cert: *cert,
-			}
+			certs[i] = cert
 		}
 	}
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
+	"BCDns_0.1/utils"
 	"encoding/json"
 	"fmt"
 	"github.com/HJXSaber/memberlist"
@@ -74,7 +75,7 @@ func (net DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
 	}
 }
 
-func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to int) {
+func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to string) {
 	msg := Massage{
 		MessageType: t,
 		Payload:     jsonData,
@@ -85,8 +86,7 @@ func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to int) {
 		return
 	}
 
-	err = net.Network.SendReliable(
-		service.CertificateAuthorityX509.CertificatesOrder[to].Member.(*memberlist.Node), msgByte)
+	err = net.Network.SendReliable(net.Network.GetNodeByName(to), msgByte)
 	if err != nil {
 		fmt.Println("[SendTo] msg failed", err)
 	}
@@ -102,8 +102,12 @@ func (net DnsNet) SendToLeader(jsonData []byte, t MessageTypeT) {
 		fmt.Printf("[SendToLeader] json.Marshal failed err=%v\n", err)
 		return
 	}
-	err = net.Network.SendReliable(
-		service.CertificateAuthorityX509.CertificatesOrder[Leader.LeaderId].Member.(*memberlist.Node), msgByte)
+	name, err := utils.GetCertId(*service.CertificateAuthorityX509.CertificatesOrder[Leader.LeaderId])
+	if err != nil {
+		fmt.Printf("[SendToLeader] GetCertId failed err=%v\n", err)
+		return
+	}
+	err = net.Network.SendReliable(net.Network.GetNodeByName(name), msgByte)
 	if err != nil {
 		fmt.Println("[SendToLeader] msg failed", err)
 	}
@@ -128,13 +132,6 @@ func init() {
 
 	seeds := service.CertificateAuthorityX509.GetSeeds()
 	_, err = P2PNet.Network.Join(seeds)
-	for _, member := range P2PNet.Network.Members() {
-		for i, cert := range service.CertificateAuthorityX509.CertificatesOrder {
-			if cert.Cert.IPAddresses[0].Equal(member.Addr) {
-				service.CertificateAuthorityX509.CertificatesOrder[i].Member = &member
-			}
-		}
-	}
 	if err != nil {
 		//TODO
 		log.Fatal("Join failed ", err)
