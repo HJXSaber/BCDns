@@ -12,7 +12,11 @@ import (
 	"time"
 )
 
-type Proposer struct {
+var (
+	Proposer *ProposerT
+)
+
+type ProposerT struct {
 	TimeOut         time.Duration
 	Conn            *net.UDPConn
 	Proposals       map[string]*messages.ProposalMassage
@@ -33,7 +37,7 @@ type Order struct {
 	ZoneName string
 }
 
-func (p *Proposer) Run() {
+func (p *ProposerT) Run() {
 	go p.ReceiveOrder()
 	for true {
 		select {
@@ -121,7 +125,7 @@ func (p *Proposer) Run() {
 	}
 }
 
-func (p *Proposer) ReceiveOrder() {
+func (p *ProposerT) ReceiveOrder() {
 	var (
 		data = make([]byte, 1024)
 	)
@@ -135,7 +139,7 @@ func (p *Proposer) ReceiveOrder() {
 	}
 }
 
-func (p *Proposer) handleOrder(data []byte) {
+func (p *ProposerT) handleOrder(data []byte) {
 	var order Order
 	err := json.Unmarshal(data, &order)
 	if err != nil {
@@ -181,7 +185,7 @@ func (p *Proposer) handleOrder(data []byte) {
 	}
 }
 
-func (p *Proposer) Commit(data *messages.AuditedProposal) {
+func (p *ProposerT) Commit(data *messages.AuditedProposal) {
 	jsonData, err := json.Marshal(*data)
 	if err != nil {
 		fmt.Printf("[Commit] json.Marshal failed err=%v\n", err)
@@ -190,7 +194,7 @@ func (p *Proposer) Commit(data *messages.AuditedProposal) {
 	service.P2PNet.SendToLeader(jsonData, service.Commit)
 }
 
-func NewProposer(timeOut time.Duration) *Proposer {
+func NewProposer(timeOut time.Duration) *ProposerT {
 	addr := net.UDPAddr{
 		IP:   net.ParseIP("127.0.0.1"),
 		Port: 8888,
@@ -200,12 +204,13 @@ func NewProposer(timeOut time.Duration) *Proposer {
 		fmt.Printf("[NewProposer] Listen failed err=%v\n", err)
 		return nil
 	}
-	return &Proposer{
+	return &ProposerT{
 		TimeOut:         timeOut,
 		Conn:            conn,
 		Proposals:       map[string]*messages.ProposalMassage{},
-		ProposalResults: concurrent.NewConcurrentMap(),
 		AuditResponses:  concurrent.NewConcurrentMap(),
+		ProposalResults: concurrent.NewConcurrentMap(),
 		OrderChan:       make(chan []byte, 1024),
+		Timers:          map[string]*time.Timer{},
 	}
 }

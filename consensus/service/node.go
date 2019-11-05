@@ -8,14 +8,18 @@ import (
 	"fmt"
 )
 
-type Node struct {
+var (
+	Node *NodeT
+)
+
+type NodeT struct {
 }
 
 type NodeInterface interface {
 	Run()
 }
 
-func (n Node) Run() {
+func (n NodeT) Run() {
 	for true {
 		select {
 		case proposalByte := <-service.ProposalChan:
@@ -99,4 +103,8 @@ func ProcessBlock(block *blockChain.Block) {
 		return
 	}
 	blockChain.NodeProposalPool.Clear()
+}
+
+func NewNode() *NodeT {
+	return &NodeT{}
 }

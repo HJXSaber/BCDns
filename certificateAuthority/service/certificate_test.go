@@ -70,7 +70,7 @@ func TestCAImpl_LoadCertificates2(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	temp := make([]byte, len(caFile) * 4 / 3)
+	temp := make([]byte, len(caFile)*4/3)
 	base64.StdEncoding.Decode(temp, caFile)
 
 	//decode the content of cert by base64
@@ -125,27 +125,27 @@ func TestConvert(t *testing.T) {
 	fmt.Println(100)
 	time.Sleep(3 * time.Second)*/
 
-	max := new(big.Int).Lsh(big.NewInt(1),128)  //把 1 左移 128 位，返回给 big.Int
-	serialNumber, _ := rand.Int(rand.Reader, max)   //返回在 [0, max) 区间均匀随机分布的一个随机值
-	subject := pkix.Name{   //Name代表一个X.509识别名。只包含识别名的公共属性，额外的属性被忽略。
+	max := new(big.Int).Lsh(big.NewInt(1), 128)   //把 1 左移 128 位，返回给 big.Int
+	serialNumber, _ := rand.Int(rand.Reader, max) //返回在 [0, max) 区间均匀随机分布的一个随机值
+	subject := pkix.Name{                         //Name代表一个X.509识别名。只包含识别名的公共属性，额外的属性被忽略。
 		Organization:       []string{"Manning Publications Co."},
 		OrganizationalUnit: []string{"Books"},
 		CommonName:         "Go Web Programming",
 	}
 	template := x509.Certificate{
-		SerialNumber:   serialNumber, // SerialNumber 是 CA 颁布的唯一序列号，在此使用一个大随机数来代表它
-		Subject:        subject,
-		NotBefore:      time.Now(),
-		NotAfter:       time.Now().Add(365 * 24 *time.Hour),
-		KeyUsage:       x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature, //KeyUsage 与 ExtKeyUsage 用来表明该证书是用来做服务器认证的
-		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, // 密钥扩展用途的序列
-		IPAddresses:    []net.IP{net.ParseIP("127.0.0.1")},
+		SerialNumber: serialNumber, // SerialNumber 是 CA 颁布的唯一序列号，在此使用一个大随机数来代表它
+		Subject:      subject,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature, //KeyUsage 与 ExtKeyUsage 用来表明该证书是用来做服务器认证的
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},               // 密钥扩展用途的序列
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
 	}
-	pk, _ := rsa.GenerateKey(rand.Reader, 2048) //生成一对具有指定字位数的RSA密钥
+	pk, _ := rsa.GenerateKey(rand.Reader, 2048)                                                 //生成一对具有指定字位数的RSA密钥
 	derBytes, _ := x509.CreateCertificate(rand.Reader, &template, &template, &pk.PublicKey, pk) //DER 格式
 	cert, _ := x509.ParseCertificate(derBytes)
 	block := pem.Block{
-		Type: "certificate",
+		Type:  "certificate",
 		Bytes: derBytes,
 	}
 	file, _ := os.Create("./test.pem")
@@ -156,7 +156,7 @@ func TestConvert(t *testing.T) {
 	content := make([]byte, fileInfo.Size())
 	_, _ = file.Read(content)
 	block2, _ := pem.Decode(content)
-	certRecover , _ := x509.ParseCertificate(block2.Bytes)
+	certRecover, _ := x509.ParseCertificate(block2.Bytes)
 	fmt.Println(certRecover.Equal(cert))
 
 	data, _ := json.Marshal(cert)

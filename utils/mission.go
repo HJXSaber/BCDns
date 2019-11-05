@@ -4,6 +4,7 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"reflect"
 )
+
 //mission begin
 
 var (
@@ -13,11 +14,10 @@ var (
 type HandlerCertT func(cert any.Any)
 
 type MissionTable struct {
-
 }
 
 type Mission struct {
-	Data interface{}
+	Data    interface{}
 	Handler interface{}
 }
 

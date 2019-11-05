@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func main(){
+func main() {
 	service.P2PNet.BroadcastMsg([]byte("hello"))
 	for {
 		time.Sleep(time.Second)

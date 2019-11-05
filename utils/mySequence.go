@@ -21,7 +21,7 @@ func Convert(src interface{}, t reflect.Type, top bool) (interface{}, error) {
 	obj := reflect.New(t)
 	srcV, srcT := reflect.ValueOf(src), reflect.TypeOf(src)
 	if t.Kind() != reflect.Struct {
-		return nil, ConvertError{Msg:"Can not convert none-struct object"}
+		return nil, ConvertError{Msg: "Can not convert none-struct object"}
 	}
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)

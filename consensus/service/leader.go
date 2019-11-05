@@ -11,6 +11,7 @@ import (
 )
 
 type LeaderNode struct {
+	interrupt chan int
 }
 
 type LeaderNodeInterface interface {

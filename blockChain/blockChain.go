@@ -2,11 +2,11 @@ package blockChain
 
 import (
 	"BCDns_0.1/messages"
+	"BCDns_0.1/utils"
 	"bytes"
 	"errors"
 	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
-	"os"
 
 	"github.com/boltdb/bolt"
 )
@@ -29,7 +29,7 @@ type Blockchain struct {
 // CreateBlockchain creates a new blockchain DB
 func CreateBlockchain(address, nodeID string) (*Blockchain, error) {
 	dbFile := fmt.Sprintf(dbFile, nodeID)
-	if dbExists(dbFile) {
+	if utils.DBExists(dbFile) {
 		fmt.Println("Blockchain already exists.")
 		return nil, errors.New("Blockchain already exists.")
 	}
@@ -81,7 +81,7 @@ func CreateBlockchain(address, nodeID string) (*Blockchain, error) {
 // NewBlockchain creates a new Blockchain with genesis Block
 func NewBlockchain(nodeID string) (*Blockchain, error) {
 	dbFile := fmt.Sprintf(dbFile, nodeID)
-	if dbExists(dbFile) == false {
+	if utils.DBExists(dbFile) == false {
 		fmt.Println("Blockchain already exists.")
 		return nil, errors.New("Blockchain already exists.")
 	}
@@ -303,14 +303,6 @@ func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error
 	}
 
 	return newBlock, nil
-}
-
-func dbExists(dbFile string) bool {
-	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
-		return false
-	}
-
-	return true
 }
 
 func (bc *Blockchain) FindDomain(name string) (*messages.ProposalMassage, error) {

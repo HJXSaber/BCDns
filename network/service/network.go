@@ -10,6 +10,10 @@ import (
 	"log"
 )
 
+var (
+	P2PNet *DnsNet
+)
+
 type DnsNet struct {
 	Network    *memberlist.Memberlist
 	broadCasts *memberlist.TransmitLimitedQueue
@@ -46,9 +50,51 @@ var (
 	ProposalResultChan         chan []byte
 )
 
+func init() {
+	AuditResponseChan = make(chan []byte, 1024)
+	ProposalChan = make(chan []byte, 1024)
+	ViewChangeMsgChan = make(chan []byte, 1024)
+	ViewChangeResultChan = make(chan []byte, 1024)
+	RetrieveLeaderMsgChan = make(chan []byte, 1024)
+	RetrieveLeaderResponseChan = make(chan []byte, 1024)
+	CommitChan = make(chan []byte, 1024)
+	BlockChan = make(chan []byte, 1024)
+	ProposalResultChan = make(chan []byte, 1024)
+}
+
+func NewDnsNet() *DnsNet {
+	net := new(DnsNet)
+	config := memberlist.DefaultLANConfig()
+	config.BindPort = conf.BCDnsConfig.Port
+	config.Delegate = &Delegate{}
+	config.Name = conf.BCDnsConfig.HostName
+
+	var err error
+	net.Network, err = memberlist.Create(config)
+	if err != nil {
+		//TODO
+		log.Fatal("Initial network failed", err)
+	}
+
+	seeds := service.CertificateAuthorityX509.GetSeeds()
+	_, err = net.Network.Join(seeds)
+	if err != nil {
+		//TODO
+		log.Fatal("Join failed ", err)
+	}
+
+	net.broadCasts = &memberlist.TransmitLimitedQueue{
+		NumNodes: func() int {
+			return net.Network.NumMembers()
+		},
+		RetransmitMult: 3,
+	}
+	return net
+}
+
 //Can not broadcast msg whose size is longer than 1350B
 //When the size of msg is longer than 1350B. We have to transfer it by reliable channel
-func (net DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
+func (net *DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
 	msg := Massage{
 		MessageType: t,
 		Payload:     jsonData,
@@ -75,7 +121,7 @@ func (net DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
 	}
 }
 
-func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to string) {
+func (net *DnsNet) SendTo(jsonData []byte, t MessageTypeT, to string) {
 	msg := Massage{
 		MessageType: t,
 		Payload:     jsonData,
@@ -92,7 +138,7 @@ func (net DnsNet) SendTo(jsonData []byte, t MessageTypeT, to string) {
 	}
 }
 
-func (net DnsNet) SendToLeader(jsonData []byte, t MessageTypeT) {
+func (net *DnsNet) SendToLeader(jsonData []byte, t MessageTypeT) {
 	msg := Massage{
 		MessageType: t,
 		Payload:     jsonData,
@@ -111,47 +157,6 @@ func (net DnsNet) SendToLeader(jsonData []byte, t MessageTypeT) {
 	if err != nil {
 		fmt.Println("[SendToLeader] msg failed", err)
 	}
-}
-
-var (
-	P2PNet DnsNet
-)
-
-func init() {
-	config := memberlist.DefaultLANConfig()
-	config.BindPort = conf.BCDnsConfig.Port
-	config.Delegate = &Delegate{}
-	config.Name = conf.BCDnsConfig.HostName
-
-	var err error
-	P2PNet.Network, err = memberlist.Create(config)
-	if err != nil {
-		//TODO
-		log.Fatal("Initial network failed", err)
-	}
-
-	seeds := service.CertificateAuthorityX509.GetSeeds()
-	_, err = P2PNet.Network.Join(seeds)
-	if err != nil {
-		//TODO
-		log.Fatal("Join failed ", err)
-	}
-
-	P2PNet.broadCasts = &memberlist.TransmitLimitedQueue{
-		NumNodes: func() int {
-			return P2PNet.Network.NumMembers()
-		},
-		RetransmitMult: 3,
-	}
-	AuditResponseChan = make(chan []byte, 1024)
-	ProposalChan = make(chan []byte, 1024)
-	ViewChangeMsgChan = make(chan []byte, 1024)
-	ViewChangeResultChan = make(chan []byte, 1024)
-	RetrieveLeaderMsgChan = make(chan []byte, 1024)
-	RetrieveLeaderResponseChan = make(chan []byte, 1024)
-	CommitChan = make(chan []byte, 1024)
-	BlockChan = make(chan []byte, 1024)
-	ProposalResultChan = make(chan []byte, 1024)
 }
 
 type Broadcast struct {

@@ -18,4 +18,3 @@ type CAX509Interface interface {
 	GetNetworkSize() int
 	GetF() int
 }
-

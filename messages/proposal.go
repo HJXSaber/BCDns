@@ -221,41 +221,6 @@ func NewProposal(zoneName string, t OperationType) *ProposalMassage {
 	}
 }
 
-//type AddReqFailed struct {
-//	Msg string
-//}
-//
-//func (e AddReqFailed) Error() string {
-//	return e.Msg
-//}
-//
-//type DelReqFailed struct {
-//	Msg string
-//}
-//
-//func (err DelReqFailed) Error() string {
-//	return err.Msg
-//}
-//
-//func doDel(data []byte, id string) error {
-//	var msg DelMsg
-//	err := json.Unmarshal(data, msg)
-//	if err != nil {
-//		return err
-//	}
-//	ok, err := dao.Dao.Has([]byte(msg.ZoneName))
-//	if err != nil {
-//		return err
-//	}
-//	if !ok {
-//		return DelReqFailed{"Domain name is not exited"}
-//	}
-//	if !service.CertificateAuthorityX509.VerifySignature(msg.Sig, []byte(msg.ZoneName), id) {
-//		return DelReqFailed{"Signature is invalid"}
-//	}
-//	return nil
-//}
-
 func (p *ProposalBody) Hash() ([]byte, error) {
 	var err error
 	hash := sha256.New()

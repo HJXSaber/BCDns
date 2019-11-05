@@ -39,6 +39,23 @@ type LeaderT struct {
 	State             uint8
 }
 
+func init() {
+	msg := ViewRetrieveMsg{}
+	msgByte, err := json.Marshal(msg)
+	if err != nil {
+		log.Fatal("Leader init failed", err)
+	}
+	P2PNet.BroadcastMsg(msgByte, RetrieveLeader)
+	Leader = LeaderT{
+		LeaderId:          -1,
+		TermId:            -1,
+		RetrieveMsgs:      make(map[int64]map[string]int64, 0),
+		RetrieveMsgsCount: make(map[int64]map[int64]int),
+		ViewChangeMsgs:    make(map[int64]map[string]uint8, 0),
+		State:             Start,
+	}
+}
+
 func (leader *LeaderT) ProcessViewChangeMsg() {
 	var msg ViewChangeMsg
 	for {
@@ -195,12 +212,6 @@ func (m ViewChangeMsg) VerifySignature() bool {
 	return false
 }
 
-//type ViewChangeResult struct {
-//	TermId, LeaderId int64
-//	From             string
-//	Signature        []byte
-//}
-
 type ViewChangeMsgData struct {
 	Type             uint8
 	From             string
@@ -209,11 +220,6 @@ type ViewChangeMsgData struct {
 	//key is PId'String
 	TId messages.PId
 }
-
-//type LeaderVoteMsg struct {
-//	Type uint8
-//	Msgs []ViewChangeMsg
-//}
 
 type LeaderTInterface interface {
 	ProcessViewChangeMsg()
@@ -271,24 +277,6 @@ func (r ViewInfo) VerifySignature() bool {
 	return false
 }
 
-func init() {
-	msg := ViewRetrieveMsg{}
-	msgByte, err := json.Marshal(msg)
-	if err != nil {
-		log.Fatal("Leader init failed", err)
-	}
-	P2PNet.BroadcastMsg(msgByte, RetrieveLeader)
-	Leader = LeaderT{
-		LeaderId:          -1,
-		TermId:            -1,
-		RetrieveMsgs:      make(map[int64]map[string]int64, 0),
-		RetrieveMsgsCount: make(map[int64]map[int64]int),
-		ViewChangeMsgs:    make(map[int64]map[string]uint8, 0),
-		State:             Start,
-	}
-}
-
-//static method
 func (leader *LeaderT) TurnLeader() {
 	service.CertificateAuthorityX509.Mutex.Lock()
 	defer service.CertificateAuthorityX509.Mutex.Unlock()

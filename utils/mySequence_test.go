@@ -36,42 +36,42 @@ type Person struct {
 }
 
 func TestConvertError_Error(T *testing.T) {
-///*	ss := "ssss"
-//	src := Src{
-//		I: &Test{
-//			J:1,
-//			S:ss,
-//		},
-//	}
-//	var dst Dst
-//	_ = Convert_test(src, dst)
-//	c, _ := json.Marshal(src)
-//	fmt.Println(c)*/
-//
-//	val := Src{
-//		I: &Test{
-//			J:1,
-//			S:"222",
-//		},
-//	}
-//	var vv interface{}
-//	vv = val
-//	v := reflect.ValueOf(&vv).Elem()
-///*	t := v.Type()
-//	obj := reflect.Zero(t).Interface()
-//	o := obj
-//	fmt.Println(o)
-//	ov := reflect.ValueOf(&obj)
-//	ov = ov.Elem()
-//	fmt.Println()
-//	cv := reflect.ValueOf(&obj)
-//	cv = cv.Elem()
-//	cv.Set(reflect.ValueOf(val))
-//	oo := obj.(Src)
-//	fmt.Println(cv, oo)
-//	f := v.FieldByName("I")
-//	fmt.Println(f.IsValid())*/
-//
+	///*	ss := "ssss"
+	//	src := Src{
+	//		I: &Test{
+	//			J:1,
+	//			S:ss,
+	//		},
+	//	}
+	//	var dst Dst
+	//	_ = Convert_test(src, dst)
+	//	c, _ := json.Marshal(src)
+	//	fmt.Println(c)*/
+	//
+	//	val := Src{
+	//		I: &Test{
+	//			J:1,
+	//			S:"222",
+	//		},
+	//	}
+	//	var vv interface{}
+	//	vv = val
+	//	v := reflect.ValueOf(&vv).Elem()
+	///*	t := v.Type()
+	//	obj := reflect.Zero(t).Interface()
+	//	o := obj
+	//	fmt.Println(o)
+	//	ov := reflect.ValueOf(&obj)
+	//	ov = ov.Elem()
+	//	fmt.Println()
+	//	cv := reflect.ValueOf(&obj)
+	//	cv = cv.Elem()
+	//	cv.Set(reflect.ValueOf(val))
+	//	oo := obj.(Src)
+	//	fmt.Println(cv, oo)
+	//	f := v.FieldByName("I")
+	//	fmt.Println(f.IsValid())*/
+	//
 
 	//field := v.Elem().Field(0)
 	//ft := v.Type().Elem().Field(0).Type
@@ -117,8 +117,8 @@ func TestConvertError_Error(T *testing.T) {
 
 type T struct {
 	Val *int
-	A *A
-	M map[string]bool
+	A   *A
+	M   map[string]bool
 }
 
 type A struct {
@@ -130,9 +130,9 @@ func TestGob(t *testing.T) {
 	tt := T{
 		Val: &val,
 		A: &A{
-			Str:"hello",
+			Str: "hello",
 		},
-		M:make(map[string]bool),
+		M: make(map[string]bool),
 	}
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)

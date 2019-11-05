@@ -10,7 +10,7 @@ func TestChannel(t *testing.T) {
 	c := make(chan int, 5)
 	down := make(chan int)
 	go func() {
-		for i := 0; i < 10; i ++ {
+		for i := 0; i < 10; i++ {
 			c <- i
 		}
 		close(c)
@@ -19,10 +19,10 @@ func TestChannel(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 10; i++ {
-			fmt.Println(<- c)
+			fmt.Println(<-c)
 			time.Sleep(time.Second)
 		}
 		close(down)
 	}()
-	_ = <- down
+	_ = <-down
 }
