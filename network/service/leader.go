@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 )
 
 const (
@@ -26,7 +27,7 @@ const (
 )
 
 var (
-	Leader LeaderT
+	Leader *LeaderT
 )
 
 type LeaderT struct {
@@ -37,30 +38,47 @@ type LeaderT struct {
 	RetrieveMsgsCount map[int64]map[int64]int
 	ViewChangeMsgs    map[int64]map[string]uint8
 	State             uint8
+	StateChan         chan uint8
 }
 
-func init() {
-	msg := ViewRetrieveMsg{}
-	msgByte, err := json.Marshal(msg)
-	if err != nil {
-		log.Fatal("Leader init failed", err)
-	}
-	P2PNet.BroadcastMsg(msgByte, RetrieveLeader)
-	Leader = LeaderT{
+func NewLeader() *LeaderT {
+	leader := &LeaderT{
 		LeaderId:          -1,
 		TermId:            -1,
 		RetrieveMsgs:      make(map[int64]map[string]int64, 0),
 		RetrieveMsgsCount: make(map[int64]map[int64]int),
 		ViewChangeMsgs:    make(map[int64]map[string]uint8, 0),
 		State:             Start,
+		StateChan:         make(chan uint8),
 	}
+	msg := ViewRetrieveMsg{}
+	msgByte, err := json.Marshal(msg)
+	if err != nil {
+		log.Fatal("Leader init failed", err)
+	}
+	//TODO: leaderVote is undone
+	if service.CertificateAuthorityX509.GetNetworkSize() == 1 {
+		leader.LeaderId, leader.TermId = 0, 0
+		go leader.Run()
+	} else {
+		P2PNet.BroadcastMsg(msgByte, RetrieveLeader)
+		go leader.Run()
+		select {
+		case leader.State = <-leader.StateChan:
+			break
+		case <-time.After(10 * time.Second):
+			panic("[NewLeader] Retrieve leader failed")
+		}
+	}
+	return leader
 }
 
-func (leader *LeaderT) ProcessViewChangeMsg() {
-	var msg ViewChangeMsg
+func (leader *LeaderT) Run() {
 	for {
 		select {
+		//TODO: viewchange is undone
 		case msgByte := <-ViewChangeMsgChan:
+			var msg ViewChangeMsg
 			err := json.Unmarshal(msgByte, msg)
 			if err != nil {
 				fmt.Println("Process viewchange msg failed", err)
@@ -90,19 +108,7 @@ func (leader *LeaderT) ProcessViewChangeMsg() {
 					}
 				}
 			}
-			//case msgByte := <-ViewChangeResultChan:
-
-		}
-	}
-}
-
-func (leader *LeaderT) ChangeLeader() {
-
-}
-
-func (leader *LeaderT) ProcessRetrieveMsg() {
-	for {
-		select {
+		case _ = <-ViewChangeResultChan:
 		case msgByte := <-RetrieveLeaderMsgChan:
 			var msg ViewRetrieveMsg
 			err := json.Unmarshal(msgByte, msg)
@@ -122,7 +128,7 @@ func (leader *LeaderT) ProcessRetrieveMsg() {
 				fmt.Printf("[ProcessRetrieveMsg] err=%v\n", err)
 				continue
 			}
-			responseByte, err := json.Marshal(msg)
+			responseByte, err := json.Marshal(response)
 			if err != nil {
 				fmt.Printf("[ProcessRetrieveMsg] json.Marshal failed err=%v\n", err)
 				continue
@@ -156,7 +162,7 @@ func (leader *LeaderT) ProcessRetrieveMsg() {
 					if leader.RetrieveMsgsCount[msg.TermId][msg.LeaderId] >= 2*service.CertificateAuthorityX509.GetF()+1 {
 						leader.TermId = msg.TermId
 						leader.LeaderId = msg.LeaderId
-						leader.State = Ready
+						leader.StateChan <- Ready
 					}
 				}
 			}
@@ -164,15 +170,28 @@ func (leader *LeaderT) ProcessRetrieveMsg() {
 	}
 }
 
-func (leader *LeaderT) Run() {
-
-}
-
 func (leader *LeaderT) CheckTermId(termId int64) bool {
 	leader.OnChanging.Lock()
 	defer leader.OnChanging.Unlock()
 
 	return termId == leader.TermId
+}
+
+func (leader *LeaderT) TurnLeader() {
+	service.CertificateAuthorityX509.Mutex.Lock()
+	defer service.CertificateAuthorityX509.Mutex.Unlock()
+
+	leader.OnChanging.Lock()
+	defer leader.OnChanging.Unlock()
+
+	Leader.LeaderId = (Leader.LeaderId + 1) % int64(service.CertificateAuthorityX509.GetNetworkSize())
+}
+
+func (leader *LeaderT) IsLeader() bool {
+	leader.OnChanging.Lock()
+	defer leader.OnChanging.Unlock()
+
+	return service.CertificateAuthorityX509.IsLeaderNode(leader.LeaderId)
 }
 
 type ViewChangeMsg struct {
@@ -275,16 +294,6 @@ func (r ViewInfo) VerifySignature() bool {
 		return true
 	}
 	return false
-}
-
-func (leader *LeaderT) TurnLeader() {
-	service.CertificateAuthorityX509.Mutex.Lock()
-	defer service.CertificateAuthorityX509.Mutex.Unlock()
-
-	leader.OnChanging.Lock()
-	defer leader.OnChanging.Unlock()
-
-	Leader.LeaderId = (Leader.LeaderId + 1) % int64(service.CertificateAuthorityX509.GetNetworkSize())
 }
 
 func checkType(t int) bool {

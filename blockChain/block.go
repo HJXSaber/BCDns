@@ -48,7 +48,7 @@ type Block struct {
 }
 
 type BlockHeader struct {
-	ProposalSlice
+	messages.ProposalSlice
 	From       string
 	PrevBlock  []byte
 	MerkelRoot []byte

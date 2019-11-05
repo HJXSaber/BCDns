@@ -37,7 +37,8 @@ type Order struct {
 	ZoneName string
 }
 
-func (p *ProposerT) Run() {
+func (p *ProposerT) Run(done chan uint) {
+	defer close(done)
 	go p.ReceiveOrder()
 	for true {
 		select {

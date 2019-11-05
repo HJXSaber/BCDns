@@ -19,7 +19,8 @@ type NodeInterface interface {
 	Run()
 }
 
-func (n NodeT) Run() {
+func (n NodeT) Run(done chan uint) {
+	defer close(done)
 	for true {
 		select {
 		case proposalByte := <-service.ProposalChan:
@@ -88,7 +89,7 @@ func ProcessBlock(block *blockChain.Block) {
 				fmt.Printf("[ProcessBlock] json.Marshal failed err=%v\n", err)
 				continue
 			}
-			service.P2PNet.SendTo(msgByte, service.ProposalResult, p.Body.PId.NodeId)
+			service.P2PNet.SendTo(msgByte, service.ProposalResult, p.Body.PId.Name)
 			proposalsPool.AddProposal(p)
 		}
 	}

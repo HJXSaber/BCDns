@@ -7,6 +7,7 @@ import (
 	service2 "BCDns_0.1/consensus/service"
 	dao2 "BCDns_0.1/dao"
 	service3 "BCDns_0.1/network/service"
+	"fmt"
 	"time"
 )
 
@@ -21,6 +22,10 @@ func main() {
 	if service3.P2PNet == nil {
 		panic("NewDnsNet failed")
 	}
+	service3.Leader = service3.NewLeader()
+	if service3.Leader == nil {
+		panic("NewLeader failed")
+	}
 	service2.Proposer = service2.NewProposer(10 * time.Second)
 	if service2.Proposer == nil {
 		panic("NewProposer failed")
@@ -29,7 +34,16 @@ func main() {
 	if service2.Node == nil {
 		panic("NewNode failed")
 	}
-
+	service2.LeaderNode = service2.NewLeaderNode()
+	if service2.LeaderNode == nil {
+		panic("NewLeaderNode failed")
+	}
+	done := make(chan uint)
+	go service2.Proposer.Run(done)
+	go service2.Node.Run(done)
+	go service2.LeaderNode.Run(done)
+	_ = <-done
+	fmt.Println("[Err] System exit")
 }
 
 func NewDao() (*dao2.DAO, error) {

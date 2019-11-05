@@ -159,6 +159,10 @@ func (net *DnsNet) SendToLeader(jsonData []byte, t MessageTypeT) {
 	}
 }
 
+func (net *DnsNet) GetNetworkSize() int {
+	return net.Network.NumMembers()
+}
+
 type Broadcast struct {
 	Msg    []byte
 	Notify chan<- struct{}

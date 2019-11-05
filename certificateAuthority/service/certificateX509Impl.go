@@ -218,6 +218,12 @@ func (ca *CAX509) Check(n int) bool {
 	return n >= ca.GetF()*2+1
 }
 
+func (ca *CAX509) IsLeaderNode(id int64) bool {
+	ca.Mutex.Lock()
+	defer ca.Mutex.Unlock()
+	return ca.NodeId == id
+}
+
 func loadPrivateKey2() *rsa.PrivateKey {
 	fileInfo, err := os.Stat(CertificatesPath + LocalPrivateName)
 	if err != nil {
