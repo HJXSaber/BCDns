@@ -66,7 +66,6 @@ func handleAddProposal(proposal *messages.ProposalMassage) {
 			fmt.Printf("[handleAddProposal] json.Marshal failed err=%v\n", err)
 			return
 		}
-		fmt.Println("auditedR", auditResponse)
 		service.P2PNet.SendTo(auditResponseByte, service.AuditResponse, proposal.Body.PId.Name)
 		blockChain.NodeProposalPool.AddProposal(*proposal)
 	}

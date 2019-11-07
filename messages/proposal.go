@@ -43,7 +43,6 @@ type ProposalBody struct {
 }
 
 func (p *ProposalMassage) ValidateAdd() bool {
-	fmt.Println("PID", p.Body.PId)
 	if !service.CertificateAuthorityX509.Exits(p.Body.PId.Name) {
 		fmt.Printf("[Validate] Invalid HostName=%v", p.Body.PId.Name)
 		return false

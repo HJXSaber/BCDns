@@ -159,7 +159,6 @@ func (p *ProposerT) handleOrder(data []byte) {
 			return
 		}
 		p.Proposals[string(proposalHash)] = proposal
-		fmt.Println("proposal", proposal)
 		service.P2PNet.BroadcastMsg(proposalByte, service.Proposal)
 		_, err = p.AuditResponses.Put(proposal.Body.ZoneName, messages.ProposalAuditResponses{})
 		if err != nil {
