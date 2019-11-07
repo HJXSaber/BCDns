@@ -79,7 +79,6 @@ func NewBlockchain(nodeID string) (*Blockchain, error) {
 		fmt.Println("Blockchain is not exists.")
 		return CreateBlockchain(dbFile)
 	}
-
 	var tip []byte
 	db, err := bolt.Open(dbFile, 0600, nil)
 	if err != nil {
@@ -99,6 +98,10 @@ func NewBlockchain(nodeID string) (*Blockchain, error) {
 	bc := Blockchain{tip, db}
 
 	return &bc, nil
+}
+
+func (bc *Blockchain) Close() {
+	_ = bc.db.Close()
 }
 
 // AddBlock saves the block into the blockchain

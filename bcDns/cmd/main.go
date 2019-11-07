@@ -19,6 +19,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer blockChain2.BlockChain.Close()
 	fmt.Println("[Init NetWork]")
 	service3.P2PNet = service3.NewDnsNet()
 	if service3.P2PNet == nil {

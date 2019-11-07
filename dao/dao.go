@@ -1,8 +1,6 @@
 package dao
 
 import (
-	"BCDns_0.1/utils"
-	"errors"
 	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
 	"reflect"
@@ -27,16 +25,6 @@ type DAOInterface interface {
 	Set(key, value []byte) error
 }
 
-//func init() {
-//	db, err := leveldb.OpenFile("db", nil)
-//	if err != nil {
-//		panic(err)
-//	}
-//	Dao = DAO{
-//		db: db,
-//	}
-//}
-
 const cacheFile = "blockchain_cache_%s.db"
 
 type DB struct {
@@ -45,10 +33,6 @@ type DB struct {
 
 func NewDB(nodeId string) (*DB, error) {
 	dbFile := fmt.Sprintf(cacheFile, nodeId)
-	if utils.DBExists(dbFile) {
-		fmt.Println("Blockchain already exists.")
-		return nil, errors.New("Blockchain already exists.")
-	}
 	db, err := leveldb.OpenFile(dbFile, nil)
 	if err != nil {
 		return nil, err
