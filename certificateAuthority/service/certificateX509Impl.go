@@ -128,9 +128,7 @@ func (*CAX509) Sign(msg []byte) []byte {
 
 func (ca *CAX509) VerifySignature(sig, msg []byte, Id string) bool {
 	if cert, ok := ca.Certificates[Id]; ok {
-		fmt.Println("[VerifySignature] Find cert")
 		publicKey := cert.PublicKey.(*rsa.PublicKey)
-		fmt.Println("pub", publicKey)
 		if digest, err := getDigest2(msg); err != nil {
 			fmt.Println(err)
 		} else {

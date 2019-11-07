@@ -174,4 +174,5 @@ func TestCAX509_VerifyCertificate(t *testing.T) {
 	msg := []byte("I am zzy")
 	sig := CertificateAuthorityX509.Sign(msg)
 	fmt.Println(len(sig), sig)
+	fmt.Println(CertificateAuthorityX509.VerifySignature(sig, msg, "s1"))
 }

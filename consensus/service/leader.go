@@ -71,6 +71,7 @@ func (l *LeaderNodeT) Run(done chan uint) {
 					fmt.Printf("[LeaderNode] NewBlockMessage failed err=%v\n", err)
 					continue
 				}
+				fmt.Println("blockMsg", b)
 				blockBytes, err := json.Marshal(*blockMessage)
 				if err != nil {
 					fmt.Printf("[LeaderNode] CurrentBlock marshal failed err=%v\n", err)

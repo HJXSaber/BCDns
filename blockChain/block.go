@@ -1,6 +1,7 @@
 package blockChain
 
 import (
+	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
@@ -9,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"time"
 )
 
 type BlockSlice []Block
@@ -52,23 +54,25 @@ type BlockHeader struct {
 	From       string
 	PrevBlock  []byte
 	MerkelRoot []byte
-	Timestamp  uint32
+	Timestamp  int64
 	Height     uint
 }
 
 func NewBlock(proposals messages.ProposalSlice, previousBlock []byte, height uint) *Block {
-	header := BlockHeader{PrevBlock: previousBlock, Height: height}
-	return &Block{header, proposals}
+	header := BlockHeader{
+		PrevBlock: previousBlock,
+		Height:    height,
+		From:      conf.BCDnsConfig.HostName,
+		Timestamp: time.Now().Unix(),
+	}
+	b := &Block{header, proposals}
+	b.MerkelRoot = b.GenerateMerkelRoot()
+	return b
 }
 
 func NewGenesisBlock() *Block {
 	return NewBlock(messages.ProposalSlice{}, []byte{}, 0)
 }
-
-//func (b *Block) AddProposal(t *messages.ProposalMassage) {
-//	newSlice := b.ProposalSlice.AddProposal(*t)
-//	b.ProposalSlice = &newSlice
-//}
 
 func (b *Block) VerifyBlock() bool {
 	merkel := b.GenerateMerkelRoot()

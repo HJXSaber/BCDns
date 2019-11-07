@@ -15,7 +15,7 @@ const dbFile = "blockchain_%s.db"
 const blocksBucket = "blocks"
 
 var (
-	BlockChain         = new(Blockchain)
+	BlockChain         *Blockchain
 	LeaderProposalPool = new(messages.ProposalPool)
 	NodeProposalPool   = new(messages.ProposalPool)
 )
@@ -328,7 +328,7 @@ func (bc *Blockchain) Get(key []byte) ([]byte, error) {
 		ps := ReverseSlice(block.ProposalSlice)
 		for _, p := range ps {
 			if p.Body.ZoneName == string(key) {
-				data, err := p.MarshalBinary()
+				data, err := p.MarshalProposalMassage()
 				if err != nil {
 					return nil, err
 				}

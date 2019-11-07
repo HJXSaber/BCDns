@@ -48,7 +48,7 @@ func (p *ProposalMassage) ValidateAdd() bool {
 		fmt.Printf("[Validate] Invalid HostName=%v", p.Body.PId.Name)
 		return false
 	}
-	bodyByte, err := json.Marshal(p.Body)
+	bodyByte, err := p.Body.Hash()
 	if err != nil {
 		fmt.Printf("[Validate] json.Marshal failed err=%v\n", err)
 		return false
@@ -105,7 +105,7 @@ func (p *ProposalMassage) VerifySignature() bool {
 	return service.CertificateAuthorityX509.VerifySignature(p.Signature, hash, p.Body.PId.Name)
 }
 
-func (p *ProposalMassage) MarshalBinary() ([]byte, error) {
+func (p *ProposalMassage) MarshalProposalMassage() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
 	if err := enc.Encode(p.Body); err != nil {
@@ -117,12 +117,13 @@ func (p *ProposalMassage) MarshalBinary() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (p *ProposalMassage) UnMarshalBinary(data []byte) error {
+func UnMarshalProposalMassage(data []byte) (*ProposalMassage, error) {
+	p := new(ProposalMassage)
 	dec := gob.NewDecoder(bytes.NewBuffer(data))
 	if err := dec.Decode(p); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return p, nil
 }
 
 type PId struct {
@@ -301,8 +302,8 @@ func (pool *ProposalPool) Exits(pm ProposalMassage) bool {
 	return false
 }
 
-func (pool *ProposalPool) AddProposal(pm ProposalMassage) ProposalSlice {
-	return append(pool.ProposalSlice, pm)
+func (pool *ProposalPool) AddProposal(pm ProposalMassage) {
+	pool.ProposalSlice = append(pool.ProposalSlice, pm)
 }
 
 func (pool *ProposalPool) Clear() {

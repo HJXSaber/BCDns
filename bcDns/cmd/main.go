@@ -54,7 +54,8 @@ func main() {
 }
 
 func NewDao() (*dao2.DAO, error) {
-	blockChain, err := blockChain2.NewBlockchain(conf.BCDnsConfig.HostName)
+	var err error
+	blockChain2.BlockChain, err = blockChain2.NewBlockchain(conf.BCDnsConfig.HostName)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +63,7 @@ func NewDao() (*dao2.DAO, error) {
 	if err != nil {
 		return nil, err
 	}
-	storage := dao2.NewStorage(db, blockChain)
+	storage := dao2.NewStorage(db, blockChain2.BlockChain)
 	return &dao2.DAO{
 		Storage: storage,
 	}, nil

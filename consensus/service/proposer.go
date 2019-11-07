@@ -153,7 +153,12 @@ func (p *ProposerT) handleOrder(data []byte) {
 			fmt.Printf("[handleOrder] json.Marshal failed err=%v\n", err)
 			return
 		}
-		p.Proposals[string(proposal.Body.ZoneName)] = proposal
+		proposalHash, err := proposal.Body.Hash()
+		if err != nil {
+			fmt.Printf("[NewProposalAuditResponse] generate failed err=%v\n", err)
+			return
+		}
+		p.Proposals[string(proposalHash)] = proposal
 		fmt.Println("proposal", proposal)
 		service.P2PNet.BroadcastMsg(proposalByte, service.Proposal)
 		_, err = p.AuditResponses.Put(proposal.Body.ZoneName, messages.ProposalAuditResponses{})
