@@ -6,6 +6,7 @@ import (
 	"BCDns_0.1/utils"
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"reflect"
 )
@@ -43,12 +44,11 @@ type BlockMessage struct {
 }
 
 type Block struct {
-	*BlockHeader
-	*messages.ProposalSlice
+	BlockHeader
+	messages.ProposalSlice
 }
 
 type BlockHeader struct {
-	messages.ProposalSlice
 	From       string
 	PrevBlock  []byte
 	MerkelRoot []byte
@@ -57,8 +57,8 @@ type BlockHeader struct {
 }
 
 func NewBlock(proposals messages.ProposalSlice, previousBlock []byte, height uint) *Block {
-	header := &BlockHeader{PrevBlock: previousBlock, Height: height}
-	return &Block{header, &proposals}
+	header := BlockHeader{PrevBlock: previousBlock, Height: height}
+	return &Block{header, proposals}
 }
 
 func NewGenesisBlock() *Block {
@@ -99,7 +99,7 @@ func (b *BlockMessage) VerifySignature() bool {
 }
 
 func (b *Block) Hash() []byte {
-	headerHash, _ := b.BlockHeader.MarshalBinary()
+	headerHash, _ := b.BlockHeader.Marshal()
 	return utils.SHA256(headerHash)
 }
 
@@ -130,50 +130,47 @@ func (b *Block) GenerateMerkelRoot() []byte {
 	}
 
 	ts, ok := Map(func(t messages.ProposalMassage) ([]byte, error) { return t.Body.Hash() },
-		[]messages.ProposalMassage(*b.ProposalSlice)).([][]byte)
+		[]messages.ProposalMassage(b.ProposalSlice)).([][]byte)
 	if !ok {
 		return nil
 	}
 	return merkell(ts)
 
 }
-func (b *Block) MarshalBinary() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(*b); err != nil {
+func (b *Block) Marshal() ([]byte, error) {
+	data, err := json.Marshal(b)
+	if err != nil {
 		return nil, err
 	}
-
-	return buf.Bytes(), nil
+	return data, nil
 }
 
-func (b *Block) UnmarshalBinary(d []byte) error {
-	dec := gob.NewDecoder(bytes.NewBuffer(d))
-	if err := dec.Decode(b); err != nil {
-		return err
+func UnmarshalBlock(d []byte) (*Block, error) {
+	b := new(Block)
+	err := json.Unmarshal(d, b)
+	if err != nil {
+		return nil, err
 	}
-
-	return nil
+	return b, nil
 }
 
-func (h *BlockHeader) MarshalBinary() ([]byte, error) {
+func (h *BlockHeader) Marshal() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(*h); err != nil {
+	if err := enc.Encode(h); err != nil {
 		return nil, err
 	}
 
 	return buf.Bytes(), nil
 }
 
-func (h *BlockHeader) UnmarshalBinary(d []byte) error {
-	dec := gob.NewDecoder(bytes.NewBuffer(d))
-	err := dec.Decode(h)
+func UnmarshalBlockHeader(d []byte) (*BlockHeader, error) {
+	b := new(BlockHeader)
+	err := json.Unmarshal(d, b)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return nil
+	return b, nil
 }
 
 func Map(f interface{}, vs interface{}) interface{} {

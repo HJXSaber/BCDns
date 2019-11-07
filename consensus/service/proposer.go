@@ -131,12 +131,12 @@ func (p *ProposerT) ReceiveOrder() {
 		data = make([]byte, 1024)
 	)
 	for true {
-		_, err := p.Conn.Read(data)
+		len, err := p.Conn.Read(data)
 		if err != nil {
 			fmt.Printf("[Run] Proposer read order failed err=%v\n", err)
 			continue
 		}
-		p.OrderChan <- data
+		p.OrderChan <- data[:len]
 	}
 }
 
@@ -154,6 +154,7 @@ func (p *ProposerT) handleOrder(data []byte) {
 			return
 		}
 		p.Proposals[string(proposal.Body.ZoneName)] = proposal
+		fmt.Println("proposal", proposal)
 		service.P2PNet.BroadcastMsg(proposalByte, service.Proposal)
 		_, err = p.AuditResponses.Put(proposal.Body.ZoneName, messages.ProposalAuditResponses{})
 		if err != nil {

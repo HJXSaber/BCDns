@@ -77,7 +77,7 @@ func handleDelProposal(proposal messages.ProposalMassage) {
 
 func ProcessBlock(block *blockChain.Block) {
 	proposalsPool := new(messages.ProposalPool)
-	for _, p := range *block.ProposalSlice {
+	for _, p := range block.ProposalSlice {
 		if blockChain.NodeProposalPool.Exits(p) {
 			msg, err := messages.NewProposalResult(p)
 			if err != nil {

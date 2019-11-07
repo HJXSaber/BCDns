@@ -27,13 +27,7 @@ type Blockchain struct {
 }
 
 // CreateBlockchain creates a new blockchain DB
-func CreateBlockchain(address, nodeID string) (*Blockchain, error) {
-	dbFile := fmt.Sprintf(dbFile, nodeID)
-	if utils.DBExists(dbFile) {
-		fmt.Println("Blockchain already exists.")
-		return nil, errors.New("Blockchain already exists.")
-	}
-
+func CreateBlockchain(dbFile string) (*Blockchain, error) {
 	var tip []byte
 
 	genesis := NewGenesisBlock()
@@ -50,7 +44,7 @@ func CreateBlockchain(address, nodeID string) (*Blockchain, error) {
 			return err
 		}
 
-		bBytes, err := genesis.MarshalBinary()
+		bBytes, err := genesis.Marshal()
 		if err != nil {
 			fmt.Printf("[CreateBlockchain] genesis.MarshalBinary error=%v\n", err)
 			return err
@@ -82,8 +76,8 @@ func CreateBlockchain(address, nodeID string) (*Blockchain, error) {
 func NewBlockchain(nodeID string) (*Blockchain, error) {
 	dbFile := fmt.Sprintf(dbFile, nodeID)
 	if utils.DBExists(dbFile) == false {
-		fmt.Println("Blockchain already exists.")
-		return nil, errors.New("Blockchain already exists.")
+		fmt.Println("Blockchain is not exists.")
+		return CreateBlockchain(dbFile)
 	}
 
 	var tip []byte
@@ -117,7 +111,7 @@ func (bc *Blockchain) AddBlock(block *Block) error {
 			return nil
 		}
 
-		blockData, err := block.MarshalBinary()
+		blockData, err := block.Marshal()
 		if err != nil {
 			return err
 		}
@@ -128,8 +122,8 @@ func (bc *Blockchain) AddBlock(block *Block) error {
 
 		lastHash := b.Get([]byte("l"))
 		lastBlockData := b.Get(lastHash)
-		lastBlock := new(Block)
-		err = lastBlock.UnmarshalBinary(lastBlockData)
+		lastBlock, err := UnmarshalBlock(lastBlockData)
+
 		if err != nil {
 			return err
 		}
@@ -158,7 +152,7 @@ func (bc *Blockchain) FindProposal(ID []byte) (messages.ProposalMassage, error) 
 	for {
 		block := bci.Next()
 
-		for _, p := range *block.ProposalSlice {
+		for _, p := range block.ProposalSlice {
 			if bytes.Compare(p.Body.Id, ID) == 0 {
 				return p, nil
 			}
@@ -182,12 +176,13 @@ func (bc *Blockchain) Iterator() *BlockchainIterator {
 // GetBestHeight returns the height of the latest block
 func (bc *Blockchain) GetBestHeight() (uint, error) {
 	lastBlock := new(Block)
+	var err error
 
-	err := bc.db.View(func(tx *bolt.Tx) error {
+	err = bc.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		lastHash := b.Get([]byte("l"))
 		blockData := b.Get(lastHash)
-		err := lastBlock.UnmarshalBinary(blockData)
+		lastBlock, err = UnmarshalBlock(blockData)
 		if err != nil {
 			return err
 		}
@@ -204,8 +199,9 @@ func (bc *Blockchain) GetBestHeight() (uint, error) {
 // GetBlock finds a block by its hash and returns it
 func (bc *Blockchain) GetBlock(blockHash []byte) (Block, error) {
 	block := new(Block)
+	var err error
 
-	err := bc.db.View(func(tx *bolt.Tx) error {
+	err = bc.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		blockData := b.Get(blockHash)
 
@@ -213,7 +209,7 @@ func (bc *Blockchain) GetBlock(blockHash []byte) (Block, error) {
 			return errors.New("Block is not found.")
 		}
 
-		err := block.UnmarshalBinary(blockData)
+		block, err = UnmarshalBlock(blockData)
 		if err != nil {
 			return err
 		}
@@ -249,6 +245,7 @@ func (bc *Blockchain) GetBlockHashes() [][]byte {
 func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error) {
 	var lastHash []byte
 	var lastHeight uint
+	var err error
 
 	for _, p := range proposals {
 		// TODO: ignore transaction if it's not valid
@@ -258,12 +255,12 @@ func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error
 	}
 
 	block := new(Block)
-	err := bc.db.View(func(tx *bolt.Tx) error {
+	err = bc.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		lastHash = b.Get([]byte("l"))
 
 		blockData := b.Get(lastHash)
-		err := block.UnmarshalBinary(blockData)
+		block, err = UnmarshalBlock(blockData)
 		if err != nil {
 			return err
 		}
@@ -280,7 +277,7 @@ func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error
 
 	err = bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
-		blockData, err := newBlock.MarshalBinary()
+		blockData, err := newBlock.Marshal()
 		if err != nil {
 			return err
 		}
@@ -328,7 +325,7 @@ func (bc *Blockchain) Get(key []byte) ([]byte, error) {
 	for {
 		block := bci.Next()
 
-		ps := ReverseSlice(*block.ProposalSlice)
+		ps := ReverseSlice(block.ProposalSlice)
 		for _, p := range ps {
 			if p.Body.ZoneName == string(key) {
 				data, err := p.MarshalBinary()

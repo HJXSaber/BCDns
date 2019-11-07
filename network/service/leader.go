@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 )
@@ -54,10 +53,10 @@ func NewLeader() *LeaderT {
 	msg := ViewRetrieveMsg{}
 	msgByte, err := json.Marshal(msg)
 	if err != nil {
-		log.Fatal("Leader init failed", err)
+		panic(err)
 	}
 	//TODO: leaderVote is undone
-	if service.CertificateAuthorityX509.GetNetworkSize() == 1 {
+	if service.CertificateAuthorityX509.GetNetworkSize() <= 2 {
 		leader.LeaderId, leader.TermId = 0, 0
 		go leader.Run()
 	} else {

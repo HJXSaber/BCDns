@@ -59,12 +59,3 @@ func TestMemberlistJoin(t *testing.T) {
 		time.Sleep(time.Second * 3)
 	}
 }
-
-type T struct {
-	tt []byte
-}
-
-func TestSlice(t *testing.T) {
-	var tt T
-	tt.tt = append(tt.tt, '0')
-}

@@ -85,6 +85,7 @@ func NewDnsNet() *DnsNet {
 
 	net.broadCasts = &memberlist.TransmitLimitedQueue{
 		NumNodes: func() int {
+			fmt.Println(net.Network.NumMembers())
 			return net.Network.NumMembers()
 		},
 		RetransmitMult: 3,
@@ -118,6 +119,11 @@ func (net *DnsNet) BroadcastMsg(jsonData []byte, t MessageTypeT) {
 			Msg:    msgByte,
 			Notify: nil,
 		})
+		node := net.Network.LocalNode()
+		err := net.Network.SendReliable(node, msgByte)
+		if err != nil {
+			fmt.Println("Broadcast msg failed", err)
+		}
 	}
 }
 
@@ -238,5 +244,11 @@ func (*Delegate) MergeRemoteState(buf []byte, join bool) {
 }
 
 func (*Delegate) ValidateCert(buf []byte) bool {
-	return service.CertificateAuthorityX509.VerifyCertificate(buf)
+	if !service.CertificateAuthorityX509.VerifyCertificate(buf) {
+		fmt.Printf("[ValidateCert] cert is invalid\n")
+		return false
+	} else {
+		fmt.Printf("[ValidateCert] cert is ok\n")
+		return true
+	}
 }

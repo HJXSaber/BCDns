@@ -13,13 +13,15 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 )
 
 var (
 	LocalPrivateName         = "LocalPrivate.pem"
-	RootCertificateName      = "RootCertificate.crt"
-	LocalCertificateName     = "LocalCertificate.crt"
+	RootCertificateName      = "RootCertificate.cer"
+	LocalCertificateName     = "LocalCertificate.cer"
 	CertificatesPath         = "../conf/"
 	CertificateAuthorityX509 *CAX509
 )
@@ -67,7 +69,7 @@ func init() {
 	}
 	for _, fileInfo := range dir {
 		fileName := fileInfo.Name()
-		ok, err := regexp.MatchString(`.*\.crt$`, fileName)
+		ok, err := regexp.MatchString(`.*\.cer$`, fileName)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -82,7 +84,7 @@ func init() {
 				panic(err)
 			}
 			certs[name] = *cert
-			insertCertificateByOrder(certsOrder, cert)
+			certsOrder = insertCertificateByOrder(certsOrder, cert)
 		}
 	}
 	nodeid := int64(-1)
@@ -112,10 +114,10 @@ func init() {
 func (*CAX509) Sign(msg []byte) []byte {
 	if key := loadPrivateKey2(); key != nil {
 		if digest, err := getDigest2(msg); err != nil {
-			fmt.Println(err)
+			fmt.Printf("[CAX509.Sign] getDigest2 error=%v\n", err)
 		} else {
 			if signature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, digest[:]); err != nil {
-				fmt.Println(err)
+				fmt.Printf("[CAX509.Sign] SignPKCS1v15 error=%v\n", err)
 			} else {
 				return signature
 			}
@@ -126,11 +128,13 @@ func (*CAX509) Sign(msg []byte) []byte {
 
 func (ca *CAX509) VerifySignature(sig, msg []byte, Id string) bool {
 	if cert, ok := ca.Certificates[Id]; ok {
-		publicKey := cert.PublicKey.(rsa.PublicKey)
+		fmt.Println("[VerifySignature] Find cert")
+		publicKey := cert.PublicKey.(*rsa.PublicKey)
+		fmt.Println("pub", publicKey)
 		if digest, err := getDigest2(msg); err != nil {
 			fmt.Println(err)
 		} else {
-			if err := rsa.VerifyPKCS1v15(&publicKey, crypto.SHA256, digest, sig); err == nil {
+			if err := rsa.VerifyPKCS1v15(publicKey, crypto.SHA256, digest, sig); err == nil {
 				return true
 			}
 		}
@@ -171,7 +175,8 @@ func (ca *CAX509) GetSeeds() []string {
 	var seeds []string
 	for _, cert := range ca.Certificates {
 		for _, ip := range cert.IPAddresses {
-			seeds = append(seeds, ip.String())
+			seeds = append(seeds, strings.Join([]string{ip.String(),
+				strconv.Itoa(conf.BCDnsConfig.Port)}, ":"))
 		}
 	}
 	return seeds
@@ -227,24 +232,24 @@ func (ca *CAX509) IsLeaderNode(id int64) bool {
 func loadPrivateKey2() *rsa.PrivateKey {
 	fileInfo, err := os.Stat(CertificatesPath + LocalPrivateName)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("[loadPrivateKey2] os.Stat error=%v\n", err)
 		return nil
 	}
 
 	content := make([]byte, fileInfo.Size())
 	if file, err := os.Open(CertificatesPath + LocalPrivateName); err != nil {
-		fmt.Println(err)
+		fmt.Printf("[loadPrivateKey2] os.Open error=%v\n", err)
 		return nil
 	} else {
 		_, err := file.Read(content)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("[loadPrivateKey2] os.Read error=%v\n", err)
 			return nil
 		}
 		block, _ := pem.Decode(content)
 		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("[loadPrivateKey2] ParsePKCS1PrivateKey error=%v\n", err)
 			return nil
 		}
 		return key
@@ -307,11 +312,13 @@ func getDigest2(msg []byte) ([]byte, error) {
 	return digest, nil
 }
 
-func insertCertificateByOrder(certs []*x509.Certificate, cert *x509.Certificate) {
+func insertCertificateByOrder(certs []*x509.Certificate, cert *x509.Certificate) []*x509.Certificate {
 	for i, c := range certs {
 		if c.SerialNumber.Cmp(cert.SerialNumber) > 0 {
 			certs = append(certs[:i+1], certs[i:]...)
 			certs[i] = cert
+			return certs
 		}
 	}
+	return append(certs, cert)
 }
