@@ -103,7 +103,7 @@ func (b *BlockMessage) VerifySignature() bool {
 }
 
 func (b *Block) Hash() []byte {
-	headerHash, _ := b.BlockHeader.Marshal()
+	headerHash, _ := b.BlockHeader.MarshalBlockHeader()
 	return utils.SHA256(headerHash)
 }
 
@@ -141,7 +141,7 @@ func (b *Block) GenerateMerkelRoot() []byte {
 	return merkell(ts)
 
 }
-func (b *Block) Marshal() ([]byte, error) {
+func (b *Block) MarshalBlock() ([]byte, error) {
 	data, err := json.Marshal(b)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func UnmarshalBlock(d []byte) (*Block, error) {
 	return b, nil
 }
 
-func (h *BlockHeader) Marshal() ([]byte, error) {
+func (h *BlockHeader) MarshalBlockHeader() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
 	if err := enc.Encode(h); err != nil {

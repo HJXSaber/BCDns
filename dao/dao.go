@@ -3,15 +3,17 @@ package dao
 import (
 	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
-	"reflect"
+	"sync"
 )
 
 var (
 	Dao *DAO
+	Db  *DB
 )
 
 type DAO struct {
 	// key:zonename value:proposalMessage
+	Mutex sync.Mutex
 	*Storage
 }
 
@@ -62,15 +64,13 @@ func NewStorage(storage ...DAOInterface) *Storage {
 	return storages
 }
 
-func (s *Storage) GetZoneName(name string) ([]byte, error) {
+func (s *DAO) GetZoneName(name string) ([]byte, error) {
+	s.Mutex.Lock()
+	defer s.Mutex.Unlock()
 	return s.GetZoneNameByIndex(name, 0)
 }
 
-var (
-	ErrNotFoundT = reflect.TypeOf(leveldb.ErrNotFound)
-)
-
-func (s *Storage) GetZoneNameByIndex(name string, index int) ([]byte, error) {
+func (s *DAO) GetZoneNameByIndex(name string, index int) ([]byte, error) {
 	if data, err := s.Storages[index].Get([]byte(name)); err == leveldb.ErrNotFound {
 		if index == len(s.Storages)-1 {
 			return nil, err
@@ -88,6 +88,9 @@ func (s *Storage) GetZoneNameByIndex(name string, index int) ([]byte, error) {
 	} else if err != nil {
 		return nil, err
 	} else {
+		if len(data) == 0 {
+			return nil, leveldb.ErrNotFound
+		}
 		return data, nil
 	}
 }

@@ -31,7 +31,7 @@ func main() {
 		panic("NewLeader failed")
 	}
 	fmt.Println("[Init Proposer]")
-	service2.Proposer = service2.NewProposer(10 * time.Second)
+	service2.Proposer = service2.NewProposer(15 * time.Second)
 	if service2.Proposer == nil {
 		panic("NewProposer failed")
 	}
@@ -60,11 +60,11 @@ func NewDao() (*dao2.DAO, error) {
 	if err != nil {
 		return nil, err
 	}
-	db, err := dao2.NewDB(conf.BCDnsConfig.HostName)
+	dao2.Db, err = dao2.NewDB(conf.BCDnsConfig.HostName)
 	if err != nil {
 		return nil, err
 	}
-	storage := dao2.NewStorage(db, blockChain2.BlockChain)
+	storage := dao2.NewStorage(dao2.Db, blockChain2.BlockChain)
 	return &dao2.DAO{
 		Storage: storage,
 	}, nil

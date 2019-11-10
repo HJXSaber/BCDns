@@ -1,6 +1,7 @@
 package blockChain
 
 import (
+	"BCDns_0.1/dao"
 	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
 	"bytes"
@@ -17,7 +18,6 @@ const blocksBucket = "blocks"
 var (
 	BlockChain         *Blockchain
 	LeaderProposalPool = new(messages.ProposalPool)
-	NodeProposalPool   = new(messages.ProposalPool)
 )
 
 // Blockchain implements interactions with a DB
@@ -44,7 +44,7 @@ func CreateBlockchain(dbFile string) (*Blockchain, error) {
 			return err
 		}
 
-		bBytes, err := genesis.Marshal()
+		bBytes, err := genesis.MarshalBlock()
 		if err != nil {
 			fmt.Printf("[CreateBlockchain] genesis.MarshalBinary error=%v\n", err)
 			return err
@@ -106,6 +106,15 @@ func (bc *Blockchain) Close() {
 
 // AddBlock saves the block into the blockchain
 func (bc *Blockchain) AddBlock(block *Block) error {
+	dao.Dao.Mutex.Lock()
+	defer dao.Dao.Mutex.Unlock()
+	for _, p := range block.ProposalSlice {
+		err := dao.Db.Delete([]byte(p.Body.ZoneName), nil)
+		if err != nil {
+			fmt.Printf("[AddBlock] Db.Delete error=%v\n", err)
+			return err
+		}
+	}
 	err := bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		blockInDb := b.Get(block.Hash())
@@ -114,7 +123,7 @@ func (bc *Blockchain) AddBlock(block *Block) error {
 			return nil
 		}
 
-		blockData, err := block.Marshal()
+		blockData, err := block.MarshalBlock()
 		if err != nil {
 			return err
 		}
@@ -280,7 +289,7 @@ func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error
 
 	err = bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
-		blockData, err := newBlock.Marshal()
+		blockData, err := newBlock.MarshalBlock()
 		if err != nil {
 			return err
 		}
@@ -327,7 +336,6 @@ func (bc *Blockchain) Get(key []byte) ([]byte, error) {
 
 	for {
 		block := bci.Next()
-
 		ps := ReverseSlice(block.ProposalSlice)
 		for _, p := range ps {
 			if p.Body.ZoneName == string(key) {

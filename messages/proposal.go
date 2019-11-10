@@ -25,7 +25,10 @@ type OperationType uint8
 const (
 	Add OperationType = iota
 	Del
+	Mod
 )
+
+const Dereliction = "No owner"
 
 type ProposalMassage struct {
 	Body      ProposalBody
@@ -35,6 +38,7 @@ type ProposalMassage struct {
 type ProposalBody struct {
 	Timestamp int64
 	PId       PId
+	Owner     string
 	Type      OperationType
 	ZoneName  string
 	Nonce     uint32 //Pow hashcode
@@ -44,28 +48,112 @@ type ProposalBody struct {
 
 func (p *ProposalMassage) ValidateAdd() bool {
 	if !service.CertificateAuthorityX509.Exits(p.Body.PId.Name) {
-		fmt.Printf("[Validate] Invalid HostName=%v", p.Body.PId.Name)
+		fmt.Printf("[ValidateAdd] Invalid HostName=%v", p.Body.PId.Name)
 		return false
 	}
 	bodyByte, err := p.Body.Hash()
 	if err != nil {
-		fmt.Printf("[Validate] json.Marshal failed err=%v\n", err)
+		fmt.Printf("[ValidateAdd] json.Marshal failed err=%v\n", err)
 		return false
 	}
 	if time.Now().Before(time.Unix(p.Body.Timestamp, 0)) {
-		fmt.Printf("[Validate] TimeStamp is invalid t=%v\n", p.Body.Timestamp)
+		fmt.Printf("[ValidateAdd] TimeStamp is invalid t=%v\n", p.Body.Timestamp)
 		return false
 	}
-	if _, err := dao.Dao.GetZoneName(p.Body.ZoneName); err != leveldb.ErrNotFound {
-		fmt.Printf("[Validate] ZoneName exits or get failed err=%v\n", err)
-		return false
+	blockProposal := new(ProposalMassage)
+	if data, err := dao.Dao.GetZoneName(p.Body.ZoneName); err != leveldb.ErrNotFound {
+		blockProposal, err = UnMarshalProposalMassage(data)
+		if err != nil {
+			fmt.Printf("[ValidateAdd] UnMarshalProposalMassage error=%v\n", err)
+			return false
+		}
+		if blockProposal.Body.Owner != Dereliction {
+			fmt.Printf("[ValidateAdd] ZoneName exits or get failed err=%v\n", err)
+			return false
+		}
 	}
 	if !service.CertificateAuthorityX509.VerifySignature(p.Signature, bodyByte, p.Body.PId.Name) {
-		fmt.Printf("[Validate] validate signature falied\n")
+		fmt.Printf("[ValidateAdd] validate signature falied\n")
 		return false
 	}
 	if !p.Body.ValidatePow() {
-		fmt.Printf("[Validate] validate Pow faliled\n")
+		fmt.Printf("[ValidateAdd] validate Pow faliled\n")
+		return false
+	}
+	return true
+}
+
+func (p *ProposalMassage) ValidateDel() bool {
+	if !service.CertificateAuthorityX509.Exits(p.Body.PId.Name) {
+		fmt.Printf("[ValidateDel] Invalid HostName=%v", p.Body.PId.Name)
+		return false
+	}
+	bodyByte, err := p.Body.Hash()
+	if err != nil {
+		fmt.Printf("[ValidateDel] json.Marshal failed err=%v\n", err)
+		return false
+	}
+	if time.Now().Before(time.Unix(p.Body.Timestamp, 0)) {
+		fmt.Printf("[ValidateDel] TimeStamp is invalid t=%v\n", p.Body.Timestamp)
+		return false
+	}
+	if p.Body.Owner != Dereliction {
+		fmt.Printf("[ValidateDel] Owner is wrong\n")
+		return false
+	}
+	blockProposal := new(ProposalMassage)
+	if data, err := dao.Dao.GetZoneName(p.Body.ZoneName); err == leveldb.ErrNotFound {
+		fmt.Printf("[ValidateDel] ZoneName is not exist\n")
+		return false
+	} else {
+		blockProposal, err = UnMarshalProposalMassage(data)
+		if err != nil {
+			fmt.Printf("[ValidateDel] UnMarshalProposalMassage error=%v\n", err)
+			return false
+		}
+	}
+	if p.Body.PId.Name != blockProposal.Body.Owner {
+		fmt.Println("[ValidateDel] Zonename %v is not belong to %v\n", p.Body.ZoneName, p.Body.PId.Name)
+		return false
+	}
+	if !service.CertificateAuthorityX509.VerifySignature(p.Signature, bodyByte, p.Body.PId.Name) {
+		fmt.Printf("[ValidateDel] validate signature falied\n")
+		return false
+	}
+	return true
+}
+
+func (p *ProposalMassage) ValidateMod() bool {
+	if !service.CertificateAuthorityX509.Exits(p.Body.PId.Name) {
+		fmt.Printf("[ValidateMod] Invalid HostName=%v", p.Body.PId.Name)
+		return false
+	}
+	bodyByte, err := p.Body.Hash()
+	if err != nil {
+		fmt.Printf("[ValidateMod] json.Marshal failed err=%v\n", err)
+		return false
+	}
+	if time.Now().Before(time.Unix(p.Body.Timestamp, 0)) {
+		fmt.Printf("[ValidateMod] TimeStamp is invalid t=%v\n", p.Body.Timestamp)
+		return false
+	}
+	blockProposal := new(ProposalMassage)
+	if data, err := dao.Dao.GetZoneName(p.Body.ZoneName); err == leveldb.ErrNotFound {
+		fmt.Printf("[ValidateMod] ZoneName is not exist\n")
+		return false
+	} else {
+		blockProposal, err = UnMarshalProposalMassage(data)
+		if err != nil {
+			fmt.Printf("[ValidateMod] UnMarshalProposalMassage error=%v\n", err)
+			return false
+		}
+	}
+	if p.Body.PId.Name != blockProposal.Body.Owner || p.Body.Owner != blockProposal.Body.Owner {
+		fmt.Printf("[ValidateMod] Zonename %v is not belong to %v\n", p.Body.ZoneName, p.Body.PId.Name)
+		return false
+	}
+	if !service.CertificateAuthorityX509.VerifySignature(p.Signature, bodyByte, p.Body.PId.Name) {
+		fmt.Printf("[ValidateMod] validate signature falied\n")
 		return false
 	}
 	return true
@@ -107,10 +195,7 @@ func (p *ProposalMassage) VerifySignature() bool {
 func (p *ProposalMassage) MarshalProposalMassage() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(p.Body); err != nil {
-		return nil, err
-	}
-	if err := enc.Encode(p.Signature); err != nil {
+	if err := enc.Encode(p); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -163,63 +248,84 @@ func Parse(data []byte) *ProposalMassage {
 	return &msg
 }
 
-func NewProposal(zoneName string, t OperationType) *ProposalMassage {
-	var err error
-	switch t {
-	case Add:
-		pId := PId{
+func NewProposal(zoneName string, t OperationType, values map[string]string) *ProposalMassage {
+	var (
+		err error
+		pId = PId{
 			SequenceNumber: xid.New().String(),
 			Name:           conf.BCDnsConfig.HostName,
 		}
-		body := ProposalBody{
+		body ProposalBody
+	)
+	switch t {
+	case Add:
+		body = ProposalBody{
 			Timestamp: time.Now().Unix(),
 			PId:       pId,
+			Owner:     conf.BCDnsConfig.HostName,
 			ZoneName:  zoneName,
 			Type:      Add,
 			Nonce:     0,
+			Values:    values,
 		}
 		err = body.GetPowHash()
 		if err != nil {
 			fmt.Printf("[NewProposal] GetPowHash Failed err=%v\n", err)
 			return nil
 		}
-		body.Id, err = body.Hash()
-		if err != nil {
-			fmt.Printf("[NewProposal] Hash Failed err=%v\n", err)
-			return nil
-		}
-		msg := &ProposalMassage{
-			Body: body,
-		}
-		err = msg.Sign()
-		if err != nil {
-			fmt.Printf("[NewProposal] msg.Sign error=%v\n", err)
-			return nil
-		}
-		return msg
 	case Del:
-		msg := ProposalBody{
+		body = ProposalBody{
 			Timestamp: time.Now().Unix(),
+			PId:       pId,
+			Owner:     Dereliction,
 			ZoneName:  zoneName,
+			Type:      Del,
+			Nonce:     0,
+			Values:    map[string]string{},
 		}
-		msgByte, err := json.Marshal(msg)
-		if err != nil {
-			fmt.Printf("[NewProposal] json.Marshal failed err=%v", err)
+	case Mod:
+		blockProposal := new(ProposalMassage)
+		if data, err := dao.Dao.GetZoneName(zoneName); err == leveldb.ErrNotFound {
+			fmt.Printf("[ValidateMod] ZoneName is not exist\n")
 			return nil
+		} else {
+			blockProposal, err = UnMarshalProposalMassage(data)
+			if err != nil {
+				fmt.Printf("[NewProposal] UnMarshalProposalMassage error=%v\n", err)
+				return nil
+			}
+			if blockProposal.Body.PId.Name == Dereliction {
+				fmt.Printf("[ValidateMod] ZoneName is not exist\n")
+				return nil
+			}
 		}
-		sig := service.CertificateAuthorityX509.Sign(msgByte)
-		if sig == nil {
-			fmt.Println("Generate proposal failed: sign failed")
-			return nil
-		}
-		return &ProposalMassage{
-			Body:      msg,
-			Signature: sig,
+		body = ProposalBody{
+			Timestamp: time.Now().Unix(),
+			PId:       pId,
+			Owner:     conf.BCDnsConfig.HostName,
+			ZoneName:  zoneName,
+			Type:      Mod,
+			Nonce:     0,
+			Values:    utils.CoverMap(blockProposal.Body.Values, values),
 		}
 	default:
 		fmt.Println("Unknown proposal type")
 		return nil
 	}
+	body.Id, err = body.Hash()
+	if err != nil {
+		fmt.Printf("[NewProposal] Hash Failed err=%v\n", err)
+		return nil
+	}
+	msg := &ProposalMassage{
+		Body: body,
+	}
+	err = msg.Sign()
+	if err != nil {
+		fmt.Printf("[NewProposal] msg.Sign error=%v\n", err)
+		return nil
+	}
+	return msg
 }
 
 func (p *ProposalBody) Hash() ([]byte, error) {
@@ -240,6 +346,10 @@ func (p *ProposalBody) Hash() ([]byte, error) {
 		return nil, err
 	}
 	if err = enc.Encode(p.PId); err != nil {
+		fmt.Printf("[Hash] Encode failed err=%v", err)
+		return nil, err
+	}
+	if err = enc.Encode(p.Owner); err != nil {
 		fmt.Printf("[Hash] Encode failed err=%v", err)
 		return nil, err
 	}

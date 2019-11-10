@@ -35,6 +35,7 @@ type ProposerInterface interface {
 type Order struct {
 	OptType  messages.OperationType
 	ZoneName string
+	Values   map[string]string
 }
 
 func (p *ProposerT) Run(done chan uint) {
@@ -55,7 +56,7 @@ func (p *ProposerT) Run(done chan uint) {
 			if !ok {
 				fmt.Printf("[Proposer.Run] proposal unexist %v", msg)
 			}
-			responsesI, err := p.AuditResponses.Get(proposal.Body.ZoneName)
+			responsesI, err := p.AuditResponses.Get(string(msg.ProposalHash))
 			if err != nil {
 				fmt.Printf("[Proposer.Run] ConcurrentMap error=%v\n", err)
 				continue
@@ -64,8 +65,8 @@ func (p *ProposerT) Run(done chan uint) {
 				responses[msg.Auditor] = msg
 				if service2.CertificateAuthorityX509.Check(len(responses)) {
 					p.Mutex.Lock()
-					p.Timers[string(proposal.Body.ZoneName)].Stop()
-					delete(p.Timers, string(proposal.Body.ZoneName))
+					p.Timers[string(msg.ProposalHash)].Stop()
+					delete(p.Timers, string(string(msg.ProposalHash)))
 					p.Mutex.Unlock()
 					auditedResponse, err := messages.NewAuditedProposal(*proposal, responses, service.Leader.TermId)
 					if err != nil {
@@ -73,15 +74,15 @@ func (p *ProposerT) Run(done chan uint) {
 						continue
 					}
 					p.Commit(auditedResponse)
-					_, err = p.ProposalResults.Put(proposal.Body.ZoneName, map[string]uint8{})
+					_, err = p.ProposalResults.Put(string(msg.ProposalHash), map[string]uint8{})
 					if err != nil {
 						fmt.Printf("[Proposer.Run] ConcurrentMap error=%v\n", err)
 						continue
 					}
-					p.Timers[string(proposal.Body.ZoneName)] = time.AfterFunc(p.TimeOut, func() {
+					p.Timers[string(msg.ProposalHash)] = time.AfterFunc(p.TimeOut, func() {
 						p.Mutex.Lock()
 						defer p.Mutex.Unlock()
-						resultsI, err := p.ProposalResults.Get(proposal.Body.ZoneName)
+						resultsI, err := p.ProposalResults.Get(string(msg.ProposalHash))
 						if err != nil {
 							fmt.Printf("[Proposer.Run] AuditResponseChan concurrentMap error=%v\n", err)
 							return
@@ -91,8 +92,10 @@ func (p *ProposerT) Run(done chan uint) {
 								fmt.Printf("[Proposer.Run] Proposal execute successfully %v\n", proposal)
 							} else {
 								//TODO: Proposal execute failed
+								fmt.Printf("[Proposer.Run] Proposal execute failed %v\n", proposal)
 							}
 						}
+						_, _ = p.ProposalResults.Remove(string(msg.ProposalHash))
 					})
 				}
 			}
@@ -107,7 +110,7 @@ func (p *ProposerT) Run(done chan uint) {
 			if !ok {
 				fmt.Printf("[Proposer.Run] proposal unexist %v", msg)
 			}
-			resultsI, err := p.ProposalResults.Get(proposal.Body.ZoneName)
+			resultsI, err := p.ProposalResults.Get(string(msg.ProposalHash))
 			if err != nil {
 				fmt.Printf("[Proposer.Run] AuditResponseChan concurrentMap error=%v\n", err)
 				return
@@ -116,8 +119,8 @@ func (p *ProposerT) Run(done chan uint) {
 				results[msg.From] = 0
 				if service2.CertificateAuthorityX509.Check(len(results)) {
 					p.Mutex.Lock()
-					p.Timers[string(proposal.Body.ZoneName)].Stop()
-					delete(p.Timers, string(proposal.Body.ZoneName))
+					p.Timers[string(msg.ProposalHash)].Stop()
+					delete(p.Timers, string(msg.ProposalHash))
 					p.Mutex.Unlock()
 					fmt.Printf("[Proposer.Run] Proposal execute successfully %v\n", proposal)
 				}
@@ -147,7 +150,7 @@ func (p *ProposerT) handleOrder(data []byte) {
 		fmt.Printf("[handleOrder] json.Unmarshal failed err=%v\n", err)
 		return
 	}
-	if proposal := messages.NewProposal(order.ZoneName, order.OptType); proposal != nil {
+	if proposal := messages.NewProposal(order.ZoneName, order.OptType, order.Values); proposal != nil {
 		proposalByte, err := json.Marshal(*proposal)
 		if err != nil {
 			fmt.Printf("[handleOrder] json.Marshal failed err=%v\n", err)
@@ -160,15 +163,15 @@ func (p *ProposerT) handleOrder(data []byte) {
 		}
 		p.Proposals[string(proposalHash)] = proposal
 		service.P2PNet.BroadcastMsg(proposalByte, service.Proposal)
-		_, err = p.AuditResponses.Put(proposal.Body.ZoneName, messages.ProposalAuditResponses{})
+		_, err = p.AuditResponses.Put(string(proposalHash), messages.ProposalAuditResponses{})
 		if err != nil {
 			fmt.Printf("[handleOrder] ConcurrentMap error=%v\n", err)
 			return
 		}
-		p.Timers[string(proposal.Body.ZoneName)] = time.AfterFunc(p.TimeOut, func() {
+		p.Timers[string(string(proposalHash))] = time.AfterFunc(p.TimeOut, func() {
 			p.Mutex.Lock()
 			defer p.Mutex.Unlock()
-			responsesI, err := p.AuditResponses.Get(proposal.Body.ZoneName)
+			responsesI, err := p.AuditResponses.Get(string(proposalHash))
 			if err != nil {
 				fmt.Printf("[handleOrder] ConcurrentMap error=%v\n", err)
 				return
@@ -183,8 +186,10 @@ func (p *ProposerT) handleOrder(data []byte) {
 					p.Commit(auditedResponse)
 				} else {
 					//TODO: Collect endorsement failed
+					fmt.Printf("[Proposer.Run] Collect endorsement failed %v\n", proposal)
 				}
 			}
+			_, _ = p.AuditResponses.Remove(string(proposalHash))
 		})
 	} else {
 		fmt.Printf("[handleOrder] Generate proposal failed\n")

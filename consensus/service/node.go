@@ -30,12 +30,7 @@ func (n NodeT) Run(done chan uint) {
 				fmt.Printf("[Node.Run] json.Unmarshal failed err=%v\n", err)
 				continue
 			}
-			switch proposal.Body.Type {
-			case messages.Add:
-				go handleAddProposal(&proposal)
-			case messages.Del:
-				go handleDelProposal(proposal)
-			}
+			handleProposal(&proposal)
 		case msgByte := <-service.BlockChan:
 			blockMsg := new(blockChain.BlockMessage)
 			err := json.Unmarshal(msgByte, blockMsg)
@@ -56,9 +51,22 @@ func (n NodeT) Run(done chan uint) {
 	}
 }
 
-func handleAddProposal(proposal *messages.ProposalMassage) {
-	if !proposal.ValidateAdd() {
-		return
+func handleProposal(proposal *messages.ProposalMassage) {
+	switch proposal.Body.Type {
+	case messages.Add:
+		if !proposal.ValidateAdd() {
+			return
+		}
+	case messages.Del:
+		if !proposal.ValidateDel() {
+			return
+		}
+	case messages.Mod:
+		if !proposal.ValidateMod() {
+			return
+		}
+	default:
+		fmt.Println("[handleProposal] Unknown proposal type")
 	}
 	if auditResponse := messages.NewProposalAuditResponse(*proposal); auditResponse != nil {
 		auditResponseByte, err := json.Marshal(auditResponse)
@@ -67,43 +75,28 @@ func handleAddProposal(proposal *messages.ProposalMassage) {
 			return
 		}
 		service.P2PNet.SendTo(auditResponseByte, service.AuditResponse, proposal.Body.PId.Name)
-		blockChain.NodeProposalPool.AddProposal(*proposal)
 	}
-}
-
-func handleDelProposal(proposal messages.ProposalMassage) {
-
 }
 
 func ProcessBlock(block *blockChain.Block) {
-	proposalsPool := new(messages.ProposalPool)
+	err := blockChain.BlockChain.AddBlock(block)
+	if err != nil {
+		fmt.Printf("[ProcessBlock] error=%v\n", err)
+		return
+	}
 	for _, p := range block.ProposalSlice {
-		if blockChain.NodeProposalPool.Exits(p) {
-			msg, err := messages.NewProposalResult(p)
-			if err != nil {
-				fmt.Printf("[ProcessBlock] Generate proposalResult failed err=%v\n", err)
-				continue
-			}
-			msgByte, err := json.Marshal(msg)
-			if err != nil {
-				fmt.Printf("[ProcessBlock] json.Marshal failed err=%v\n", err)
-				continue
-			}
-			service.P2PNet.SendTo(msgByte, service.ProposalResult, p.Body.PId.Name)
-			proposalsPool.AddProposal(p)
+		msg, err := messages.NewProposalResult(p)
+		if err != nil {
+			fmt.Printf("[ProcessBlock] Generate proposalResult failed err=%v\n", err)
+			continue
 		}
+		msgByte, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Printf("[ProcessBlock] json.Marshal failed err=%v\n", err)
+			continue
+		}
+		service.P2PNet.SendTo(msgByte, service.ProposalResult, p.Body.PId.Name)
 	}
-	newBlock, err := blockChain.BlockChain.MineBlock(proposalsPool.ProposalSlice)
-	if err != nil {
-		fmt.Printf("[ProcessBlock] error=%v\n", err)
-		return
-	}
-	err = blockChain.BlockChain.AddBlock(newBlock)
-	if err != nil {
-		fmt.Printf("[ProcessBlock] error=%v\n", err)
-		return
-	}
-	blockChain.NodeProposalPool.Clear()
 }
 
 func NewNode() *NodeT {
