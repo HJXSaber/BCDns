@@ -84,8 +84,8 @@ func ProcessBlock(block *blockChain.Block) {
 		fmt.Printf("[ProcessBlock] error=%v\n", err)
 		return
 	}
-	for _, p := range block.ProposalSlice {
-		msg, err := messages.NewProposalResult(p)
+	for _, p := range block.AuditedProposalSlice {
+		msg, err := messages.NewProposalResult(p.Proposal)
 		if err != nil {
 			fmt.Printf("[ProcessBlock] Generate proposalResult failed err=%v\n", err)
 			continue
@@ -95,7 +95,7 @@ func ProcessBlock(block *blockChain.Block) {
 			fmt.Printf("[ProcessBlock] json.Marshal failed err=%v\n", err)
 			continue
 		}
-		service.P2PNet.SendTo(msgByte, service.ProposalResult, p.Body.PId.Name)
+		service.P2PNet.SendTo(msgByte, service.ProposalResult, p.Proposal.Body.PId.Name)
 	}
 }
 

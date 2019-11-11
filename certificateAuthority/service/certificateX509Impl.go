@@ -59,6 +59,7 @@ type CAX509 struct {
 	Certificates      map[string]x509.Certificate
 	CertificatesOrder []*x509.Certificate
 	NodeId            int64
+	PrivateKey        *rsa.PrivateKey
 }
 
 func init() {
@@ -103,27 +104,31 @@ func init() {
 		fmt.Printf("[Load certificates]\n")
 		panic("Can not find local certificate")
 	}
+	pKey := loadPrivateKey2()
+	if pKey == nil {
+		panic("[Load certificates] loadPrivateKey2 failed")
+	}
 	CertificateAuthorityX509 = &CAX509{
 		Mutex:             sync.Mutex{},
 		Certificates:      certs,
 		CertificatesOrder: certsOrder,
 		NodeId:            nodeid,
+		PrivateKey:        pKey,
 	}
 }
 
-func (*CAX509) Sign(msg []byte) []byte {
-	if key := loadPrivateKey2(); key != nil {
-		if digest, err := getDigest2(msg); err != nil {
-			fmt.Printf("[CAX509.Sign] getDigest2 error=%v\n", err)
+func (ca *CAX509) Sign(msg []byte) []byte {
+	if digest, err := getDigest2(msg); err != nil {
+		fmt.Printf("[CAX509.Sign] getDigest2 error=%v\n", err)
+		return nil
+	} else {
+		if signature, err := rsa.SignPKCS1v15(rand.Reader, ca.PrivateKey, crypto.SHA256, digest[:]); err != nil {
+			fmt.Printf("[CAX509.Sign] SignPKCS1v15 error=%v\n", err)
+			return nil
 		} else {
-			if signature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, digest[:]); err != nil {
-				fmt.Printf("[CAX509.Sign] SignPKCS1v15 error=%v\n", err)
-			} else {
-				return signature
-			}
+			return signature
 		}
 	}
-	return nil
 }
 
 func (ca *CAX509) VerifySignature(sig, msg []byte, Id string) bool {

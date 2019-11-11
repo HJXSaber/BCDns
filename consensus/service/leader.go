@@ -27,6 +27,17 @@ func NewLeaderNode() *LeaderNodeT {
 
 func (l *LeaderNodeT) Run(done chan uint) {
 	defer close(done)
+	interrupt := make(chan int)
+	interruptTimer := make(chan int)
+	go func() {
+		for true {
+			select {
+			case <-time.After(10 * time.Second):
+				interrupt <- 1
+			case <-interruptTimer:
+			}
+		}
+	}()
 	for true {
 		select {
 		case msgByte := <-service.CommitChan:
@@ -53,19 +64,24 @@ func (l *LeaderNodeT) Run(done chan uint) {
 					fmt.Printf("[LeaderNode] Signatures is illegal\n")
 					continue
 				}
-				blockChain.LeaderProposalPool.AddProposal(msg.Proposal)
+				blockChain.LeaderAuditedProposalPool.AddProposal(msg)
+				if blockChain.LeaderAuditedProposalPool.Len() >= 100 {
+					interrupt <- 1
+					interruptTimer <- 1
+				}
 			}
-		case <-time.After(10 * time.Second):
+		case <-interrupt:
 			if service.Leader.IsLeader() {
-				if blockChain.LeaderProposalPool.Len() <= 0 {
+				if blockChain.LeaderAuditedProposalPool.Len() <= 0 {
 					fmt.Printf("[LeaderNode] CurrentBlock is empty\n")
 					continue
 				}
-				b, err := blockChain.BlockChain.MineBlock(blockChain.LeaderProposalPool.ProposalSlice)
+				b, err := blockChain.BlockChain.MineBlock(blockChain.LeaderAuditedProposalPool.AuditedProposalSlice)
 				if err != nil {
 					fmt.Printf("[LeaderNode] MineBlock err=%v\n", err)
 					continue
 				}
+				//b := blockChain.NewBlock(blockChain.LeaderAuditedProposalPool.AuditedProposalSlice, []byte("test"), 0)
 				blockMessage, err := blockChain.NewBlockMessage(b)
 				if err != nil {
 					fmt.Printf("[LeaderNode] NewBlockMessage failed err=%v\n", err)
@@ -77,7 +93,7 @@ func (l *LeaderNodeT) Run(done chan uint) {
 					continue
 				}
 				service.P2PNet.BroadcastMsg(blockBytes, service.Block)
-				blockChain.LeaderProposalPool.Clear()
+				blockChain.LeaderAuditedProposalPool.Clear()
 			}
 		}
 	}

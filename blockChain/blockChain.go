@@ -16,8 +16,9 @@ const dbFile = "blockchain_%s.db"
 const blocksBucket = "blocks"
 
 var (
-	BlockChain         *Blockchain
-	LeaderProposalPool = new(messages.ProposalPool)
+	BlockChain                *Blockchain
+	LeaderAuditedProposalPool = new(messages.AuditedProposalPool)
+	AbandonedProposalPool     = new(messages.ProposalPool)
 )
 
 // Blockchain implements interactions with a DB
@@ -49,16 +50,20 @@ func CreateBlockchain(dbFile string) (*Blockchain, error) {
 			fmt.Printf("[CreateBlockchain] genesis.MarshalBinary error=%v\n", err)
 			return err
 		}
-		err = b.Put(genesis.Hash(), bBytes)
+		key, err := genesis.Hash()
+		if err != nil {
+			return err
+		}
+		err = b.Put(key, bBytes)
 		if err != nil {
 			return err
 		}
 
-		err = b.Put([]byte("l"), genesis.Hash())
+		err = b.Put([]byte("l"), key)
 		if err != nil {
 			return err
 		}
-		tip = genesis.Hash()
+		tip = key
 
 		return nil
 	})
@@ -76,7 +81,7 @@ func CreateBlockchain(dbFile string) (*Blockchain, error) {
 func NewBlockchain(nodeID string) (*Blockchain, error) {
 	dbFile := fmt.Sprintf(dbFile, nodeID)
 	if utils.DBExists(dbFile) == false {
-		fmt.Println("Blockchain is not exists.")
+		fmt.Println("[NewBlockchain]Blockchain is not exists.")
 		return CreateBlockchain(dbFile)
 	}
 	var tip []byte
@@ -108,8 +113,8 @@ func (bc *Blockchain) Close() {
 func (bc *Blockchain) AddBlock(block *Block) error {
 	dao.Dao.Mutex.Lock()
 	defer dao.Dao.Mutex.Unlock()
-	for _, p := range block.ProposalSlice {
-		err := dao.Db.Delete([]byte(p.Body.ZoneName), nil)
+	for _, p := range block.AuditedProposalSlice {
+		err := dao.Db.Delete([]byte(p.Proposal.Body.ZoneName), nil)
 		if err != nil {
 			fmt.Printf("[AddBlock] Db.Delete error=%v\n", err)
 			return err
@@ -117,7 +122,11 @@ func (bc *Blockchain) AddBlock(block *Block) error {
 	}
 	err := bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
-		blockInDb := b.Get(block.Hash())
+		key, err := block.Hash()
+		if err != nil {
+			return err
+		}
+		blockInDb := b.Get(key)
 
 		if blockInDb != nil {
 			return nil
@@ -127,7 +136,7 @@ func (bc *Blockchain) AddBlock(block *Block) error {
 		if err != nil {
 			return err
 		}
-		err = b.Put(block.Hash(), blockData)
+		err = b.Put(key, blockData)
 		if err != nil {
 			return err
 		}
@@ -141,11 +150,11 @@ func (bc *Blockchain) AddBlock(block *Block) error {
 		}
 
 		if block.Height > lastBlock.Height {
-			err = b.Put([]byte("l"), block.Hash())
+			err = b.Put([]byte("l"), key)
 			if err != nil {
 				return err
 			}
-			bc.tip = block.Hash()
+			bc.tip = key
 		}
 
 		return nil
@@ -158,14 +167,14 @@ func (bc *Blockchain) AddBlock(block *Block) error {
 }
 
 // FindTransaction finds a transaction by its ID
-func (bc *Blockchain) FindProposal(ID []byte) (messages.ProposalMassage, error) {
+func (bc *Blockchain) FindProposal(ID []byte) (messages.AuditedProposal, error) {
 	bci := bc.Iterator()
 
 	for {
 		block := bci.Next()
 
-		for _, p := range block.ProposalSlice {
-			if bytes.Compare(p.Body.Id, ID) == 0 {
+		for _, p := range block.AuditedProposalSlice {
+			if bytes.Compare(p.Proposal.Body.Id, ID) == 0 {
 				return p, nil
 			}
 		}
@@ -175,7 +184,7 @@ func (bc *Blockchain) FindProposal(ID []byte) (messages.ProposalMassage, error) 
 		}
 	}
 
-	return messages.ProposalMassage{}, errors.New("Transaction is not found")
+	return messages.AuditedProposal{}, errors.New("Transaction is not found")
 }
 
 // Iterator returns a BlockchainIterat
@@ -243,7 +252,11 @@ func (bc *Blockchain) GetBlockHashes() [][]byte {
 	for {
 		block := bci.Next()
 
-		blocks = append(blocks, block.Hash())
+		hash, err := block.Hash()
+		if err != nil {
+			continue
+		}
+		blocks = append(blocks, hash)
 
 		if len(block.PrevBlock) == 0 {
 			break
@@ -254,7 +267,7 @@ func (bc *Blockchain) GetBlockHashes() [][]byte {
 }
 
 // MineBlock mines a new block with the provided transactions
-func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error) {
+func (bc *Blockchain) MineBlock(proposals messages.AuditedProposalSlice) (*Block, error) {
 	var lastHash []byte
 	var lastHeight uint
 	var err error
@@ -286,6 +299,9 @@ func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error
 	}
 
 	newBlock := NewBlock(proposals, lastHash, lastHeight+1)
+	if newBlock == nil {
+		return nil, errors.New("[MineBlock] NewBlock failed")
+	}
 
 	err = bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
@@ -293,17 +309,21 @@ func (bc *Blockchain) MineBlock(proposals messages.ProposalSlice) (*Block, error
 		if err != nil {
 			return err
 		}
-		err = b.Put(newBlock.Hash(), blockData)
+		key, err := newBlock.Hash()
+		if err != nil {
+			return err
+		}
+		err = b.Put(key, blockData)
 		if err != nil {
 			return err
 		}
 
-		err = b.Put([]byte("l"), newBlock.Hash())
+		err = b.Put([]byte("l"), key)
 		if err != nil {
 			return err
 		}
 
-		bc.tip = newBlock.Hash()
+		bc.tip = key
 
 		return nil
 	})
@@ -320,7 +340,7 @@ func (bc *Blockchain) FindDomain(name string) (*messages.ProposalMassage, error)
 	for {
 		block := bci.Next()
 
-		if p := block.ProposalSlice.FindByZoneName(name); p != nil {
+		if p := block.AuditedProposalSlice.FindByZoneName(name); p != nil {
 			return p, nil
 		}
 
@@ -336,10 +356,10 @@ func (bc *Blockchain) Get(key []byte) ([]byte, error) {
 
 	for {
 		block := bci.Next()
-		ps := ReverseSlice(block.ProposalSlice)
+		ps := ReverseSlice(block.AuditedProposalSlice)
 		for _, p := range ps {
-			if p.Body.ZoneName == string(key) {
-				data, err := p.MarshalProposalMassage()
+			if p.Proposal.Body.ZoneName == string(key) {
+				data, err := p.Proposal.MarshalProposalMassage()
 				if err != nil {
 					return nil, err
 				}
@@ -359,8 +379,8 @@ func (bc *Blockchain) Set(key, value []byte) error {
 	return nil
 }
 
-func ReverseSlice(s messages.ProposalSlice) messages.ProposalSlice {
-	ss := make(messages.ProposalSlice, len(s))
+func ReverseSlice(s messages.AuditedProposalSlice) messages.AuditedProposalSlice {
+	ss := make(messages.AuditedProposalSlice, len(s))
 	for i, j := 0, len(s)-1; i <= j; i, j = i+1, j-1 {
 		ss[i], ss[j] = s[j], s[i]
 	}

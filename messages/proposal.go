@@ -548,6 +548,43 @@ func (m AuditedProposal) VerifySignatures() bool {
 	return false
 }
 
+type AuditedProposalPool struct {
+	Mutex sync.Mutex
+	AuditedProposalSlice
+}
+
+type AuditedProposalSlice []AuditedProposal
+
+func (pool *AuditedProposalPool) Len() int {
+	return len(pool.AuditedProposalSlice)
+}
+
+func (pool *AuditedProposalPool) Exits(pm AuditedProposal) bool {
+	for _, p := range pool.AuditedProposalSlice {
+		if reflect.DeepEqual(p.Signature, pm.Signature) {
+			return true
+		}
+	}
+	return false
+}
+
+func (pool *AuditedProposalPool) AddProposal(pm AuditedProposal) {
+	pool.AuditedProposalSlice = append(pool.AuditedProposalSlice, pm)
+}
+
+func (pool *AuditedProposalPool) Clear() {
+	pool.AuditedProposalSlice = AuditedProposalSlice{}
+}
+
+func (s *AuditedProposalSlice) FindByZoneName(name string) *ProposalMassage {
+	for _, p := range *s {
+		if p.Proposal.Body.ZoneName == name {
+			return &p.Proposal
+		}
+	}
+	return nil
+}
+
 type ProposalResult struct {
 	ProposalHash []byte
 	From         string
