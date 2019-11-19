@@ -43,7 +43,7 @@ func (bs BlockSlice) PreviousBlock() *Block {
 
 type BlockMessage struct {
 	Block
-	AbandonedProposal messages.ProposalSlice
+	AbandonedProposal messages.AuditedProposalSlice
 }
 
 type Block struct {

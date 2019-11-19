@@ -7,6 +7,7 @@ import (
 	"BCDns_0.1/network/service"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 )
 
@@ -76,6 +77,9 @@ func (l *LeaderNodeT) Run(done chan uint) {
 					fmt.Printf("[LeaderNode] CurrentBlock is empty\n")
 					continue
 				}
+				//validP, abandonedP := CheckProposal(*blockChain.LeaderAuditedProposalPool)
+				//fmt.Println(validP)
+				//fmt.Println(abandonedP)
 				b, err := blockChain.BlockChain.MineBlock(blockChain.LeaderAuditedProposalPool.AuditedProposalSlice)
 				if err != nil {
 					fmt.Printf("[LeaderNode] MineBlock err=%v\n", err)
@@ -97,4 +101,50 @@ func (l *LeaderNodeT) Run(done chan uint) {
 			}
 		}
 	}
+}
+
+func CheckProposal(proposals messages.AuditedProposalPool) (messages.AuditedProposalSlice,
+	messages.AuditedProposalSlice) {
+	filter := make(map[string]messages.AuditedProposalSlice)
+	abandoneP := messages.AuditedProposalPool{}
+	validP := messages.AuditedProposalPool{}
+	for _, p := range proposals.AuditedProposalSlice {
+		if fp, ok := filter[p.Proposal.Body.ZoneName]; !ok {
+			filter[p.Proposal.Body.ZoneName] = append(filter[p.Proposal.Body.ZoneName], p)
+			validP.AddProposal(p)
+		} else {
+			drop := false
+			for _, tmpP := range filter[p.Proposal.Body.ZoneName] {
+				if reflect.DeepEqual(p.Proposal.Body.Id, tmpP.Proposal.Body.Id) {
+					drop = true
+					break
+				}
+			}
+			if !drop {
+				//TODO: Two conflicted proposal
+				tmpP := fp[len(fp)-1]
+				switch p.Proposal.Body.Type {
+				case messages.Add:
+					if tmpP.Proposal.Body.Owner != messages.Dereliction {
+						abandoneP.AddProposal(p)
+					} else {
+						validP.AddProposal(p)
+					}
+				case messages.Mod:
+					if tmpP.Proposal.Body.Owner != p.Proposal.Body.Owner || tmpP.Proposal.Body.Owner != p.Proposal.Body.PId.Name {
+						abandoneP.AddProposal(p)
+					} else {
+						validP.AddProposal(p)
+					}
+				case messages.Del:
+					if p.Proposal.Body.Owner != messages.Dereliction || tmpP.Proposal.Body.Owner != p.Proposal.Body.PId.Name {
+						abandoneP.AddProposal(p)
+					} else {
+						validP.AddProposal(p)
+					}
+				}
+			}
+		}
+	}
+	return validP.AuditedProposalSlice, abandoneP.AuditedProposalSlice
 }

@@ -1,8 +1,7 @@
 package blockChain
 
 import (
-	"log"
-
+	"fmt"
 	"github.com/boltdb/bolt"
 )
 
@@ -13,7 +12,7 @@ type BlockchainIterator struct {
 }
 
 // Next returns next block starting from the tip
-func (i *BlockchainIterator) Next() *Block {
+func (i *BlockchainIterator) Next() (*Block, error) {
 	var (
 		block *Block
 		err   error
@@ -31,10 +30,11 @@ func (i *BlockchainIterator) Next() *Block {
 	})
 
 	if err != nil {
-		log.Panic(err)
+		fmt.Printf("[Next] error=%v\n", err)
+		return nil, err
 	}
 
 	i.currentHash = block.PrevBlock
 
-	return block
+	return block, nil
 }

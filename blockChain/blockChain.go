@@ -171,7 +171,10 @@ func (bc *Blockchain) FindProposal(ID []byte) (messages.AuditedProposal, error) 
 	bci := bc.Iterator()
 
 	for {
-		block := bci.Next()
+		block, err := bci.Next()
+		if err != nil {
+			return messages.AuditedProposal{}, err
+		}
 
 		for _, p := range block.AuditedProposalSlice {
 			if bytes.Compare(p.Proposal.Body.Id, ID) == 0 {
@@ -250,7 +253,10 @@ func (bc *Blockchain) GetBlockHashes() [][]byte {
 	bci := bc.Iterator()
 
 	for {
-		block := bci.Next()
+		block, err := bci.Next()
+		if err != nil {
+			return nil
+		}
 
 		hash, err := block.Hash()
 		if err != nil {
@@ -303,33 +309,33 @@ func (bc *Blockchain) MineBlock(proposals messages.AuditedProposalSlice) (*Block
 		return nil, errors.New("[MineBlock] NewBlock failed")
 	}
 
-	err = bc.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(blocksBucket))
-		blockData, err := newBlock.MarshalBlock()
-		if err != nil {
-			return err
-		}
-		key, err := newBlock.Hash()
-		if err != nil {
-			return err
-		}
-		err = b.Put(key, blockData)
-		if err != nil {
-			return err
-		}
-
-		err = b.Put([]byte("l"), key)
-		if err != nil {
-			return err
-		}
-
-		bc.tip = key
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
+	//err = bc.db.Update(func(tx *bolt.Tx) error {
+	//	b := tx.Bucket([]byte(blocksBucket))
+	//	blockData, err := newBlock.MarshalBlock()
+	//	if err != nil {
+	//		return err
+	//	}
+	//	key, err := newBlock.Hash()
+	//	if err != nil {
+	//		return err
+	//	}
+	//	err = b.Put(key, blockData)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	err = b.Put([]byte("l"), key)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	bc.tip = key
+	//
+	//	return nil
+	//})
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	return newBlock, nil
 }
@@ -338,7 +344,10 @@ func (bc *Blockchain) FindDomain(name string) (*messages.ProposalMassage, error)
 	bci := bc.Iterator()
 
 	for {
-		block := bci.Next()
+		block, err := bci.Next()
+		if err != nil {
+			return nil, err
+		}
 
 		if p := block.AuditedProposalSlice.FindByZoneName(name); p != nil {
 			return p, nil
@@ -355,7 +364,10 @@ func (bc *Blockchain) Get(key []byte) ([]byte, error) {
 	bci := bc.Iterator()
 
 	for {
-		block := bci.Next()
+		block, err := bci.Next()
+		if err != nil {
+			return nil, err
+		}
 		ps := ReverseSlice(block.AuditedProposalSlice)
 		for _, p := range ps {
 			if p.Proposal.Body.ZoneName == string(key) {
