@@ -74,7 +74,7 @@ func handleProposal(proposal *messages.ProposalMassage) {
 			fmt.Printf("[handleAddProposal] json.Marshal failed err=%v\n", err)
 			return
 		}
-		service.P2PNet.SendTo(auditResponseByte, service.AuditResponse, proposal.Body.PId.Name)
+		service.Net.SendTo(auditResponseByte, service.Endorsement, proposal.Body.PId.Name)
 	}
 }
 
@@ -95,7 +95,7 @@ func ProcessBlock(block *blockChain.Block) {
 			fmt.Printf("[ProcessBlock] json.Marshal failed err=%v\n", err)
 			continue
 		}
-		service.P2PNet.SendTo(msgByte, service.ProposalResult, p.Proposal.Body.PId.Name)
+		service.Net.SendTo(msgByte, service.ProposalResult, p.Proposal.Body.PId.Name)
 	}
 }
 

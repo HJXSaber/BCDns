@@ -13,7 +13,6 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 )
@@ -178,8 +177,7 @@ func (ca *CAX509) GetSeeds() []string {
 	var seeds []string
 	for _, cert := range ca.Certificates {
 		for _, ip := range cert.IPAddresses {
-			seeds = append(seeds, strings.Join([]string{ip.String(),
-				strconv.Itoa(conf.BCDnsConfig.Port)}, ":"))
+			seeds = append(seeds, strings.Join([]string{ip.String(), conf.BCDnsConfig.Port}, ":"))
 		}
 	}
 	return seeds

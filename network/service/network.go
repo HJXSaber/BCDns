@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/HJXSaber/memberlist"
 	"log"
+	"strconv"
 )
 
 var (
@@ -23,7 +24,7 @@ type MessageTypeT uint8
 
 const (
 	Proposal MessageTypeT = iota + 1
-	AuditResponse
+	Endorsement
 	ViewChange
 	ViewChangeResult
 	RetrieveLeader
@@ -31,6 +32,7 @@ const (
 	Commit
 	Block
 	ProposalResult
+	PrepareM
 )
 
 type Massage struct {
@@ -39,7 +41,7 @@ type Massage struct {
 }
 
 var (
-	AuditResponseChan          chan []byte
+	EndorsementChan            chan []byte
 	ProposalChan               chan []byte
 	ViewChangeMsgChan          chan []byte
 	ViewChangeResultChan       chan []byte
@@ -51,7 +53,7 @@ var (
 )
 
 func init() {
-	AuditResponseChan = make(chan []byte, 1024)
+	EndorsementChan = make(chan []byte, 1024)
 	ProposalChan = make(chan []byte, 1024)
 	ViewChangeMsgChan = make(chan []byte, 1024)
 	ViewChangeResultChan = make(chan []byte, 1024)
@@ -65,7 +67,7 @@ func init() {
 func NewDnsNet() *DnsNet {
 	net := new(DnsNet)
 	config := memberlist.DefaultLANConfig()
-	config.BindPort = conf.BCDnsConfig.Port
+	config.BindPort, _ = strconv.Atoi(conf.BCDnsConfig.Port)
 	config.Delegate = &Delegate{}
 	config.Name = conf.BCDnsConfig.HostName
 
@@ -204,8 +206,8 @@ func (*Delegate) NotifyMsg(data []byte) {
 	switch msg.MessageType {
 	case Proposal:
 		ProposalChan <- msg.Payload
-	case AuditResponse:
-		AuditResponseChan <- msg.Payload
+	case Endorsement:
+		EndorsementChan <- msg.Payload
 	case ViewChange:
 		ViewChangeMsgChan <- msg.Payload
 	case ViewChangeResult:

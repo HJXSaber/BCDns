@@ -642,3 +642,41 @@ func NewProposalResult(p ProposalMassage) (*ProposalResult, error) {
 	}
 	return &msg, nil
 }
+
+type BlockCommit struct {
+	From      string
+	BlockHash []byte
+	Signature []byte
+}
+
+func (b BlockCommit) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(b.From); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(b.BlockHash); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (b BlockCommit) Sign() ([]byte, error) {
+	hash, err := b.Hash()
+	if err != nil {
+		return nil, err
+	}
+
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		return sig, nil
+	}
+	return nil, errors.New("[BlockCommit] Get Signature failed")
+}
+
+func (b BlockCommit) VerifySignature() bool {
+	hash, err := b.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(b.Signature, hash, b.From)
+}

@@ -13,7 +13,7 @@ type Config struct {
 	CAPort int64
 
 	//system info
-	Port     int
+	Port     string
 	HostName string
 
 	ProposalBufferSize int
@@ -44,7 +44,7 @@ func init() {
 		log.Fatal("Read system config failed", err)
 	}
 
-	BCDnsConfig.Port = viper.GetInt("PORT")
+	BCDnsConfig.Port = viper.GetString("PORT")
 	BCDnsConfig.HostName = viper.GetString("HOSTNAME")
 	BCDnsConfig.ProposalBufferSize = 10000
 	BCDnsConfig.ProposalOvertime = time.Second

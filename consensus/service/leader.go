@@ -96,7 +96,7 @@ func (l *LeaderNodeT) Run(done chan uint) {
 					fmt.Printf("[LeaderNode] CurrentBlock marshal failed err=%v\n", err)
 					continue
 				}
-				service.P2PNet.BroadcastMsg(blockBytes, service.Block)
+				service.Net.BroadCast(blockBytes, service.Block)
 				blockChain.LeaderAuditedProposalPool.Clear()
 			}
 		}

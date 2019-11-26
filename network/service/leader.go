@@ -60,7 +60,7 @@ func NewLeader() *LeaderT {
 		leader.LeaderId, leader.TermId = 0, 0
 		go leader.Run()
 	} else {
-		P2PNet.BroadcastMsg(msgByte, RetrieveLeader)
+		Net.BroadCast(msgByte, RetrieveLeader)
 		go leader.Run()
 		select {
 		case leader.State = <-leader.StateChan:
@@ -132,7 +132,7 @@ func (leader *LeaderT) Run() {
 				fmt.Printf("[ProcessRetrieveMsg] json.Marshal failed err=%v\n", err)
 				continue
 			}
-			P2PNet.SendTo(responseByte, RetrieveLeaderResponse, msg.From)
+			Net.SendTo(responseByte, RetrieveLeaderResponse, msg.From)
 		case msgByte := <-RetrieveLeaderResponseChan:
 			var msg ViewInfo
 			err := json.Unmarshal(msgByte, &msg)

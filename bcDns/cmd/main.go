@@ -21,9 +21,9 @@ func main() {
 	}
 	defer blockChain2.BlockChain.Close()
 	fmt.Println("[Init NetWork]")
-	service3.P2PNet = service3.NewDnsNet()
-	if service3.P2PNet == nil {
-		panic("NewDnsNet failed")
+	service3.Net = service3.NewDNet()
+	if service3.Net == nil {
+		panic("NewDNet failed")
 	}
 	fmt.Println("[Init Leader]")
 	service3.Leader = service3.NewLeader()

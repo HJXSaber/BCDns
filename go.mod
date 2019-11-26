@@ -10,6 +10,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/izqui/helpers v0.0.0-20150821122028-c69cdb8bbd19
+	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/rs/xid v1.2.1
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
 	github.com/spf13/viper v1.4.0

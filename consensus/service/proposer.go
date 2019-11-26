@@ -45,7 +45,7 @@ func (p *ProposerT) Run(done chan uint) {
 		select {
 		case msgByte := <-p.OrderChan:
 			p.handleOrder(msgByte)
-		case msgByte := <-service.AuditResponseChan:
+		case msgByte := <-service.EndorsementChan:
 			var msg messages.ProposalAuditResponse
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
@@ -162,7 +162,7 @@ func (p *ProposerT) handleOrder(data []byte) {
 			return
 		}
 		p.Proposals[string(proposalHash)] = proposal
-		service.P2PNet.BroadcastMsg(proposalByte, service.Proposal)
+		service.Net.BroadCast(proposalByte, service.Proposal)
 		_, err = p.AuditResponses.Put(string(proposalHash), messages.ProposalAuditResponses{})
 		if err != nil {
 			fmt.Printf("[handleOrder] ConcurrentMap error=%v\n", err)
@@ -202,7 +202,7 @@ func (p *ProposerT) Commit(data *messages.AuditedProposal) {
 		fmt.Printf("[Commit] json.Marshal failed err=%v\n", err)
 		return
 	}
-	service.P2PNet.SendToLeader(jsonData, service.Commit)
+	service.Net.SendToLeader(jsonData, service.Commit)
 }
 
 func NewProposer(timeOut time.Duration) *ProposerT {
