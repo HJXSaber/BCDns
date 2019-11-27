@@ -46,7 +46,7 @@ func (p *ProposerT) Run(done chan uint) {
 		case msgByte := <-p.OrderChan:
 			p.handleOrder(msgByte)
 		case msgByte := <-service.EndorsementChan:
-			var msg messages.ProposalAuditResponse
+			var msg messages.Endorsement
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
 				fmt.Printf("[Proposer.Run] json.Unmarshal failed err=%v\n", err)
@@ -68,12 +68,12 @@ func (p *ProposerT) Run(done chan uint) {
 					p.Timers[string(msg.ProposalHash)].Stop()
 					delete(p.Timers, string(string(msg.ProposalHash)))
 					p.Mutex.Unlock()
-					auditedResponse, err := messages.NewAuditedProposal(*proposal, responses, service.Leader.TermId)
+					endorsements, err := messages.NewAuditedProposal(*proposal, responses, service.Leader.TermId)
 					if err != nil {
 						fmt.Printf("[Proposer.Run] NewAuditedProposal err=%v\n", err)
 						continue
 					}
-					p.Commit(auditedResponse)
+					p.Commit(endorsements)
 					_, err = p.ProposalResults.Put(string(msg.ProposalHash), map[string]uint8{})
 					if err != nil {
 						fmt.Printf("[Proposer.Run] ConcurrentMap error=%v\n", err)
@@ -196,13 +196,13 @@ func (p *ProposerT) handleOrder(data []byte) {
 	}
 }
 
-func (p *ProposerT) Commit(data *messages.AuditedProposal) {
+func (p *ProposerT) Commit(data *messages.Endorsements) {
 	jsonData, err := json.Marshal(*data)
 	if err != nil {
 		fmt.Printf("[Commit] json.Marshal failed err=%v\n", err)
 		return
 	}
-	service.Net.SendToLeader(jsonData, service.Commit)
+	service.Net.BroadCast(jsonData, service.Commit)
 }
 
 func NewProposer(timeOut time.Duration) *ProposerT {

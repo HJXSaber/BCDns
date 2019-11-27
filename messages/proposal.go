@@ -213,7 +213,7 @@ func UnMarshalProposalMassage(data []byte) (*ProposalMassage, error) {
 type PId struct {
 	//Name is hostname
 	Name           string
-	NodeId         int64
+	//NodeId         int64
 	SequenceNumber string
 }
 
@@ -428,20 +428,20 @@ func (s *ProposalSlice) FindByZoneName(name string) *ProposalMassage {
 	return nil
 }
 
-type ProposalAuditResponse struct {
+type Endorsement struct {
 	ProposalHash []byte
 	Auditor      string
 	Signature    []byte
 }
 
-func NewProposalAuditResponse(proposal ProposalMassage) *ProposalAuditResponse {
+func NewProposalAuditResponse(proposal ProposalMassage) *Endorsement {
 	proposalHash, err := proposal.Body.Hash()
 	if err != nil {
 		fmt.Printf("[NewProposalAuditResponse] generate failed err=%v\n", err)
 		return nil
 	}
 	if sig := service.CertificateAuthorityX509.Sign(proposalHash); sig != nil {
-		return &ProposalAuditResponse{
+		return &Endorsement{
 			ProposalHash: proposalHash,
 			Auditor:      conf.BCDnsConfig.HostName,
 			Signature:    sig,
@@ -451,18 +451,18 @@ func NewProposalAuditResponse(proposal ProposalMassage) *ProposalAuditResponse {
 	return nil
 }
 
-func (pr *ProposalAuditResponse) Verify() bool {
+func (pr *Endorsement) Verify() bool {
 	return service.CertificateAuthorityX509.VerifySignature(pr.Signature, pr.ProposalHash, pr.Auditor)
 }
 
-type ProposalAuditResponses map[string]ProposalAuditResponse
+type ProposalAuditResponses map[string]Endorsement
 
 func (prs *ProposalAuditResponses) Check() bool {
 
 	return len(*prs) > 2*service.CertificateAuthorityX509.GetF()
 }
 
-type AuditedProposal struct {
+type Endorsements struct {
 	TermId     int64
 	From       string
 	Proposal   ProposalMassage
@@ -470,9 +470,9 @@ type AuditedProposal struct {
 	Signature  []byte
 }
 
-func NewAuditedProposal(p ProposalMassage, responses ProposalAuditResponses, termid int64) (*AuditedProposal, error) {
+func NewAuditedProposal(p ProposalMassage, responses ProposalAuditResponses, termid int64) (*Endorsements, error) {
 	var err error
-	msg := AuditedProposal{
+	msg := Endorsements{
 		TermId:     termid,
 		From:       conf.BCDnsConfig.HostName,
 		Proposal:   p,
@@ -488,7 +488,7 @@ func NewAuditedProposal(p ProposalMassage, responses ProposalAuditResponses, ter
 	return &msg, nil
 }
 
-func (m AuditedProposal) Hash() ([]byte, error) {
+func (m Endorsements) Hash() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
 	if err := enc.Encode(m.TermId); err != nil {
@@ -506,7 +506,7 @@ func (m AuditedProposal) Hash() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (m AuditedProposal) Sign() ([]byte, error) {
+func (m Endorsements) Sign() ([]byte, error) {
 	hash, err := m.Hash()
 	if err != nil {
 		return nil, err
@@ -517,7 +517,7 @@ func (m AuditedProposal) Sign() ([]byte, error) {
 	return nil, errors.New("Generate signature failed")
 }
 
-func (m AuditedProposal) VerifySignature() bool {
+func (m Endorsements) VerifySignature() bool {
 	hash, err := m.Hash()
 	if err != nil {
 		return false
@@ -529,7 +529,7 @@ func (m AuditedProposal) VerifySignature() bool {
 	return false
 }
 
-func (m AuditedProposal) VerifySignatures() bool {
+func (m Endorsements) VerifySignatures() bool {
 	count := 0
 	hash, err := m.Proposal.Body.Hash()
 	if err != nil {
@@ -553,13 +553,13 @@ type AuditedProposalPool struct {
 	AuditedProposalSlice
 }
 
-type AuditedProposalSlice []AuditedProposal
+type AuditedProposalSlice []Endorsements
 
 func (pool *AuditedProposalPool) Len() int {
 	return len(pool.AuditedProposalSlice)
 }
 
-func (pool *AuditedProposalPool) Exits(pm AuditedProposal) bool {
+func (pool *AuditedProposalPool) Exits(pm Endorsements) bool {
 	for _, p := range pool.AuditedProposalSlice {
 		if reflect.DeepEqual(p.Signature, pm.Signature) {
 			return true
@@ -568,8 +568,10 @@ func (pool *AuditedProposalPool) Exits(pm AuditedProposal) bool {
 	return false
 }
 
-func (pool *AuditedProposalPool) AddProposal(pm AuditedProposal) {
-	pool.AuditedProposalSlice = append(pool.AuditedProposalSlice, pm)
+func (pool *AuditedProposalPool) AddProposal(pm Endorsements) {
+	if !pool.Exits(pm) {
+		pool.AuditedProposalSlice = append(pool.AuditedProposalSlice, pm)
+	}
 }
 
 func (pool *AuditedProposalPool) Clear() {

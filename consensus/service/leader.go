@@ -43,7 +43,7 @@ func (l *LeaderNodeT) Run(done chan uint) {
 		select {
 		case msgByte := <-service.CommitChan:
 			if service.Leader.IsLeader() {
-				var msg messages.AuditedProposal
+				var msg messages.Endorsements
 				err := json.Unmarshal(msgByte, &msg)
 				if err != nil {
 					fmt.Printf("[LeaderNode] json.Unmarshal failed err=%v\n", err)
@@ -66,10 +66,12 @@ func (l *LeaderNodeT) Run(done chan uint) {
 					continue
 				}
 				blockChain.LeaderAuditedProposalPool.AddProposal(msg)
-				if blockChain.LeaderAuditedProposalPool.Len() >= 100 {
+				if blockChain.LeaderAuditedProposalPool.Len() >= blockChain.BlockMaxSize {
 					interrupt <- 1
 					interruptTimer <- 1
 				}
+			} else {
+				service.Net.SendToLeader(msgByte, service.Commit)
 			}
 		case <-interrupt:
 			if service.Leader.IsLeader() {
@@ -77,21 +79,18 @@ func (l *LeaderNodeT) Run(done chan uint) {
 					fmt.Printf("[LeaderNode] CurrentBlock is empty\n")
 					continue
 				}
-				//validP, abandonedP := CheckProposal(*blockChain.LeaderAuditedProposalPool)
-				//fmt.Println(validP)
-				//fmt.Println(abandonedP)
-				b, err := blockChain.BlockChain.MineBlock(blockChain.LeaderAuditedProposalPool.AuditedProposalSlice)
+				validP, abandonedP := CheckProposal(*blockChain.LeaderAuditedProposalPool)
+				b, err := blockChain.BlockChain.MineBlock(validP)
 				if err != nil {
 					fmt.Printf("[LeaderNode] MineBlock err=%v\n", err)
 					continue
 				}
-				//b := blockChain.NewBlock(blockChain.LeaderAuditedProposalPool.AuditedProposalSlice, []byte("test"), 0)
-				blockMessage, err := blockChain.NewBlockMessage(b)
+				blockMessage, err := blockChain.NewBlockMessage(b, abandonedP)
 				if err != nil {
 					fmt.Printf("[LeaderNode] NewBlockMessage failed err=%v\n", err)
 					continue
 				}
-				blockBytes, err := json.Marshal(*blockMessage)
+				blockBytes, err := json.Marshal(blockMessage)
 				if err != nil {
 					fmt.Printf("[LeaderNode] CurrentBlock marshal failed err=%v\n", err)
 					continue
@@ -103,8 +102,7 @@ func (l *LeaderNodeT) Run(done chan uint) {
 	}
 }
 
-func CheckProposal(proposals messages.AuditedProposalPool) (messages.AuditedProposalSlice,
-	messages.AuditedProposalSlice) {
+func CheckProposal(proposals messages.AuditedProposalPool) (messages.AuditedProposalSlice, messages.AuditedProposalSlice) {
 	filter := make(map[string]messages.AuditedProposalSlice)
 	abandoneP := messages.AuditedProposalPool{}
 	validP := messages.AuditedProposalPool{}

@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+const BlockMaxSize  = 50
+
 type BlockSlice []Block
 
 //
@@ -87,8 +89,8 @@ func (b *Block) VerifyBlock() bool {
 }
 
 //TODO
-func NewBlockMessage(b *Block) (*BlockMessage, error) {
-	msg := &BlockMessage{
+func NewBlockMessage(b *Block, abandonedP messages.AuditedProposalSlice) (BlockMessage, error) {
+	msg := BlockMessage{
 		Block: *b,
 	}
 	return msg, nil
