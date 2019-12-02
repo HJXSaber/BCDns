@@ -32,7 +32,7 @@ const (
 	Commit
 	Block
 	ProposalResult
-	ProposalConfirm
+	ProposalConfirmT
 )
 
 type Massage struct {

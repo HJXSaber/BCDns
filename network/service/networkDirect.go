@@ -274,7 +274,7 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 		msg = MessageRetrieveLeader{
 			Payload: payload,
 		}
-	case ProposalConfirm:
+	case ProposalConfirmT:
 		msg = MessageProposalConfirm{
 			Payload:payload,
 		}

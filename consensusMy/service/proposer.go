@@ -83,7 +83,8 @@ func (p *ProposerT) handleOrder(msg Order) {
 			return
 		}
 		p.Replys.Store(string(proposal.Body.Id), map[string]uint8{})
-
+		ctx := context.Background()
+		go p.timer(ctx)
 	}
 }
 
@@ -116,9 +117,9 @@ func (p *ProposerT) timer(ctx context.Context, proposal ProposalMessage) {
 				logger.Warningf("[Proposer.timer] json.Marshal error=%v", err)
 				return
 			}
-			service2.Net.BroadCast(confirmMsgByte, )
+			service2.Net.BroadCast(confirmMsgByte, service2.ProposalConfirmT)
 		}
 	case <- ctx.Done():
-
+		fmt.Printf("[Proposer.timer] haha")
 	}
 }
