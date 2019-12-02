@@ -32,7 +32,7 @@ const (
 	Commit
 	Block
 	ProposalResult
-	PrepareM
+	ProposalConfirm
 )
 
 type Massage struct {
@@ -50,6 +50,7 @@ var (
 	CommitChan                 chan []byte
 	BlockChan                  chan []byte
 	ProposalResultChan         chan []byte
+	ProposalConfirmChan chan []byte
 )
 
 func init() {
@@ -62,6 +63,7 @@ func init() {
 	CommitChan = make(chan []byte, 1024)
 	BlockChan = make(chan []byte, 1024)
 	ProposalResultChan = make(chan []byte, 1024)
+	ProposalConfirmChan = make(chan []byte, 1024)
 }
 
 func NewDnsNet() *DnsNet {

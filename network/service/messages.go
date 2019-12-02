@@ -73,3 +73,7 @@ type MessageViewChange struct {
 type MessageRetrieveLeader struct {
 	Payload []byte
 }
+
+type MessageProposalConfirm struct {
+	Payload []byte
+}

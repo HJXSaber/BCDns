@@ -17,7 +17,7 @@ type Config struct {
 	HostName string
 
 	ProposalBufferSize int
-	ProposalOvertime   time.Duration
+	ProposalTimeout   time.Duration
 
 	LeaderMsgBufferSize int
 	PowDifficult        int
@@ -47,5 +47,5 @@ func init() {
 	BCDnsConfig.Port = viper.GetString("PORT")
 	BCDnsConfig.HostName = viper.GetString("HOSTNAME")
 	BCDnsConfig.ProposalBufferSize = 10000
-	BCDnsConfig.ProposalOvertime = time.Second
+	BCDnsConfig.ProposalTimeout = time.Second
 }

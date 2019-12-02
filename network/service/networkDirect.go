@@ -110,6 +110,8 @@ func (n *DNet) handleConn(conn net.Conn) {
 			ViewChangeMsgChan <- message.Payload
 		case MessageRetrieveLeader:
 			RetrieveLeaderMsgChan <- message.Payload
+		case MessageProposalConfirm:
+			ProposalConfirmChan <- message.Payload
 		default:
 			logger.Warningf("[Network] handleConn Unknown message type")
 		}
@@ -271,6 +273,10 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 	case RetrieveLeader:
 		msg = MessageRetrieveLeader{
 			Payload: payload,
+		}
+	case ProposalConfirm:
+		msg = MessageProposalConfirm{
+			Payload:payload,
 		}
 	default:
 		return nil, errors.New("[ConvertMessage] Unknown messageType")
