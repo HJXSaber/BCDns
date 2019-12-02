@@ -89,10 +89,10 @@ func (p *ProposerT) Run(done chan uint) {
 						}
 						if results, ok := resultsI.(map[string]uint8); ok {
 							if service2.CertificateAuthorityX509.Check(len(results)) {
-								fmt.Printf("[Proposer.Run] Proposal execute successfully %v\n", proposal)
+								fmt.Printf("[Proposer.Run] ProposalMsgT execute successfully %v\n", proposal)
 							} else {
-								//TODO: Proposal execute failed
-								fmt.Printf("[Proposer.Run] Proposal execute failed %v\n", proposal)
+								//TODO: ProposalMsgT execute failed
+								fmt.Printf("[Proposer.Run] ProposalMsgT execute failed %v\n", proposal)
 							}
 						}
 						_, _ = p.ProposalResults.Remove(string(msg.ProposalHash))
@@ -122,7 +122,7 @@ func (p *ProposerT) Run(done chan uint) {
 					p.Timers[string(msg.ProposalHash)].Stop()
 					delete(p.Timers, string(msg.ProposalHash))
 					p.Mutex.Unlock()
-					fmt.Printf("[Proposer.Run] Proposal execute successfully %v\n", proposal)
+					fmt.Printf("[Proposer.Run] ProposalMsgT execute successfully %v\n", proposal)
 				}
 			}
 		}
@@ -162,7 +162,7 @@ func (p *ProposerT) handleOrder(data []byte) {
 			return
 		}
 		p.Proposals[string(proposalHash)] = proposal
-		service.Net.BroadCast(proposalByte, service.Proposal)
+		service.Net.BroadCast(proposalByte, service.ProposalMsgT)
 		_, err = p.AuditResponses.Put(string(proposalHash), messages.ProposalAuditResponses{})
 		if err != nil {
 			fmt.Printf("[handleOrder] ConcurrentMap error=%v\n", err)

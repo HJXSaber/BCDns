@@ -3,6 +3,7 @@ package blockChain
 import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
+	service2 "BCDns_0.1/consensusMy/service"
 	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
 	"bytes"
@@ -46,12 +47,17 @@ func (bs BlockSlice) PreviousBlock() *Block {
 type BlockMessage struct {
 	Block
 	AbandonedProposal messages.AuditedProposalSlice
+	Signature []byte
 }
 
 type Block struct {
 	BlockHeader
-	Signature []byte
-	messages.AuditedProposalSlice
+	service2.ProposalMessage
+}
+
+type BlockValidated struct {
+	Block
+	Certs map[string][]byte
 }
 
 type BlockHeader struct {

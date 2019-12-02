@@ -250,7 +250,7 @@ func (n *DNet) SendToLeader(payload []byte, t MessageTypeT) {
 func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 	var msg Message
 	switch t {
-	case Proposal:
+	case ProposalMsgT:
 		msg = MessageProposal{
 			Payload: payload,
 		}

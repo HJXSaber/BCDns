@@ -3,7 +3,6 @@ package service
 import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
-	"BCDns_0.1/messages"
 	service2 "BCDns_0.1/network/service"
 	"context"
 	"encoding/json"
@@ -33,7 +32,7 @@ func NewProposer() *ProposerT {
 }
 
 func init() {
-	logger = logging.MustGetLogger("consensusMy/Proposer")
+	logger = logging.MustGetLogger("consensusMy")
 }
 
 func (p *ProposerT) Run(done chan uint) {
@@ -51,12 +50,13 @@ func (p *ProposerT) Run(done chan uint) {
 				continue
 			}
 			p.handleOrder(msg)
+
 		}
 	}
 }
 
 type Order struct {
-	OptType  messages.OperationType
+	OptType  OperationType
 	ZoneName string
 	Values   map[string]string
 }
@@ -76,26 +76,30 @@ func (p *ProposerT) ReceiveOrder() {
 }
 
 func (p *ProposerT) handleOrder(msg Order) {
-	if proposal := messages.NewProposal(msg.ZoneName, msg.OptType, msg.Values); proposal != nil {
+	if proposal := NewProposal(msg.ZoneName, msg.OptType, msg.Values); proposal != nil {
 		proposalByte, err := json.Marshal(proposal)
 		if err != nil {
 			logger.Warningf("[handleOrder] json.Marshal error=%v", err)
 			return
 		}
-		p.Replys.Store(string(proposal.Body.Id), map[string]uint8{})
+		p.Replys.Store(string(proposal.Id), map[string]uint8{})
 		ctx := context.Background()
-		go p.timer(ctx)
+		go p.timer(ctx, proposal)
+		p.Contexts.Store(string(proposal.Id), ctx)
+		service2.Net.BroadCast(proposalByte, service2.ProposalMsgT)
+	} else {
+		logger.Warningf("[handleOrder] NewProposal failed")
 	}
 }
 
-func (p *ProposerT) timer(ctx context.Context, proposal ProposalMessage) {
+func (p *ProposerT) timer(ctx context.Context, proposal *ProposalMessage) {
 	select {
 	case <- time.After(conf.BCDnsConfig.ProposalTimeout):
 		p.ReplyMutex.Lock()
 		defer p.ReplyMutex.Unlock()
 		repliesI, ok := p.Replys.Load(string(proposal.Id))
 		if !ok {
-			logger.Warningf("[Proposer.timer] Proposal is not exist")
+			logger.Warningf("[Proposer.timer] ProposalMsgT is not exist")
 			return
 		}
 		replies, ok := repliesI.(map[string]uint8)
@@ -104,7 +108,7 @@ func (p *ProposerT) timer(ctx context.Context, proposal ProposalMessage) {
 			return
 		}
 		if service.CertificateAuthorityX509.Check(len(replies)) {
-			fmt.Printf("[Proposer.timer] Proposal=%v execute successfully", string(proposal.Id))
+			fmt.Printf("[Proposer.timer] ProposalMsgT=%v execute successfully", string(proposal.Id))
 			p.Replys.Delete(string(proposal.Id))
 		} else {
 			confirmMsg := NewProposalConfirm(proposal.Id)

@@ -23,7 +23,7 @@ type DnsNet struct {
 type MessageTypeT uint8
 
 const (
-	Proposal MessageTypeT = iota + 1
+	ProposalMsgT MessageTypeT = iota + 1
 	Endorsement
 	ViewChange
 	ViewChangeResult
@@ -206,7 +206,7 @@ func (*Delegate) NotifyMsg(data []byte) {
 		return
 	}
 	switch msg.MessageType {
-	case Proposal:
+	case ProposalMsgT:
 		ProposalChan <- msg.Payload
 	case Endorsement:
 		EndorsementChan <- msg.Payload

@@ -124,6 +124,17 @@ func (msg *ProposalMessage) GetPow() error {
 	return nil
 }
 
+func (msg *ProposalMessage) ValidatePow() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	if utils.CheckProofOfWork(utils.ProposalPOW, hash) {
+		return true
+	}
+	return false
+}
+
 func (msg *ProposalMessage) Hash() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
@@ -234,3 +245,118 @@ func (msg *ProposalConfirm) VerifySignature() bool {
 	}
 	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
+
+func (msg *ProposalMessage) ValidateAdd() bool {
+	if !service.CertificateAuthorityX509.Exits(msg.From) {
+		logger.Warningf("[ValidateAdd] Invalid HostName=%v", msg.From)
+		return false
+	}
+	bodyByte, err := msg.Hash()
+	if err != nil {
+		logger.Warningf("[ValidateAdd] json.Marshal failed err=%v", err)
+		return false
+	}
+	if time.Now().Before(time.Unix(msg.TimeStamp, 0)) {
+		logger.Warningf("[ValidateAdd] TimeStamp is invalid t=%v", msg.TimeStamp)
+		return false
+	}
+	blockProposal := new(ProposalMessage)
+	if data, err := dao.Dao.GetZoneName(msg.ZoneName); err != leveldb.ErrNotFound {
+		blockProposal, err = UnMarshalProposalMessage(data)
+		if err != nil {
+			logger.Warningf("[ValidateAdd] UnMarshalProposalMassage error=%v", err)
+			return false
+		}
+		if blockProposal.Owner != messages.Dereliction {
+			logger.Warningf("[ValidateAdd] ZoneName exits or get failed err=%v", err)
+			return false
+		}
+	}
+	if !service.CertificateAuthorityX509.VerifySignature(msg.Signature, bodyByte, msg.From) {
+		logger.Warningf("[ValidateAdd] validate signature failed")
+		return false
+	}
+	if !msg.ValidatePow() {
+		logger.Warningf("[ValidateAdd] validate Pow failed")
+		return false
+	}
+	return true
+}
+
+func (msg *ProposalMessage) ValidateDel() bool {
+	if !service.CertificateAuthorityX509.Exits(msg.From) {
+		logger.Warningf("[ValidateDel] Invalid HostName=%v", msg.From)
+		return false
+	}
+	bodyByte, err := msg.Hash()
+	if err != nil {
+		logger.Warningf("[ValidateDel] json.Marshal failed err=%v", err)
+		return false
+	}
+	if time.Now().Before(time.Unix(msg.TimeStamp, 0)) {
+		logger.Warningf("[ValidateDel] TimeStamp is invalid t=%v", msg.TimeStamp)
+		return false
+	}
+	if msg.Owner != messages.Dereliction {
+		logger.Warningf("[ValidateDel] Owner is wrong")
+		return false
+	}
+	blockProposal := new(ProposalMessage)
+	if data, err := dao.Dao.GetZoneName(msg.ZoneName); err == leveldb.ErrNotFound {
+		logger.Warningf("[ValidateDel] ZoneName is not exist")
+		return false
+	} else {
+		blockProposal, err = UnMarshalProposalMessage(data)
+		if err != nil {
+			logger.Warningf("[ValidateDel] UnMarshalProposalMassage error=%v", err)
+			return false
+		}
+	}
+	if msg.From != blockProposal.Owner {
+		logger.Warningf("[ValidateDel] Zonename %v is not belong to %v", msg.ZoneName, msg.From)
+		return false
+	}
+	if !service.CertificateAuthorityX509.VerifySignature(msg.Signature, bodyByte, msg.From) {
+		logger.Warningf("[ValidateDel] validate signature failed")
+		return false
+	}
+	return true
+}
+
+func (msg *ProposalMessage) ValidateMod() bool {
+	if !service.CertificateAuthorityX509.Exits(msg.From) {
+		logger.Warningf("[ValidateMod] Invalid HostName=%v", msg.From)
+		return false
+	}
+	bodyByte, err := msg.Hash()
+	if err != nil {
+		logger.Warningf("[ValidateMod] json.Marshal failed err=%v", err)
+		return false
+	}
+	if time.Now().Before(time.Unix(msg.TimeStamp, 0)) {
+		logger.Warningf("[ValidateMod] TimeStamp is invalid t=%v", msg.TimeStamp)
+		return false
+	}
+	blockProposal := new(ProposalMessage)
+	if data, err := dao.Dao.GetZoneName(msg.ZoneName); err == leveldb.ErrNotFound {
+		logger.Warningf("[ValidateMod] ZoneName is not exist")
+		return false
+	} else {
+		blockProposal, err = UnMarshalProposalMessage(data)
+		if err != nil {
+			logger.Warningf("[ValidateMod] UnMarshalProposalMassage error=%v", err)
+			return false
+		}
+	}
+	if msg.From != blockProposal.Owner || msg.Owner != blockProposal.Owner {
+		logger.Warningf("[ValidateMod] ZoneName %v is not belong to %v", msg.ZoneName, msg.From)
+		return false
+	}
+	if !service.CertificateAuthorityX509.VerifySignature(msg.Signature, bodyByte, msg.From) {
+		logger.Warningf("[ValidateMod] validate signature failed")
+		return false
+	}
+	return true
+}
+
+type ProposalMessageSlice []ProposalMessage
