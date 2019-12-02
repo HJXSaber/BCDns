@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
+	"sync"
 	"time"
 )
 
@@ -360,3 +361,29 @@ func (msg *ProposalMessage) ValidateMod() bool {
 }
 
 type ProposalMessageSlice []ProposalMessage
+
+type ProposalMessagePool struct {
+	Mutex sync.Mutex
+	ProposalMessageSlice
+	ProposalState map[string]uint8
+}
+
+func (pool *ProposalMessagePool) AddProposal(p ProposalMessage) {
+	if !pool.Exist(p) {
+		pool.ProposalMessageSlice = append(pool.ProposalMessageSlice, p)
+	}
+}
+
+func (pool *ProposalMessagePool) Exist(p ProposalMessage) bool {
+	_, ok := pool.ProposalState[string(p.Id)]
+	return ok
+}
+
+func (pool *ProposalMessagePool) Clear() {
+	pool.ProposalMessageSlice = ProposalMessageSlice{}
+	pool.ProposalState = make(map[string]uint8)
+}
+
+func (pool *ProposalMessagePool) Size() int {
+	return len(pool.ProposalMessageSlice)
+}
