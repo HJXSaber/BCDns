@@ -44,24 +44,17 @@ func (bs BlockSlice) PreviousBlock() *Block {
 	}
 }
 
-type BlockMessage struct {
-	Block
-	AbandonedProposal messages.AuditedProposalSlice
-	Signature []byte
-}
-
 type Block struct {
 	BlockHeader
-	service2.ProposalMessage
+	service2.ProposalMessageSlice
 }
 
 type BlockValidated struct {
 	Block
-	Certs map[string][]byte
+	Signatures map[string][]byte
 }
 
 type BlockHeader struct {
-	From       string
 	PrevBlock  []byte
 	MerkelRoot []byte
 	Timestamp  int64
@@ -70,7 +63,6 @@ type BlockHeader struct {
 
 func NewBlock(proposals messages.AuditedProposalSlice, previousBlock []byte, height uint) *Block {
 	header := BlockHeader{
-		From:      conf.BCDnsConfig.HostName,
 		PrevBlock: previousBlock,
 		Height:    height,
 		Timestamp: time.Now().Unix(),
@@ -92,34 +84,6 @@ func NewGenesisBlock() *Block {
 func (b *Block) VerifyBlock() bool {
 	merkel := b.GenerateMerkelRoot()
 	return reflect.DeepEqual(merkel, b.BlockHeader.MerkelRoot)
-}
-
-//TODO
-func NewBlockMessage(b *Block, abandonedP messages.AuditedProposalSlice) (BlockMessage, error) {
-	msg := BlockMessage{
-		Block: *b,
-	}
-	return msg, nil
-}
-
-func (b *Block) Sign() error {
-	hash, err := b.Hash()
-	if err != nil {
-		return err
-	}
-	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
-		b.Signature = sig
-		return nil
-	}
-	return errors.New("Generate Signature failed")
-}
-
-func (b *Block) VerifySignature() bool {
-	hash, err := b.Hash()
-	if err != nil {
-		return false
-	}
-	return service.CertificateAuthorityX509.VerifySignature(b.Signature, hash, b.From)
 }
 
 func (b *Block) Hash() ([]byte, error) {
@@ -156,8 +120,8 @@ func (b *Block) GenerateMerkelRoot() []byte {
 		}
 	}
 
-	ts, ok := Map(func(t messages.AuditedProposal) ([]byte, error) { return t.Proposal.Body.Hash() },
-		[]messages.AuditedProposal(b.AuditedProposalSlice)).([][]byte)
+	ts, ok := Map(func(t service2.ProposalMessage) ([]byte, error) { return t.Id, nil },
+		[]service2.ProposalMessage(b.ProposalMessageSlice)).([][]byte)
 	if !ok {
 		return nil
 	}
@@ -212,12 +176,8 @@ func Map(f interface{}, vs interface{}) interface{} {
 
 	for i := 0; i < l; i++ {
 
-		res := vf.Call([]reflect.Value{vx.Index(i)})
-		y, err := res[0], res[1]
-		if err.Interface() != nil {
-			return nil
-		}
-		vys.Index(i).Set(y)
+		y := vf.Call([]reflect.Value{vx.Index(i)})
+		vys.Index(i).Set(y[0])
 	}
 
 	return vys.Interface()

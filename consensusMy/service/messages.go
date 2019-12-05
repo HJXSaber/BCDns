@@ -2,6 +2,7 @@ package service
 
 import (
 	"BCDns_0.1/bcDns/conf"
+	"BCDns_0.1/blockChain"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
 	"BCDns_0.1/messages"
@@ -386,4 +387,19 @@ func (pool *ProposalMessagePool) Clear() {
 
 func (pool *ProposalMessagePool) Size() int {
 	return len(pool.ProposalMessageSlice)
+}
+
+type BlockMessage struct {
+	Base
+	blockChain.Block
+	AbandonedProposal messages.AuditedProposalSlice
+	Signature []byte
+}
+
+//TODO
+func NewBlockMessage(b *blockChain.Block, abandonedP messages.AuditedProposalSlice) (BlockMessage, error) {
+	msg := BlockMessage{
+		Block: *b,
+	}
+	return msg, nil
 }
