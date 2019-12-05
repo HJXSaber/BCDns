@@ -25,38 +25,38 @@ const (
 )
 
 type Base struct {
-	From string
+	From      string
 	TimeStamp int64
 }
 
 type ProposalMessage struct {
 	Base
-	Type OperationType
-	ZoneName string
-	Owner string
+	Type      OperationType
+	ZoneName  string
+	Owner     string
 	Values    map[string]string
-	Nonce uint32
+	Nonce     uint32
 	Id        []byte
 	Signature []byte
 }
 
 func NewProposal(zoneName string, t OperationType, values map[string]string) *ProposalMessage {
 	var (
-		err error
+		err  error
 		base = Base{
-			From: conf.BCDnsConfig.HostName,
-			TimeStamp:time.Now().Unix(),
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
 		}
 		msg ProposalMessage
 	)
 	switch t {
 	case Add:
 		msg = ProposalMessage{
-			Base: base,
-			Type: Add,
-			ZoneName:zoneName,
-			Owner:base.From,
-			Values:values,
+			Base:     base,
+			Type:     Add,
+			ZoneName: zoneName,
+			Owner:    base.From,
+			Values:   values,
 		}
 		err = msg.GetPow()
 		if err != nil {
@@ -65,11 +65,11 @@ func NewProposal(zoneName string, t OperationType, values map[string]string) *Pr
 		}
 	case Del:
 		msg = ProposalMessage{
-			Base: base,
-			Type: Del,
-			ZoneName:zoneName,
-			Owner:messages.Dereliction,
-			Values:values,
+			Base:     base,
+			Type:     Del,
+			ZoneName: zoneName,
+			Owner:    messages.Dereliction,
+			Values:   values,
 		}
 	case Mod:
 		blockProposal := new(ProposalMessage)
@@ -88,11 +88,11 @@ func NewProposal(zoneName string, t OperationType, values map[string]string) *Pr
 			}
 		}
 		msg = ProposalMessage{
-			Base:base,
-			Type:Mod,
-			ZoneName:zoneName,
-			Owner: base.From,
-			Values:utils.CoverMap(blockProposal.Values, values),
+			Base:     base,
+			Type:     Mod,
+			ZoneName: zoneName,
+			Owner:    base.From,
+			Values:   utils.CoverMap(blockProposal.Values, values),
 		}
 	default:
 		fmt.Println("Unknown proposal type")
@@ -199,16 +199,16 @@ func UnMarshalProposalMessage(data []byte) (*ProposalMessage, error) {
 type ProposalConfirm struct {
 	Base
 	ProposalHash []byte
-	Signature []byte
+	Signature    []byte
 }
 
 func NewProposalConfirm(proposalHash []byte) *ProposalConfirm {
 	msg := ProposalConfirm{
-		Base:Base{
-			From:conf.BCDnsConfig.HostName,
-			TimeStamp:time.Now().Unix(),
+		Base: Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
 		},
-		ProposalHash:proposalHash,
+		ProposalHash: proposalHash,
 	}
 	if err := msg.Sign(); err != nil {
 		return nil
@@ -361,17 +361,35 @@ func (msg *ProposalMessage) ValidateMod() bool {
 	return true
 }
 
-type ProposalMessageSlice []ProposalMessage
+func (msg *ProposalMessage) MarshalProposalMassage() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func UnMarshalProposalMassage(data []byte) (*ProposalMessage, error) {
+	p := new(ProposalMessage)
+	dec := gob.NewDecoder(bytes.NewBuffer(data))
+	if err := dec.Decode(p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+type ProposalMessages []ProposalMessage
 
 type ProposalMessagePool struct {
 	Mutex sync.Mutex
-	ProposalMessageSlice
+	ProposalMessages
 	ProposalState map[string]uint8
 }
 
 func (pool *ProposalMessagePool) AddProposal(p ProposalMessage) {
 	if !pool.Exist(p) {
-		pool.ProposalMessageSlice = append(pool.ProposalMessageSlice, p)
+		pool.ProposalMessages = append(pool.ProposalMessages, p)
 	}
 }
 
@@ -381,19 +399,28 @@ func (pool *ProposalMessagePool) Exist(p ProposalMessage) bool {
 }
 
 func (pool *ProposalMessagePool) Clear() {
-	pool.ProposalMessageSlice = ProposalMessageSlice{}
+	pool.ProposalMessages = ProposalMessages{}
 	pool.ProposalState = make(map[string]uint8)
 }
 
 func (pool *ProposalMessagePool) Size() int {
-	return len(pool.ProposalMessageSlice)
+	return len(pool.ProposalMessages)
+}
+
+func (msgs *ProposalMessages) FindByZoneName(name string) *ProposalMessage {
+	for _, p := range *msgs {
+		if p.ZoneName == name {
+			return &p
+		}
+	}
+	return nil
 }
 
 type BlockMessage struct {
 	Base
 	blockChain.Block
 	AbandonedProposal messages.AuditedProposalSlice
-	Signature []byte
+	Signature         []byte
 }
 
 //TODO

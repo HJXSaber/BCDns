@@ -1,21 +1,16 @@
 package blockChain
 
 import (
-	"BCDns_0.1/bcDns/conf"
-	"BCDns_0.1/certificateAuthority/service"
 	service2 "BCDns_0.1/consensusMy/service"
-	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"reflect"
 	"time"
 )
 
-const BlockMaxSize  = 50
+const BlockMaxSize = 50
 
 type BlockSlice []Block
 
@@ -46,7 +41,7 @@ func (bs BlockSlice) PreviousBlock() *Block {
 
 type Block struct {
 	BlockHeader
-	service2.ProposalMessageSlice
+	service2.ProposalMessages
 }
 
 type BlockValidated struct {
@@ -61,24 +56,19 @@ type BlockHeader struct {
 	Height     uint
 }
 
-func NewBlock(proposals messages.AuditedProposalSlice, previousBlock []byte, height uint) *Block {
+func NewBlock(proposals service2.ProposalMessages, previousBlock []byte, height uint) *Block {
 	header := BlockHeader{
 		PrevBlock: previousBlock,
 		Height:    height,
 		Timestamp: time.Now().Unix(),
 	}
-	b := &Block{header, nil, proposals}
+	b := &Block{header, proposals}
 	b.MerkelRoot = b.GenerateMerkelRoot()
-	err := b.Sign()
-	if err != nil {
-		fmt.Printf("[NewBlock] b.Sign error=%v\n", err)
-		return nil
-	}
 	return b
 }
 
 func NewGenesisBlock() *Block {
-	return NewBlock(messages.AuditedProposalSlice{}, []byte{}, 0)
+	return NewBlock(service2.ProposalMessages{}, []byte{}, 0)
 }
 
 func (b *Block) VerifyBlock() bool {
@@ -121,7 +111,7 @@ func (b *Block) GenerateMerkelRoot() []byte {
 	}
 
 	ts, ok := Map(func(t service2.ProposalMessage) ([]byte, error) { return t.Id, nil },
-		[]service2.ProposalMessage(b.ProposalMessageSlice)).([][]byte)
+		[]service2.ProposalMessage(b.ProposalMessages)).([][]byte)
 	if !ok {
 		return nil
 	}

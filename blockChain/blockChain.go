@@ -1,6 +1,7 @@
 package blockChain
 
 import (
+	"BCDns_0.1/consensusMy/service"
 	"BCDns_0.1/dao"
 	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
@@ -113,8 +114,8 @@ func (bc *Blockchain) Close() {
 func (bc *Blockchain) AddBlock(block *Block) error {
 	dao.Dao.Mutex.Lock()
 	defer dao.Dao.Mutex.Unlock()
-	for _, p := range block.AuditedProposalSlice {
-		err := dao.Db.Delete([]byte(p.Proposal.Body.ZoneName), nil)
+	for _, p := range block.ProposalMessages {
+		err := dao.Db.Delete([]byte(p.ZoneName), nil)
 		if err != nil {
 			fmt.Printf("[AddBlock] Db.Delete error=%v\n", err)
 			return err
@@ -167,17 +168,17 @@ func (bc *Blockchain) AddBlock(block *Block) error {
 }
 
 // FindTransaction finds a transaction by its ID
-func (bc *Blockchain) FindProposal(ID []byte) (messages.AuditedProposal, error) {
+func (bc *Blockchain) FindProposal(ID []byte) (service.ProposalMessage, error) {
 	bci := bc.Iterator()
 
 	for {
 		block, err := bci.Next()
 		if err != nil {
-			return messages.AuditedProposal{}, err
+			return service.ProposalMessage{}, err
 		}
 
-		for _, p := range block.AuditedProposalSlice {
-			if bytes.Compare(p.Proposal.Body.Id, ID) == 0 {
+		for _, p := range block.ProposalMessages {
+			if bytes.Compare(p.Id, ID) == 0 {
 				return p, nil
 			}
 		}
@@ -187,7 +188,7 @@ func (bc *Blockchain) FindProposal(ID []byte) (messages.AuditedProposal, error) 
 		}
 	}
 
-	return messages.AuditedProposal{}, errors.New("Transaction is not found")
+	return service.ProposalMessage{}, errors.New("Transaction is not found")
 }
 
 // Iterator returns a BlockchainIterat
@@ -273,7 +274,7 @@ func (bc *Blockchain) GetBlockHashes() [][]byte {
 }
 
 // MineBlock mines a new block with the provided transactions
-func (bc *Blockchain) MineBlock(proposals messages.AuditedProposalSlice) (*Block, error) {
+func (bc *Blockchain) MineBlock(proposals service.ProposalMessages) (*Block, error) {
 	var lastHash []byte
 	var lastHeight uint
 	var err error
@@ -340,7 +341,7 @@ func (bc *Blockchain) MineBlock(proposals messages.AuditedProposalSlice) (*Block
 	return newBlock, nil
 }
 
-func (bc *Blockchain) FindDomain(name string) (*messages.ProposalMassage, error) {
+func (bc *Blockchain) FindDomain(name string) (*service.ProposalMessage, error) {
 	bci := bc.Iterator()
 
 	for {
@@ -349,7 +350,7 @@ func (bc *Blockchain) FindDomain(name string) (*messages.ProposalMassage, error)
 			return nil, err
 		}
 
-		if p := block.AuditedProposalSlice.FindByZoneName(name); p != nil {
+		if p := block.ProposalMessages.FindByZoneName(name); p != nil {
 			return p, nil
 		}
 
@@ -368,10 +369,10 @@ func (bc *Blockchain) Get(key []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		ps := ReverseSlice(block.AuditedProposalSlice)
+		ps := ReverseSlice(block.ProposalMessages)
 		for _, p := range ps {
-			if p.Proposal.Body.ZoneName == string(key) {
-				data, err := p.Proposal.MarshalProposalMassage()
+			if p.ZoneName == string(key) {
+				data, err := p.MarshalProposalMassage()
 				if err != nil {
 					return nil, err
 				}
@@ -391,8 +392,8 @@ func (bc *Blockchain) Set(key, value []byte) error {
 	return nil
 }
 
-func ReverseSlice(s messages.AuditedProposalSlice) messages.AuditedProposalSlice {
-	ss := make(messages.AuditedProposalSlice, len(s))
+func ReverseSlice(s service.ProposalMessages) service.ProposalMessages {
+	ss := make(service.ProposalMessages, len(s))
 	for i, j := 0, len(s)-1; i <= j; i, j = i+1, j-1 {
 		ss[i], ss[j] = s[j], s[i]
 	}

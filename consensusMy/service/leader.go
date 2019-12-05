@@ -8,13 +8,12 @@ var (
 
 type LeaderT struct {
 	ProposalMessageChan chan []byte
-
 }
 
 func (l *LeaderT) Run() {
 	for {
 		select {
-		case msgByte := <- l.ProposalMessageChan:
+		case msgByte := <-l.ProposalMessageChan:
 			var msg ProposalMessage
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
