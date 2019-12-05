@@ -1,6 +1,5 @@
 package service
 
-
 var (
 	LeaderG *LeaderT
 )
