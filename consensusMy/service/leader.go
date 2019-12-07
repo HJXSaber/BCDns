@@ -7,19 +7,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 )
 
 var (
-	LeaderRole *LeaderT
+	ProposalMessageChan chan []byte
 )
 
-type LeaderT struct {
-	ProposalMessageChan chan []byte
-	MessagePool ProposalMessagePool
+type Leader struct {
+	Mutex        sync.Mutex
+	MessagePool  ProposalMessagePool
+	BlockConfirm bool
 }
 
-func (l *LeaderT) Run(done chan uint) {
+func init() {
+	ProposalMessageChan = make(chan []byte, 1024)
+}
+
+func (l *Leader) Run(done chan uint) {
 	defer close(done)
 	interrupt := make(chan int)
 	interruptTimer := make(chan int)
@@ -27,7 +33,9 @@ func (l *LeaderT) Run(done chan uint) {
 		for true {
 			select {
 			case <-time.After(10 * time.Second):
-				interrupt <- 1
+				if l.BlockConfirm {
+					interrupt <- 1
+				}
 			case <-interruptTimer:
 				interrupt <- 1
 			}
@@ -35,7 +43,7 @@ func (l *LeaderT) Run(done chan uint) {
 	}()
 	for {
 		select {
-		case msgByte := <-l.ProposalMessageChan:
+		case msgByte := <-ProposalMessageChan:
 			var msg ProposalMessage
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
@@ -60,10 +68,10 @@ func (l *LeaderT) Run(done chan uint) {
 				}
 			}
 			l.MessagePool.AddProposal(msg)
-			if l.MessagePool.Size() >= blockChain.BlockMaxSize {
+			if l.BlockConfirm && l.MessagePool.Size() >= blockChain.BlockMaxSize {
 				interruptTimer <- 1
 			}
-		case <- interrupt:
+		case <-interrupt:
 			if !service.Leader.IsLeader() {
 				continue
 			}
@@ -71,16 +79,42 @@ func (l *LeaderT) Run(done chan uint) {
 				fmt.Printf("[Leader.Run] CurrentBlock is empty\n")
 				continue
 			}
-			validP, abandonedP := CheckProposal(l.MessagePool)
+			validP, abandonedP := CheckProposals(l.MessagePool.ProposalMessages[:blockChain.BlockMaxSize])
+			block, err := blockChain.BlockChain.MineBlock(validP)
+			if err != nil {
+				logger.Warningf("[Leader.Run] MineBlock error=%v", err)
+				continue
+			}
+			blockMessage, err := blockChain.NewBlockMessage(block, abandonedP)
+			if err != nil {
+				logger.Warningf("[Leader.Run] NewBlockMessage error=%v", err)
+				continue
+			}
+			jsonData, err := json.Marshal(blockMessage)
+			if err != nil {
+				logger.Warningf("[Leader.Run] json.Marshal error=%v", err)
+				continue
+			}
+			service.Net.BroadCast(jsonData, service.BlockMsg)
+			l.MessagePool.Clear(blockChain.BlockMaxSize)
+			l.Mutex.Lock()
+			l.BlockConfirm = false
+			l.Mutex.Unlock()
 		}
 	}
 }
 
-func CheckProposal(proposals ProposalMessagePool) (ProposalMessages, ProposalMessages) {
+func (l *Leader) Confirm() {
+	l.Mutex.Lock()
+	defer l.Mutex.Unlock()
+	l.BlockConfirm = true
+}
+
+func CheckProposals(proposals ProposalMessages) (ProposalMessages, ProposalMessages) {
 	filter := make(map[string]ProposalMessages)
 	abandoneP := ProposalMessagePool{}
 	validP := ProposalMessagePool{}
-	for _, p := range proposals.ProposalMessages {
+	for _, p := range proposals {
 		if fp, ok := filter[p.ZoneName]; !ok {
 			filter[p.ZoneName] = append(filter[p.ZoneName], p)
 			validP.AddProposal(p)
@@ -119,4 +153,12 @@ func CheckProposal(proposals ProposalMessagePool) (ProposalMessages, ProposalMes
 		}
 	}
 	return validP.ProposalMessages, abandoneP.ProposalMessages
+}
+
+func ValidateProposals(msg *blockChain.BlockMessage) bool {
+	tmpPool := ProposalMessages{}
+	tmpPool = append(tmpPool, msg.ProposalMessages...)
+	tmpPool = append(tmpPool, msg.AbandonedProposal...)
+	validP, _ := CheckProposals(tmpPool)
+	return reflect.DeepEqual(validP, msg.ProposalMessages)
 }

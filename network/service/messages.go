@@ -77,3 +77,7 @@ type MessageRetrieveLeader struct {
 type MessageProposalConfirm struct {
 	Payload []byte
 }
+
+type MessageBlockConfirm struct {
+	payload []byte
+}

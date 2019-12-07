@@ -198,8 +198,8 @@ func (bc *Blockchain) Iterator() *BlockchainIterator {
 	return bci
 }
 
-// GetBestHeight returns the height of the latest block
-func (bc *Blockchain) GetBestHeight() (uint, error) {
+// GetLatestBlock returns the latest block
+func (bc *Blockchain) GetLatestBlock() (*Block, error) {
 	lastBlock := new(Block)
 	var err error
 
@@ -215,10 +215,10 @@ func (bc *Blockchain) GetBestHeight() (uint, error) {
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	return lastBlock.Height, nil
+	return lastBlock, nil
 }
 
 // GetBlock finds a block by its hash and returns it
@@ -278,13 +278,6 @@ func (bc *Blockchain) MineBlock(proposals service.ProposalMessages) (*Block, err
 	var lastHash []byte
 	var lastHeight uint
 	var err error
-
-	for _, p := range proposals {
-		// TODO: ignore transaction if it's not valid
-		if !p.VerifySignature() {
-			return nil, errors.New("[MineBlock] ERROR: Invalid Proposal")
-		}
-	}
 
 	block := new(Block)
 	err = bc.db.View(func(tx *bolt.Tx) error {

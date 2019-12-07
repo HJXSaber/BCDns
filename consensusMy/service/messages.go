@@ -2,7 +2,6 @@ package service
 
 import (
 	"BCDns_0.1/bcDns/conf"
-	"BCDns_0.1/blockChain"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
 	"BCDns_0.1/messages"
@@ -155,7 +154,7 @@ func (msg *ProposalMessage) Hash() ([]byte, error) {
 	if err := enc.Encode(msg.Values); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return utils.SHA256(buf.Bytes()), nil
 }
 
 func (msg *ProposalMessage) Sign() error {
@@ -225,7 +224,7 @@ func (msg *ProposalConfirm) Hash() ([]byte, error) {
 	if err := enc.Encode(msg.ProposalHash); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return utils.SHA256(buf.Bytes()), nil
 }
 
 func (msg *ProposalConfirm) Sign() error {
@@ -398,9 +397,17 @@ func (pool *ProposalMessagePool) Exist(p ProposalMessage) bool {
 	return ok
 }
 
-func (pool *ProposalMessagePool) Clear() {
-	pool.ProposalMessages = ProposalMessages{}
-	pool.ProposalState = make(map[string]uint8)
+func (pool *ProposalMessagePool) Clear(index int) {
+	if index == 0 {
+		pool.ProposalMessages = ProposalMessages{}
+		pool.ProposalState = make(map[string]uint8)
+	} else {
+		for i := 0; i < index; i++ {
+			p := pool.ProposalMessages[i]
+			delete(pool.ProposalState, string(p.Id))
+		}
+		pool.ProposalMessages = pool.ProposalMessages[index:]
+	}
 }
 
 func (pool *ProposalMessagePool) Size() int {
@@ -416,17 +423,65 @@ func (msgs *ProposalMessages) FindByZoneName(name string) *ProposalMessage {
 	return nil
 }
 
-type BlockMessage struct {
+type BlockConfirmMessage struct {
 	Base
-	blockChain.Block
-	AbandonedProposal messages.AuditedProposalSlice
-	Signature         []byte
+	Id        []byte
+	Signature []byte
 }
 
-//TODO
-func NewBlockMessage(b *blockChain.Block, abandonedP messages.AuditedProposalSlice) (BlockMessage, error) {
-	msg := BlockMessage{
-		Block: *b,
+func NewBlockConfirmMessage(id []byte) (BlockConfirmMessage, error) {
+	msg := BlockConfirmMessage{
+		Base: Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
+		},
+		Id: id,
+	}
+	if err := msg.Sign(); err != nil {
+		return BlockConfirmMessage{}, err
 	}
 	return msg, nil
+}
+
+func (msg *BlockConfirmMessage) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg.Base); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.Id); err != nil {
+		return nil, err
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *BlockConfirmMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[BlockConfirmMessage] Generate signature failed")
+}
+
+func (msg *BlockConfirmMessage) VerifySignature() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}
+
+func (msg *BlockConfirmMessage) Verify() bool {
+	if !service.CertificateAuthorityX509.Exits(msg.From) {
+		return false
+	}
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }

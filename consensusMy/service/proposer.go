@@ -14,28 +14,28 @@ import (
 )
 
 var (
-	logger          *logging.Logger // package-level logger
+	logger *logging.Logger // package-level logger
 )
 
-type ProposerT struct {
+type Proposer struct {
 	ReplyMutex sync.Mutex
 
 	Proposals map[string]ProposalMessage
-	Replys sync.Map
-	Contexts sync.Map
-	Conn            *net.UDPConn
-	OrderChan       chan []byte
+	Replys    sync.Map
+	Contexts  sync.Map
+	Conn      *net.UDPConn
+	OrderChan chan []byte
 }
 
-func NewProposer() *ProposerT {
-	return &ProposerT{}
+func NewProposer() *Proposer {
+	return &Proposer{}
 }
 
 func init() {
 	logger = logging.MustGetLogger("consensusMy")
 }
 
-func (p *ProposerT) Run(done chan uint) {
+func (p *Proposer) Run(done chan uint) {
 	var (
 		err error
 	)
@@ -43,7 +43,7 @@ func (p *ProposerT) Run(done chan uint) {
 	go p.ReceiveOrder()
 	for {
 		select {
-		case msgByte := <- p.OrderChan:
+		case msgByte := <-p.OrderChan:
 			var msg Order
 			err = json.Unmarshal(msgByte, &msg)
 			if err != nil {
@@ -61,7 +61,7 @@ type Order struct {
 	Values   map[string]string
 }
 
-func (p *ProposerT) ReceiveOrder() {
+func (p *Proposer) ReceiveOrder() {
 	var (
 		data = make([]byte, 1024)
 	)
@@ -75,7 +75,7 @@ func (p *ProposerT) ReceiveOrder() {
 	}
 }
 
-func (p *ProposerT) handleOrder(msg Order) {
+func (p *Proposer) handleOrder(msg Order) {
 	if proposal := NewProposal(msg.ZoneName, msg.OptType, msg.Values); proposal != nil {
 		proposalByte, err := json.Marshal(proposal)
 		if err != nil {
@@ -86,15 +86,15 @@ func (p *ProposerT) handleOrder(msg Order) {
 		ctx := context.Background()
 		go p.timer(ctx, proposal)
 		p.Contexts.Store(string(proposal.Id), ctx)
-		service2.Net.BroadCast(proposalByte, service2.ProposalMsgT)
+		service2.Net.BroadCast(proposalByte, service2.ProposalMsg)
 	} else {
 		logger.Warningf("[handleOrder] NewProposal failed")
 	}
 }
 
-func (p *ProposerT) timer(ctx context.Context, proposal *ProposalMessage) {
+func (p *Proposer) timer(ctx context.Context, proposal *ProposalMessage) {
 	select {
-	case <- time.After(conf.BCDnsConfig.ProposalTimeout):
+	case <-time.After(conf.BCDnsConfig.ProposalTimeout):
 		p.ReplyMutex.Lock()
 		defer p.ReplyMutex.Unlock()
 		repliesI, ok := p.Replys.Load(string(proposal.Id))
@@ -123,7 +123,7 @@ func (p *ProposerT) timer(ctx context.Context, proposal *ProposalMessage) {
 			}
 			service2.Net.BroadCast(confirmMsgByte, service2.ProposalConfirmT)
 		}
-	case <- ctx.Done():
+	case <-ctx.Done():
 		fmt.Printf("[Proposer.timer] haha")
 	}
 }

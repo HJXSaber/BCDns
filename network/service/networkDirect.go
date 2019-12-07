@@ -18,11 +18,33 @@ var (
 	ListenAddr      = "0,0,0,0"
 	MaxPacketLength = 65536
 	Net             *DNet
+
+	ChanSize         = 1024
+	ProposalChan     chan []byte
+	BlockChan        chan []byte
+	BlockConfirmChan chan []byte
 )
 
 func init() {
 	logger = logging.MustGetLogger("networks")
+	ProposalChan = make(chan []byte, ChanSize)
+	BlockChan = make(chan []byte, ChanSize)
+	BlockConfirmChan = make(chan []byte, ChanSize)
 }
+
+type MessageTypeT uint8
+
+const (
+	ProposalMsg MessageTypeT = iota + 1
+	BlockMsg
+	BlockConfirmMsg
+	ProposalResult
+	ProposalConfirmT
+	ViewChange
+	ViewChangeResult
+	RetrieveLeader
+	RetrieveLeaderResponse
+)
 
 type DNet struct {
 	Mutex   sync.Mutex
@@ -100,12 +122,10 @@ func (n *DNet) handleConn(conn net.Conn) {
 			n.Mutex.Unlock()
 		case MessageProposal:
 			ProposalChan <- message.Payload
-		case MessageEndorsement:
-			EndorsementChan <- message.Payload
-		case MessageCommit:
-			CommitChan <- message.Payload
 		case MessageBlock:
 			BlockChan <- message.Payload
+		case MessageBlockConfirm:
+			BlockConfirmChan <- message.payload
 		case MessageViewChange:
 			ViewChangeMsgChan <- message.Payload
 		case MessageRetrieveLeader:
@@ -250,21 +270,17 @@ func (n *DNet) SendToLeader(payload []byte, t MessageTypeT) {
 func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 	var msg Message
 	switch t {
-	case ProposalMsgT:
+	case ProposalMsg:
 		msg = MessageProposal{
 			Payload: payload,
 		}
-	case Endorsement:
-		msg = MessageEndorsement{
-			Payload: payload,
-		}
-	case Commit:
-		msg = MessageCommit{
-			Payload: payload,
-		}
-	case Block:
+	case BlockMsg:
 		msg = MessageBlock{
 			Payload: payload,
+		}
+	case BlockConfirmMsg:
+		msg = MessageBlockConfirm{
+			payload: payload,
 		}
 	case ViewChange:
 		msg = MessageViewChange{
@@ -276,7 +292,7 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 		}
 	case ProposalConfirmT:
 		msg = MessageProposalConfirm{
-			Payload:payload,
+			Payload: payload,
 		}
 	default:
 		return nil, errors.New("[ConvertMessage] Unknown messageType")

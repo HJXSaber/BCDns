@@ -1,11 +1,14 @@
 package blockChain
 
 import (
+	"BCDns_0.1/bcDns/conf"
+	"BCDns_0.1/certificateAuthority/service"
 	service2 "BCDns_0.1/consensusMy/service"
 	"BCDns_0.1/utils"
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"time"
 )
@@ -85,7 +88,6 @@ func (b *Block) Hash() ([]byte, error) {
 }
 
 func (b *Block) GenerateMerkelRoot() []byte {
-
 	var merkell func(hashes [][]byte) []byte
 	merkell = func(hashes [][]byte) []byte {
 
@@ -171,4 +173,68 @@ func Map(f interface{}, vs interface{}) interface{} {
 	}
 
 	return vys.Interface()
+}
+
+type BlockMessage struct {
+	service2.Base
+	Block
+	AbandonedProposal service2.ProposalMessages
+	Signature         []byte
+}
+
+//TODO
+func NewBlockMessage(b *Block, abandonedP service2.ProposalMessages) (BlockMessage, error) {
+	msg := BlockMessage{
+		Base: service2.Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
+		},
+		Block:             *b,
+		AbandonedProposal: abandonedP,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return BlockMessage{}, err
+	}
+	return msg, nil
+}
+
+func (msg *BlockMessage) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg.Base); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(AbandonedProposalPool); err != nil {
+		return nil, err
+	}
+	if hash, err := msg.Block.Hash(); err != nil {
+		return nil, err
+	} else {
+		_, err := buf.Write(hash)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *BlockMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[BlockMessage.Sign] generate signature failed")
+}
+
+func (msg *BlockMessage) VerifySignature() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
