@@ -23,6 +23,7 @@ var (
 	ProposalChan     chan []byte
 	BlockChan        chan []byte
 	BlockConfirmChan chan []byte
+	DataSyncChan     chan []byte
 )
 
 func init() {
@@ -30,6 +31,7 @@ func init() {
 	ProposalChan = make(chan []byte, ChanSize)
 	BlockChan = make(chan []byte, ChanSize)
 	BlockConfirmChan = make(chan []byte, ChanSize)
+	DataSyncChan = make(chan []byte, ChanSize)
 }
 
 type MessageTypeT uint8
@@ -38,6 +40,7 @@ const (
 	ProposalMsg MessageTypeT = iota + 1
 	BlockMsg
 	BlockConfirmMsg
+	DataSyncMsg
 	ProposalResult
 	ProposalConfirmT
 	ViewChange
@@ -125,7 +128,9 @@ func (n *DNet) handleConn(conn net.Conn) {
 		case MessageBlock:
 			BlockChan <- message.Payload
 		case MessageBlockConfirm:
-			BlockConfirmChan <- message.payload
+			BlockConfirmChan <- message.Payload
+		case MessageDataSync:
+			DataSyncChan <- message.Payload
 		case MessageViewChange:
 			ViewChangeMsgChan <- message.Payload
 		case MessageRetrieveLeader:
@@ -280,7 +285,11 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 		}
 	case BlockConfirmMsg:
 		msg = MessageBlockConfirm{
-			payload: payload,
+			Payload: payload,
+		}
+	case DataSyncMsg:
+		msg = MessageDataSync{
+			Payload: payload,
 		}
 	case ViewChange:
 		msg = MessageViewChange{

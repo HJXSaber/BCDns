@@ -2,6 +2,7 @@ package service
 
 import (
 	"BCDns_0.1/bcDns/conf"
+	"BCDns_0.1/blockChain"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
 	"BCDns_0.1/messages"
@@ -479,6 +480,116 @@ func (msg *BlockConfirmMessage) Verify() bool {
 	if !service.CertificateAuthorityX509.Exits(msg.From) {
 		return false
 	}
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}
+
+type DataSyncMessage struct {
+	Base
+	Height    uint
+	Signature []byte
+}
+
+func NewDataSyncMessage(h uint) (DataSyncMessage, error) {
+	msg := DataSyncMessage{
+		Base: Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
+		},
+		Height: h,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return DataSyncMessage{}, err
+	}
+	return msg, nil
+}
+
+func (msg *DataSyncMessage) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg.Base); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.Height); err != nil {
+		return nil, err
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *DataSyncMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[DataSyncMessage] Generate signature failed")
+}
+
+func (msg *DataSyncMessage) VerifySignature() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}
+
+type DataSyncRespMessage struct {
+	Base
+	blockChain.BlockValidated
+	Signature []byte
+}
+
+func NewDataSyncRespMessage(b blockChain.BlockValidated) (DataSyncRespMessage, error) {
+	msg := DataSyncRespMessage{
+		Base: Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
+		},
+		BlockValidated: b,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return DataSyncRespMessage{}, err
+	}
+	return msg, nil
+}
+
+func (msg *DataSyncRespMessage) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg.Base); err != nil {
+		return nil, err
+	}
+	bHash, err := msg.BlockValidated.Hash()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := buf.Write(bHash); err != nil {
+		return nil, err
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *DataSyncRespMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[DataSyncRespMessage] Generate signature failed")
+}
+
+func (msg *DataSyncRespMessage) VerifySignature() bool {
 	hash, err := msg.Hash()
 	if err != nil {
 		return false

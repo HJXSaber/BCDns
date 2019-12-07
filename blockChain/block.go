@@ -47,11 +47,6 @@ type Block struct {
 	service2.ProposalMessages
 }
 
-type BlockValidated struct {
-	Block
-	Signatures map[string][]byte
-}
-
 type BlockHeader struct {
 	PrevBlock  []byte
 	MerkelRoot []byte
@@ -237,4 +232,50 @@ func (msg *BlockMessage) VerifySignature() bool {
 		return false
 	}
 	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}
+
+type BlockValidated struct {
+	Block
+	Signatures map[string][]byte
+}
+
+func NewBlockValidated(b *Block, signatures map[string][]byte) *BlockValidated {
+	msg := &BlockValidated{
+		Block:      *b,
+		Signatures: signatures,
+	}
+	return msg
+}
+
+func (b *BlockValidated) Hash() ([]byte, error) {
+	blockHash, err := b.Block.Hash()
+	if err != nil {
+		return nil, err
+	}
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(b.Signatures); err != nil {
+		return nil, err
+	}
+	if _, err := buf.Write(blockHash); err != nil {
+		return nil, err
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (b *BlockValidated) MarshalBlockValidated() ([]byte, error) {
+	hash, err := json.Marshal(b)
+	if err != nil {
+		return nil, err
+	}
+	return hash, nil
+}
+
+func UnMarshalBlockValidated(data []byte) (*BlockValidated, error) {
+	b := new(BlockValidated)
+	err := json.Unmarshal(data, b)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }

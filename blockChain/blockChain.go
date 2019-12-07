@@ -33,6 +33,7 @@ func CreateBlockchain(dbFile string) (*Blockchain, error) {
 	var tip []byte
 
 	genesis := NewGenesisBlock()
+	genesisB := NewBlockValidated(genesis, map[string][]byte{})
 
 	db, err := bolt.Open(dbFile, 0600, nil)
 	if err != nil {
@@ -46,12 +47,12 @@ func CreateBlockchain(dbFile string) (*Blockchain, error) {
 			return err
 		}
 
-		bBytes, err := genesis.MarshalBlock()
+		bBytes, err := genesisB.MarshalBlock()
 		if err != nil {
 			fmt.Printf("[CreateBlockchain] genesis.MarshalBinary error=%v\n", err)
 			return err
 		}
-		key, err := genesis.Hash()
+		key, err := genesisB.Hash()
 		if err != nil {
 			return err
 		}
@@ -111,7 +112,7 @@ func (bc *Blockchain) Close() {
 }
 
 // AddBlock saves the block into the blockchain
-func (bc *Blockchain) AddBlock(block *Block) error {
+func (bc *Blockchain) AddBlock(block *BlockValidated) error {
 	dao.Dao.Mutex.Lock()
 	defer dao.Dao.Mutex.Unlock()
 	for _, p := range block.ProposalMessages {
@@ -133,7 +134,7 @@ func (bc *Blockchain) AddBlock(block *Block) error {
 			return nil
 		}
 
-		blockData, err := block.MarshalBlock()
+		blockData, err := block.MarshalBlockValidated()
 		if err != nil {
 			return err
 		}
@@ -221,8 +222,8 @@ func (bc *Blockchain) GetLatestBlock() (*Block, error) {
 	return lastBlock, nil
 }
 
-// GetBlock finds a block by its hash and returns it
-func (bc *Blockchain) GetBlock(blockHash []byte) (Block, error) {
+// GetBlockByHash finds a block by its hash and returns it
+func (bc *Blockchain) GetBlockByHash(blockHash []byte) (Block, error) {
 	block := new(Block)
 	var err error
 
@@ -246,6 +247,29 @@ func (bc *Blockchain) GetBlock(blockHash []byte) (Block, error) {
 	}
 
 	return *block, nil
+}
+
+// GetBlockByHeight finds a block by its height and returns it
+func (bc *Blockchain) GetBlockByHeight(h uint) (Block, error) {
+	lastBlock, err := bc.GetLatestBlock()
+	if err != nil {
+		return Block{}, err
+	}
+	if lastBlock.Height < h {
+		return Block{}, errors.New("[GetBlockByHeight] %v out of height")
+	}
+	bci := bc.Iterator()
+
+	for {
+		block, err := bci.Next()
+		if err != nil {
+			return Block{}, err
+		}
+		if block.Height == h {
+			return *block, nil
+		}
+
+	}
 }
 
 // GetBlockHashes returns a list of hashes of all the blocks in the chain
