@@ -6,22 +6,22 @@ import (
 )
 
 // BlockchainIterator is used to iterate over blockchain blocks
-type BlockchainIterator struct {
+type Iterator struct {
 	currentHash []byte
 	db          *bolt.DB
 }
 
 // Next returns next block starting from the tip
-func (i *BlockchainIterator) Next() (*Block, error) {
+func (i *Iterator) Next() (*BlockValidated, error) {
 	var (
-		block *Block
+		block *BlockValidated
 		err   error
 	)
 
 	err = i.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		encodedBlock := b.Get(i.currentHash)
-		block, err = UnmarshalBlock(encodedBlock)
+		block, err = UnMarshalBlockValidated(encodedBlock)
 		if err != nil {
 			return err
 		}

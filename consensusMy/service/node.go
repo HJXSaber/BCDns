@@ -21,8 +21,9 @@ const (
 
 type Node struct {
 	Proposals       map[string]uint8
-	Blocks          []blockChain.Block
-	BlockPrepareMsg map[string]map[string][]byte
+	Blocks          []blockChain.BlockValidated
+	Block           blockChain.Block
+	BlockPrepareMsg map[string][]byte
 }
 
 func (n *Node) Run(done chan uint8) {
@@ -47,8 +48,16 @@ func (n *Node) Run(done chan uint8) {
 				logger.Warningf("[Node.Run] block.Hash error=%v", err)
 				continue
 			}
-			n.Blocks = append(n.Blocks, msg.Block)
-			n.BlockPrepareMsg[string(id)] = map[string][]byte{}
+			switch n.ValidateBlock(&msg) {
+			case ok:
+				n.Block = msg.Block
+				n.BlockPrepareMsg = map[string][]byte{}
+			case dataSync:
+				continue
+			case invalid:
+				logger.Warningf("[Node.Run] block is invalid")
+				continue
+			}
 			blockConfirmMsg, err := NewBlockConfirmMessage(id)
 			if err != nil {
 				logger.Warningf("[Node.Run] NewBlockConfirmMessage error=%v", err)
@@ -71,9 +80,14 @@ func (n *Node) Run(done chan uint8) {
 				logger.Warningf("[Node.Run] msg.Verify failed")
 				continue
 			}
-			n.BlockPrepareMsg[string(msg.Id)][msg.From] = msg.Signature
-			if service2.CertificateAuthorityX509.Check(len(n.BlockPrepareMsg[string(msg.Id)][msg.From])) {
-
+			n.BlockPrepareMsg[msg.From] = msg.Signature
+			if service2.CertificateAuthorityX509.Check(len(n.BlockPrepareMsg[msg.From])) {
+				blockValidated := blockChain.NewBlockValidated(&n.Block, n.BlockPrepareMsg)
+				if blockValidated == nil {
+					logger.Warningf("[Node.Run] NewBlockValidated failed")
+					continue
+				}
+				n.EnqueueBlock(*blockValidated)
 			}
 		case msgByte := <-service.DataSyncChan:
 			var msg DataSyncMessage
@@ -95,7 +109,29 @@ func (n *Node) Run(done chan uint8) {
 				logger.Warningf("[Node.Run] GetBlockByHeight error=%v", err)
 				continue
 			}
-			respMsg, err := NewDataSyncRespMessage(block)
+			respMsg, err := blockChain.NewDataSyncRespMessage(block)
+			if err != nil {
+				logger.Warningf("[Node.Run] NewDataSyncRespMessage error=%v", err)
+				continue
+			}
+			jsonData, err := json.Marshal(respMsg)
+			if err != nil {
+				logger.Warningf("[Node.Run json.Marshal error=%v", err)
+				continue
+			}
+			service.Net.SendTo(jsonData, service.DataSyncRespMsg, msg.From)
+		case msgByte := <-service.DataSyncRespChan:
+			var msg blockChain.DataSyncRespMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if !msg.Validate() {
+				logger.Warningf("[Node.Run] DataSyncRespMessage.Validate failed")
+				continue
+			}
+			n.ExecuteBlock(&msg.BlockValidated)
 		}
 	}
 }
@@ -141,7 +177,7 @@ func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
 	}
 	if lastBlock.Height < msg.Block.Height-1 {
 		n.StartDataSync(lastBlock.Height+1, msg.Block.Height-1)
-		n.EnqueueBlock(msg.Block)
+		n.EnqueueBlock(*blockChain.NewBlockValidated(&msg.Block, map[string][]byte{}))
 		return dataSync
 	}
 	if reflect.DeepEqual(msg.Block.PrevBlock, prevHash) {
@@ -183,7 +219,7 @@ func (n *Node) StartDataSync(lastH, h uint) {
 	}
 }
 
-func (n *Node) EnqueueBlock(block blockChain.Block) {
+func (n *Node) EnqueueBlock(block blockChain.BlockValidated) {
 	insert := false
 	for i, b := range n.Blocks {
 		if block.Height < b.Height {
@@ -198,5 +234,50 @@ func (n *Node) EnqueueBlock(block blockChain.Block) {
 	}
 	if !insert {
 		n.Blocks = append(n.Blocks, block)
+	}
+}
+
+func (n *Node) ExecuteBlock(b *blockChain.BlockValidated) {
+	lastBlock, err := blockChain.BlockChain.GetLatestBlock()
+	if err != nil {
+		logger.Warningf("[Node.Run] ExecuteBlock GetLatestBlock error=%v", err)
+		return
+	}
+	if lastBlock.Height >= b.Height {
+		return
+	}
+	n.EnqueueBlock(*b)
+	h := lastBlock.Height + 1
+	for _, bb := range n.Blocks {
+		if bb.Height < h {
+			n.Blocks = n.Blocks[1:]
+		} else if bb.Height == h {
+			err := blockChain.BlockChain.AddBlock(b)
+			if err != nil {
+				logger.Warningf("[Node.Run] ExecuteBlock AddBlock error=%v", err)
+				return
+			}
+			n.SendReply(&b.Block)
+			n.Blocks = n.Blocks[1:]
+		} else {
+			return
+		}
+		h++
+	}
+}
+
+func (n *Node) SendReply(b *blockChain.Block) {
+	for _, p := range b.ProposalMessages {
+		msg, err := NewProposalReplyMessage(p.Id)
+		if err != nil {
+			logger.Warningf("[SendReply] NewProposalReplyMessage error=%v", err)
+			continue
+		}
+		jsonData, err := json.Marshal(msg)
+		if err != nil {
+			logger.Warningf("[SendReply] json.Marshal error=%v", err)
+			continue
+		}
+		service.Net.SendTo(jsonData, service.ProposalReplyMsg, p.From)
 	}
 }

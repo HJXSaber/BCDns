@@ -85,3 +85,11 @@ type MessageBlockConfirm struct {
 type MessageDataSync struct {
 	Payload []byte
 }
+
+type MessageDataSyncResp struct {
+	Payload []byte
+}
+
+type MessageProposalReply struct {
+	Payload []byte
+}

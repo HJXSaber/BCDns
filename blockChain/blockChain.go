@@ -145,7 +145,7 @@ func (bc *Blockchain) AddBlock(block *BlockValidated) error {
 
 		lastHash := b.Get([]byte("l"))
 		lastBlockData := b.Get(lastHash)
-		lastBlock, err := UnmarshalBlock(lastBlockData)
+		lastBlock, err := UnMarshalBlockValidated(lastBlockData)
 
 		if err != nil {
 			return err
@@ -193,22 +193,22 @@ func (bc *Blockchain) FindProposal(ID []byte) (service.ProposalMessage, error) {
 }
 
 // Iterator returns a BlockchainIterat
-func (bc *Blockchain) Iterator() *BlockchainIterator {
-	bci := &BlockchainIterator{bc.tip, bc.db}
+func (bc *Blockchain) Iterator() *Iterator {
+	bci := &Iterator{bc.tip, bc.db}
 
 	return bci
 }
 
 // GetLatestBlock returns the latest block
-func (bc *Blockchain) GetLatestBlock() (*Block, error) {
-	lastBlock := new(Block)
+func (bc *Blockchain) GetLatestBlock() (*BlockValidated, error) {
+	lastBlock := new(BlockValidated)
 	var err error
 
 	err = bc.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		lastHash := b.Get([]byte("l"))
 		blockData := b.Get(lastHash)
-		lastBlock, err = UnmarshalBlock(blockData)
+		lastBlock, err = UnMarshalBlockValidated(blockData)
 		if err != nil {
 			return err
 		}
@@ -223,8 +223,8 @@ func (bc *Blockchain) GetLatestBlock() (*Block, error) {
 }
 
 // GetBlockByHash finds a block by its hash and returns it
-func (bc *Blockchain) GetBlockByHash(blockHash []byte) (Block, error) {
-	block := new(Block)
+func (bc *Blockchain) GetBlockByHash(blockHash []byte) (*BlockValidated, error) {
+	block := new(BlockValidated)
 	var err error
 
 	err = bc.db.View(func(tx *bolt.Tx) error {
@@ -235,7 +235,7 @@ func (bc *Blockchain) GetBlockByHash(blockHash []byte) (Block, error) {
 			return errors.New("Block is not found.")
 		}
 
-		block, err = UnmarshalBlock(blockData)
+		block, err = UnMarshalBlockValidated(blockData)
 		if err != nil {
 			return err
 		}
@@ -243,30 +243,30 @@ func (bc *Blockchain) GetBlockByHash(blockHash []byte) (Block, error) {
 		return nil
 	})
 	if err != nil {
-		return *block, err
+		return nil, err
 	}
 
-	return *block, nil
+	return block, nil
 }
 
 // GetBlockByHeight finds a block by its height and returns it
-func (bc *Blockchain) GetBlockByHeight(h uint) (Block, error) {
+func (bc *Blockchain) GetBlockByHeight(h uint) (*BlockValidated, error) {
 	lastBlock, err := bc.GetLatestBlock()
 	if err != nil {
-		return Block{}, err
+		return nil, err
 	}
 	if lastBlock.Height < h {
-		return Block{}, errors.New("[GetBlockByHeight] %v out of height")
+		return nil, errors.New("[GetBlockByHeight] %v out of height")
 	}
 	bci := bc.Iterator()
 
 	for {
 		block, err := bci.Next()
 		if err != nil {
-			return Block{}, err
+			return nil, err
 		}
 		if block.Height == h {
-			return *block, nil
+			return block, nil
 		}
 
 	}
@@ -299,61 +299,19 @@ func (bc *Blockchain) GetBlockHashes() [][]byte {
 
 // MineBlock mines a new block with the provided transactions
 func (bc *Blockchain) MineBlock(proposals service.ProposalMessages) (*Block, error) {
-	var lastHash []byte
-	var lastHeight uint
-	var err error
-
-	block := new(Block)
-	err = bc.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(blocksBucket))
-		lastHash = b.Get([]byte("l"))
-
-		blockData := b.Get(lastHash)
-		block, err = UnmarshalBlock(blockData)
-		if err != nil {
-			return err
-		}
-
-		lastHeight = block.Height
-
-		return nil
-	})
+	block, err := bc.GetLatestBlock()
+	if err != nil {
+		return nil, err
+	}
+	lastHash, err := block.Hash()
 	if err != nil {
 		return nil, err
 	}
 
-	newBlock := NewBlock(proposals, lastHash, lastHeight+1)
+	newBlock := NewBlock(proposals, lastHash, block.Height+1)
 	if newBlock == nil {
 		return nil, errors.New("[MineBlock] NewBlock failed")
 	}
-
-	//err = bc.db.Update(func(tx *bolt.Tx) error {
-	//	b := tx.Bucket([]byte(blocksBucket))
-	//	blockData, err := newBlock.MarshalBlock()
-	//	if err != nil {
-	//		return err
-	//	}
-	//	key, err := newBlock.Hash()
-	//	if err != nil {
-	//		return err
-	//	}
-	//	err = b.Put(key, blockData)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	err = b.Put([]byte("l"), key)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	bc.tip = key
-	//
-	//	return nil
-	//})
-	//if err != nil {
-	//	return nil, err
-	//}
 
 	return newBlock, nil
 }

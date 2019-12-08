@@ -21,8 +21,8 @@ type Proposer struct {
 	ReplyMutex sync.Mutex
 
 	Proposals map[string]ProposalMessage
-	Replys    sync.Map
-	Contexts  sync.Map
+	Replys    map[string]map[string]uint8
+	Contexts  map[string]context.Context
 	Conn      *net.UDPConn
 	OrderChan chan []byte
 }
@@ -50,7 +50,35 @@ func (p *Proposer) Run(done chan uint) {
 				continue
 			}
 			p.handleOrder(msg)
-
+		case msgByte := <-service2.ProposalReplyChan:
+			var msg ProposalReplyMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Proposer.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if !service.CertificateAuthorityX509.Exits(msg.From) {
+				logger.Warningf("[Proposer.Run] msg.From is not exist")
+				continue
+			}
+			if !msg.VerifySignature() {
+				logger.Warningf("[Proposer.Run] Signature is invalid")
+				continue
+			}
+			_, ok := p.Proposals[string(msg.Id)]
+			if !ok {
+				logger.Warningf("[Proposer.Run] Proposal is not exist %v", msg)
+				continue
+			}
+			p.ReplyMutex.Lock()
+			p.Replys[string(msg.Id)][msg.From] = 0
+			if service.CertificateAuthorityX509.Check(len(p.Replys[string(msg.Id)])) {
+				fmt.Printf("[Proposer.Run] ProposalMsgT execute successfully %v\n", p.Proposals[string(msg.Id)])
+				delete(p.Proposals, string(msg.Id))
+				delete(p.Replys, string(msg.Id))
+				p.Contexts[string(msg.Id)].Done()
+				delete(p.Contexts, string(msg.Id))
+			}
 		}
 	}
 }
@@ -82,10 +110,10 @@ func (p *Proposer) handleOrder(msg Order) {
 			logger.Warningf("[handleOrder] json.Marshal error=%v", err)
 			return
 		}
-		p.Replys.Store(string(proposal.Id), map[string]uint8{})
+		p.Replys[string(proposal.Id)] = map[string]uint8{}
 		ctx := context.Background()
 		go p.timer(ctx, proposal)
-		p.Contexts.Store(string(proposal.Id), ctx)
+		p.Contexts[string(proposal.Id)] = ctx
 		service2.Net.BroadCast(proposalByte, service2.ProposalMsg)
 	} else {
 		logger.Warningf("[handleOrder] NewProposal failed")
@@ -97,19 +125,14 @@ func (p *Proposer) timer(ctx context.Context, proposal *ProposalMessage) {
 	case <-time.After(conf.BCDnsConfig.ProposalTimeout):
 		p.ReplyMutex.Lock()
 		defer p.ReplyMutex.Unlock()
-		repliesI, ok := p.Replys.Load(string(proposal.Id))
+		replies, ok := p.Replys[string(proposal.Id)]
 		if !ok {
 			logger.Warningf("[Proposer.timer] ProposalMsgT is not exist")
 			return
 		}
-		replies, ok := repliesI.(map[string]uint8)
-		if !ok {
-			logger.Warningf("[Proposer.timer] convert to map failed")
-			return
-		}
 		if service.CertificateAuthorityX509.Check(len(replies)) {
 			fmt.Printf("[Proposer.timer] ProposalMsgT=%v execute successfully", string(proposal.Id))
-			p.Replys.Delete(string(proposal.Id))
+			delete(p.Replys, string(proposal.Id))
 		} else {
 			confirmMsg := NewProposalConfirm(proposal.Id)
 			if confirmMsg == nil {

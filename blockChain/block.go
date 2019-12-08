@@ -115,6 +115,7 @@ func (b *Block) GenerateMerkelRoot() []byte {
 	return merkell(ts)
 
 }
+
 func (b *Block) MarshalBlock() ([]byte, error) {
 	data, err := json.Marshal(b)
 	if err != nil {
@@ -247,22 +248,6 @@ func NewBlockValidated(b *Block, signatures map[string][]byte) *BlockValidated {
 	return msg
 }
 
-func (b *BlockValidated) Hash() ([]byte, error) {
-	blockHash, err := b.Block.Hash()
-	if err != nil {
-		return nil, err
-	}
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(b.Signatures); err != nil {
-		return nil, err
-	}
-	if _, err := buf.Write(blockHash); err != nil {
-		return nil, err
-	}
-	return utils.SHA256(buf.Bytes()), nil
-}
-
 func (b *BlockValidated) MarshalBlockValidated() ([]byte, error) {
 	hash, err := json.Marshal(b)
 	if err != nil {
@@ -278,4 +263,85 @@ func UnMarshalBlockValidated(data []byte) (*BlockValidated, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+type DataSyncRespMessage struct {
+	service2.Base
+	BlockValidated
+	Signature []byte
+}
+
+func NewDataSyncRespMessage(b *BlockValidated) (DataSyncRespMessage, error) {
+	msg := DataSyncRespMessage{
+		Base: service2.Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
+		},
+		BlockValidated: *b,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return DataSyncRespMessage{}, err
+	}
+	return msg, nil
+}
+
+func (msg *DataSyncRespMessage) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg.Base); err != nil {
+		return nil, err
+	}
+	bHash, err := msg.BlockValidated.Hash()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := buf.Write(bHash); err != nil {
+		return nil, err
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *DataSyncRespMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[DataSyncRespMessage] Generate signature failed")
+}
+
+func (msg *DataSyncRespMessage) VerifySignature() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}
+
+func (msg *DataSyncRespMessage) Validate() bool {
+	if !service.CertificateAuthorityX509.Exits(msg.From) {
+		return false
+	}
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	if !service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From) {
+		return false
+	}
+	count := len(msg.Signatures)
+	for host, sig := range msg.Signatures {
+		if !service.CertificateAuthorityX509.Exits(host) ||
+			!service.CertificateAuthorityX509.VerifySignature(sig, hash, host) {
+			count--
+			if !service.CertificateAuthorityX509.Check(count) {
+				return false
+			}
+		}
+	}
+	return true
 }

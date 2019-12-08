@@ -2,7 +2,6 @@ package service
 
 import (
 	"BCDns_0.1/bcDns/conf"
-	"BCDns_0.1/blockChain"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
 	"BCDns_0.1/messages"
@@ -540,56 +539,52 @@ func (msg *DataSyncMessage) VerifySignature() bool {
 	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
 
-type DataSyncRespMessage struct {
+type ProposalReplyMessage struct {
 	Base
-	blockChain.BlockValidated
+	Id        []byte
 	Signature []byte
 }
 
-func NewDataSyncRespMessage(b blockChain.BlockValidated) (DataSyncRespMessage, error) {
-	msg := DataSyncRespMessage{
+func NewProposalReplyMessage(id []byte) (*ProposalReplyMessage, error) {
+	msg := &ProposalReplyMessage{
 		Base: Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		},
-		BlockValidated: b,
+		Id: id,
 	}
 	err := msg.Sign()
 	if err != nil {
-		return DataSyncRespMessage{}, err
+		return nil, err
 	}
 	return msg, nil
 }
 
-func (msg *DataSyncRespMessage) Hash() ([]byte, error) {
+func (msg *ProposalReplyMessage) Hash() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
 	if err := enc.Encode(msg.Base); err != nil {
 		return nil, err
 	}
-	bHash, err := msg.BlockValidated.Hash()
-	if err != nil {
-		return nil, err
-	}
-	if _, err := buf.Write(bHash); err != nil {
+	if err := enc.Encode(msg.Id); err != nil {
 		return nil, err
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }
 
-func (msg *DataSyncRespMessage) Sign() error {
+func (msg *ProposalReplyMessage) Sign() error {
 	hash, err := msg.Hash()
 	if err != nil {
 		return err
 	}
-	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+	if sig := service.CertificateAuthorityX509.Sign(hash); err != nil {
 		msg.Signature = sig
 		return nil
 	}
-	return errors.New("[DataSyncRespMessage] Generate signature failed")
+	return errors.New("[ProposalReplyMessage] Generate signature failed")
 }
 
-func (msg *DataSyncRespMessage) VerifySignature() bool {
+func (msg *ProposalReplyMessage) VerifySignature() bool {
 	hash, err := msg.Hash()
 	if err != nil {
 		return false
