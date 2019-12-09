@@ -144,7 +144,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 				logger.Warningf("[Network] handleConn json.Marshal error=%v", err)
 				continue
 			}
-			conn.Write(jsonData)
+			node.Send(jsonData)
 		case MessageProposal:
 			ProposalChan <- message.Payload
 		case MessageBlock:
