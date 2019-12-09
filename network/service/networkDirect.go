@@ -19,13 +19,15 @@ var (
 	MaxPacketLength = 65536
 	Net             *DNet
 
-	ChanSize          = 1024
-	ProposalChan      chan []byte
-	BlockChan         chan []byte
-	BlockConfirmChan  chan []byte
-	DataSyncChan      chan []byte
-	DataSyncRespChan  chan []byte
-	ProposalReplyChan chan []byte
+	ChanSize            = 1024
+	ProposalChan        chan []byte
+	BlockChan           chan []byte
+	BlockConfirmChan    chan []byte
+	DataSyncChan        chan []byte
+	DataSyncRespChan    chan []byte
+	ProposalReplyChan   chan []byte
+	ProposalConfirmChan chan []byte
+	ViewChangeChan      chan []byte
 )
 
 func init() {
@@ -36,6 +38,8 @@ func init() {
 	DataSyncChan = make(chan []byte, ChanSize)
 	DataSyncRespChan = make(chan []byte, ChanSize)
 	ProposalReplyChan = make(chan []byte, ChanSize)
+	ProposalConfirmChan = make(chan []byte, ChanSize)
+	ViewChangeChan = make(chan []byte, ChanSize)
 }
 
 type MessageTypeT uint8
@@ -47,8 +51,8 @@ const (
 	DataSyncMsg
 	DataSyncRespMsg
 	ProposalReplyMsg
-	ProposalConfirmT
-	ViewChange
+	ProposalConfirmMsg
+	ViewChangeMsg
 	ViewChangeResult
 	RetrieveLeader
 	RetrieveLeaderResponse
@@ -141,7 +145,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 		case MessageProposalReply:
 			ProposalReplyChan <- message.Payload
 		case MessageViewChange:
-			ViewChangeMsgChan <- message.Payload
+			ViewChangeChan <- message.Payload
 		case MessageRetrieveLeader:
 			RetrieveLeaderMsgChan <- message.Payload
 		case MessageProposalConfirm:
@@ -308,7 +312,7 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 		msg = MessageProposalReply{
 			Payload: payload,
 		}
-	case ViewChange:
+	case ViewChangeMsg:
 		msg = MessageViewChange{
 			Payload: payload,
 		}
@@ -316,7 +320,7 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 		msg = MessageRetrieveLeader{
 			Payload: payload,
 		}
-	case ProposalConfirmT:
+	case ProposalConfirmMsg:
 		msg = MessageProposalConfirm{
 			Payload: payload,
 		}

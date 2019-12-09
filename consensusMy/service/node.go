@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	keep uint8 = iota
+	unconfirmed uint8 = iota
+	keep
 	drop
 )
 
@@ -49,15 +50,21 @@ func (n *Node) Run(done chan uint8) {
 				continue
 			}
 			switch n.ValidateBlock(&msg) {
-			case ok:
-				n.Block = msg.Block
-				n.BlockPrepareMsg = map[string][]byte{}
 			case dataSync:
 				continue
 			case invalid:
 				logger.Warningf("[Node.Run] block is invalid")
 				continue
 			}
+			n.Block = msg.Block
+			n.BlockPrepareMsg = map[string][]byte{}
+			for _, p := range msg.AbandonedProposal {
+				n.Proposals[string(p.Id)] = drop
+			}
+			for _, p := range msg.ProposalMessages {
+				n.Proposals[string(p.Id)] = keep
+			}
+			n.Block = msg.Block
 			blockConfirmMsg, err := NewBlockConfirmMessage(id)
 			if err != nil {
 				logger.Warningf("[Node.Run] NewBlockConfirmMessage error=%v", err)
@@ -87,7 +94,7 @@ func (n *Node) Run(done chan uint8) {
 					logger.Warningf("[Node.Run] NewBlockValidated failed")
 					continue
 				}
-				n.EnqueueBlock(*blockValidated)
+				n.ExecuteBlock(blockValidated)
 			}
 		case msgByte := <-service.DataSyncChan:
 			var msg DataSyncMessage
@@ -132,6 +139,37 @@ func (n *Node) Run(done chan uint8) {
 				continue
 			}
 			n.ExecuteBlock(&msg.BlockValidated)
+		case msgByte := <-service.ProposalConfirmChan:
+			var msg ProposalConfirm
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if state, ok := n.Proposals[string(msg.ProposalHash)]; !ok || state == drop {
+				logger.Warningf("[Node.Run] I have never received this proposal")
+				continue
+			} else if state == unconfirmed {
+				//TODO start view change
+				lastBlock, err := blockChain.BlockChain.GetLatestBlock()
+				if err != nil {
+					logger.Warningf("[Node.Run] ProposalConfirm GetLatestBlock error=%v", err)
+					continue
+				}
+				viewChangeMsg, err := NewViewChangeMessage(lastBlock.Height)
+				if err != nil {
+					logger.Warningf("[Node.Run] ProposalConfirm NewViewChangeMessage error=%v", err)
+					continue
+				}
+				jsonData, err := json.Marshal(viewChangeMsg)
+				if err != nil {
+					logger.Warningf("[Node.Run] ProposalConfirm json.Marshal error=%v", err)
+					continue
+				}
+				service.Net.BroadCast(jsonData)
+			} else {
+				//This proposal is unready
+			}
 		}
 	}
 }
@@ -160,7 +198,7 @@ func (n *Node) handleProposal(msgByte []byte) {
 			return
 		}
 	}
-	n.Proposals[string(proposal.Id)] = keep
+	n.Proposals[string(proposal.Id)] = unconfirmed
 	service.Net.SendToLeader(msgByte, service.ProposalMsg)
 }
 

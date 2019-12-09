@@ -132,7 +132,9 @@ func (p *Proposer) timer(ctx context.Context, proposal *ProposalMessage) {
 		}
 		if service.CertificateAuthorityX509.Check(len(replies)) {
 			fmt.Printf("[Proposer.timer] ProposalMsgT=%v execute successfully", string(proposal.Id))
+			delete(p.Proposals, string(proposal.Id))
 			delete(p.Replys, string(proposal.Id))
+			delete(p.Contexts, string(proposal.Id))
 		} else {
 			confirmMsg := NewProposalConfirm(proposal.Id)
 			if confirmMsg == nil {
@@ -144,7 +146,7 @@ func (p *Proposer) timer(ctx context.Context, proposal *ProposalMessage) {
 				logger.Warningf("[Proposer.timer] json.Marshal error=%v", err)
 				return
 			}
-			service2.Net.BroadCast(confirmMsgByte, service2.ProposalConfirmT)
+			service2.Net.BroadCast(confirmMsgByte, service2.ProposalConfirmMsg)
 		}
 	case <-ctx.Done():
 		fmt.Printf("[Proposer.timer] haha")

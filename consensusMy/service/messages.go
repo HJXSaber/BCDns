@@ -591,3 +591,56 @@ func (msg *ProposalReplyMessage) VerifySignature() bool {
 	}
 	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
+
+type ViewChangeMessage struct {
+	Base
+	N         uint
+	Signature []byte
+}
+
+func NewViewChangeMessage(n uint) (*ViewChangeMessage, error) {
+	msg := &ViewChangeMessage{
+		Base: Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
+		},
+		N: n,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func (msg *ViewChangeMessage) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg.Base); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.N); err != nil {
+		return nil, err
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *ViewChangeMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[ViewChangeMessage] Generate signature failed")
+}
+
+func (msg *ViewChangeMessage) VerifySignature() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}

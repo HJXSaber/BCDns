@@ -76,37 +76,8 @@ func (leader *LeaderT) Run() {
 	for {
 		select {
 		//TODO: viewchange is undone
-		case msgByte := <-ViewChangeMsgChan:
-			var msg ViewChangeMsg
-			err := json.Unmarshal(msgByte, msg)
-			if err != nil {
-				fmt.Println("Process viewchange msg failed", err)
-				continue
-			}
-			if msg.TermId != leader.TermId {
-				fmt.Println("Outdated msg")
-				continue
-			}
-			if !checkType(msg.ViewChangeType) {
-				fmt.Println("Illegal msg type")
-				continue
-			}
-			if !service.CertificateAuthorityX509.Exits(msg.From) {
-				fmt.Printf("[ProcessViewChangeMsg] unexist node name=%v\n", msg.From)
-				continue
-			}
-			if !msg.VerifySignature() {
-				fmt.Printf("[ProcessViewChangeMsg] Invalid signature\n")
-				continue
-			}
-			if _, ok := leader.ViewChangeMsgs[msg.TermId]; ok {
-				if _, ok := leader.ViewChangeMsgs[msg.TermId][msg.From]; !ok {
-					leader.ViewChangeMsgs[msg.TermId][msg.From] = 0
-					if len(leader.ViewChangeMsgs[msg.TermId]) >= service.CertificateAuthorityX509.GetF()*2+1 {
+		case msgByte := <-ViewChangeChan:
 
-					}
-				}
-			}
 		case _ = <-ViewChangeResultChan:
 		case msgByte := <-RetrieveLeaderMsgChan:
 			var msg ViewRetrieveMsg
@@ -193,58 +164,55 @@ func (leader *LeaderT) IsLeader() bool {
 	return service.CertificateAuthorityX509.IsLeaderNode(leader.LeaderId)
 }
 
-type ViewChangeMsg struct {
-	ViewChangeMsgData
-	Signature []byte
+func (leader *LeaderT) IsNextLeader() bool {
+	if ()
 }
 
-func (m ViewChangeMsg) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(m.ViewChangeMsgData); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func (m ViewChangeMsg) Sign() ([]byte, error) {
-	hash, err := m.Hash()
-	if err != nil {
-		return nil, err
-	}
-	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
-		return sig, nil
-	}
-	return nil, errors.New("Generate signature failed")
-}
-
-func (m ViewChangeMsg) VerifySignature() bool {
-	hash, err := m.Hash()
-	if err != nil {
-		fmt.Printf("[VerifySignature] ViewRetrieveResponse's signature is illegle err=%v\n", err)
-		return false
-	}
-	if service.CertificateAuthorityX509.VerifySignature(m.Signature, hash, m.From) {
-		return true
-	}
-	return false
-}
-
-type ViewChangeMsgData struct {
-	Type             uint8
-	From             string
-	ViewChangeType   int
-	TermId, LeaderId int64
-	//key is PId'String
-	TId messages.PId
-}
-
-type LeaderTInterface interface {
-	ProcessViewChangeMsg()
-	LeaderVote(ViewChangeMsgData)
-	ProcessRetrieveMsg()
-	Run()
-}
+//type ViewChangeMsg struct {
+//	ViewChangeMsgData
+//	Signature []byte
+//}
+//
+//func (m ViewChangeMsg) Hash() ([]byte, error) {
+//	buf := &bytes.Buffer{}
+//	enc := gob.NewEncoder(buf)
+//	if err := enc.Encode(m.ViewChangeMsgData); err != nil {
+//		return nil, err
+//	}
+//	return buf.Bytes(), nil
+//}
+//
+//func (m ViewChangeMsg) Sign() ([]byte, error) {
+//	hash, err := m.Hash()
+//	if err != nil {
+//		return nil, err
+//	}
+//	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+//		return sig, nil
+//	}
+//	return nil, errors.New("Generate signature failed")
+//}
+//
+//func (m ViewChangeMsg) VerifySignature() bool {
+//	hash, err := m.Hash()
+//	if err != nil {
+//		fmt.Printf("[VerifySignature] ViewRetrieveResponse's signature is illegle err=%v\n", err)
+//		return false
+//	}
+//	if service.CertificateAuthorityX509.VerifySignature(m.Signature, hash, m.From) {
+//		return true
+//	}
+//	return false
+//}
+//
+//type ViewChangeMsgData struct {
+//	Type             uint8
+//	From             string
+//	ViewChangeType   int
+//	TermId, LeaderId int64
+//	//key is PId'String
+//	TId messages.PId
+//}
 
 type ViewRetrieveMsg struct {
 	From string
