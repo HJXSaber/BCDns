@@ -2,6 +2,7 @@ package service
 
 import (
 	"BCDns_0.1/consensusMy/service"
+	"encoding/json"
 	"sync"
 )
 
@@ -29,6 +30,13 @@ func NewViewManager() (*ViewManagerT, error) {
 func (m *ViewManagerT) Start() {
 	for {
 		select {
+		case msgByte := <- JoinReplyChan:
+			var msg JoinReplyMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[ViewManagerT.Start] json.Unmarshal error=%v", err)
+				continue
+			}
 
 		}
 	}

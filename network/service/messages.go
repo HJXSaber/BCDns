@@ -60,10 +60,6 @@ type MessageProposalReply struct {
 	Payload []byte
 }
 
-type MessageJoinReply struct {
-	Payload []byte
-}
-
 type JoinMessage struct {
 	utils.Base
 	Cert []byte

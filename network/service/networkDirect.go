@@ -28,6 +28,7 @@ var (
 	ProposalReplyChan   chan []byte
 	ProposalConfirmChan chan []byte
 	ViewChangeChan      chan []byte
+	JoinReplyChan chan JoinReplyMessage
 )
 
 func init() {
@@ -40,6 +41,7 @@ func init() {
 	ProposalReplyChan = make(chan []byte, ChanSize)
 	ProposalConfirmChan = make(chan []byte, ChanSize)
 	ViewChangeChan = make(chan []byte, ChanSize)
+	JoinReplyChan = make(chan JoinReplyMessage, ChanSize)
 }
 
 type MessageTypeT uint8
@@ -52,8 +54,6 @@ const (
 	DataSyncRespMsg
 	ProposalReplyMsg
 	ProposalConfirmMsg
-	JoinMsg
-	JoinReplyMsg
 	ViewChangeMsg
 	ViewChangeResult
 	RetrieveLeader
@@ -144,7 +144,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 				logger.Warningf("[Network] handleConn json.Marshal error=%v", err)
 				continue
 			}
-			n.SendTo(jsonData, JoinReplyMsg, message.From)
+			conn.Write(jsonData)
 		case MessageProposal:
 			ProposalChan <- message.Payload
 		case MessageBlock:
@@ -159,7 +159,6 @@ func (n *DNet) handleConn(conn net.Conn) {
 			ProposalReplyChan <- message.Payload
 		case MessageViewChange:
 			ViewChangeChan <- message.Payload
-
 		case MessageRetrieveLeader:
 			RetrieveLeaderMsgChan <- message.Payload
 		case MessageProposalConfirm:
@@ -196,6 +195,7 @@ func (n *DNet) Join(seeds []string) error {
 				return
 			}
 			atomic.AddInt32(&success, 1)
+			go n.handleConn(conn)
 		}()
 	}
 	wg.Wait()
@@ -231,6 +231,7 @@ func (n *DNet) PushAndPull(conn net.Conn, localData []byte) error {
 	n.Mutex.Lock()
 	defer n.Mutex.Unlock()
 	n.Map[node.Name] = node
+	JoinReplyChan <- msg
 	return nil
 }
 
@@ -328,10 +329,6 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 	case ViewChangeMsg:
 		msg = MessageViewChange{
 			Payload: payload,
-		}
-	case JoinReplyMsg:
-		msg = MessageJoinReply{
-			Payload:payload,
 		}
 	case RetrieveLeader:
 		msg = MessageRetrieveLeader{
