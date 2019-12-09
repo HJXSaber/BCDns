@@ -3,7 +3,9 @@ package service
 import (
 	"BCDns_0.1/blockChain"
 	service2 "BCDns_0.1/certificateAuthority/service"
+	"BCDns_0.1/messages"
 	"BCDns_0.1/network/service"
+	"BCDns_0.1/utils"
 	"encoding/json"
 	"reflect"
 )
@@ -32,12 +34,16 @@ func (n *Node) Run(done chan uint8) {
 	for {
 		select {
 		case msgByte := <-service.ProposalChan:
-			if service.Leader.IsLeader() {
+			if service.ViewManager.IsLeader() {
 				ProposalMessageChan <- msgByte
 			} else {
 				n.handleProposal(msgByte)
 			}
 		case msgByte := <-service.BlockChan:
+			if service.ViewManager.IsOnChanging() {
+				//TODO Add feedback mechanism which send msg to client
+				continue
+			}
 			var msg blockChain.BlockMessage
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
@@ -65,7 +71,7 @@ func (n *Node) Run(done chan uint8) {
 				n.Proposals[string(p.Id)] = keep
 			}
 			n.Block = msg.Block
-			blockConfirmMsg, err := NewBlockConfirmMessage(id)
+			blockConfirmMsg, err := messages.NewBlockConfirmMessage(id)
 			if err != nil {
 				logger.Warningf("[Node.Run] NewBlockConfirmMessage error=%v", err)
 				continue
@@ -77,7 +83,7 @@ func (n *Node) Run(done chan uint8) {
 			}
 			service.Net.BroadCast(jsonData, service.BlockConfirmMsg)
 		case msgByte := <-service.BlockConfirmChan:
-			var msg BlockConfirmMessage
+			var msg messages.BlockConfirmMessage
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
 				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
@@ -97,7 +103,7 @@ func (n *Node) Run(done chan uint8) {
 				n.ExecuteBlock(blockValidated)
 			}
 		case msgByte := <-service.DataSyncChan:
-			var msg DataSyncMessage
+			var msg messages.DataSyncMessage
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
 				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
@@ -140,7 +146,7 @@ func (n *Node) Run(done chan uint8) {
 			}
 			n.ExecuteBlock(&msg.BlockValidated)
 		case msgByte := <-service.ProposalConfirmChan:
-			var msg ProposalConfirm
+			var msg messages.ProposalConfirm
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
 				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
@@ -156,7 +162,8 @@ func (n *Node) Run(done chan uint8) {
 					logger.Warningf("[Node.Run] ProposalConfirm GetLatestBlock error=%v", err)
 					continue
 				}
-				viewChangeMsg, err := NewViewChangeMessage(lastBlock.Height)
+				viewChangeMsg, err := blockChain.NewViewChangeMessage(lastBlock.Height,
+					service.ViewManager.View, lastBlock.BlockHeader, lastBlock.Signatures)
 				if err != nil {
 					logger.Warningf("[Node.Run] ProposalConfirm NewViewChangeMessage error=%v", err)
 					continue
@@ -166,7 +173,7 @@ func (n *Node) Run(done chan uint8) {
 					logger.Warningf("[Node.Run] ProposalConfirm json.Marshal error=%v", err)
 					continue
 				}
-				service.Net.BroadCast(jsonData)
+				service.Net.BroadCast(jsonData, service.ViewChangeMsg)
 			} else {
 				//This proposal is unready
 			}
@@ -175,24 +182,24 @@ func (n *Node) Run(done chan uint8) {
 }
 
 func (n *Node) handleProposal(msgByte []byte) {
-	var proposal ProposalMessage
+	var proposal messages.ProposalMessage
 	err := json.Unmarshal(msgByte, &proposal)
 	if err != nil {
 		logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
 		return
 	}
 	switch proposal.Type {
-	case Add:
+	case messages.Add:
 		if !proposal.ValidateAdd() {
 			logger.Warningf("[handleProposal] ValidateAdd failed")
 			return
 		}
-	case Del:
+	case messages.Del:
 		if !proposal.ValidateDel() {
 			logger.Warningf("[handleProposal] ValidateDel failed")
 			return
 		}
-	case Mod:
+	case messages.Mod:
 		if !proposal.ValidateMod() {
 			logger.Warningf("[handleProposal] ValidateMod failed")
 			return
@@ -214,16 +221,12 @@ func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
 		return invalid
 	}
 	if lastBlock.Height < msg.Block.Height-1 {
-		n.StartDataSync(lastBlock.Height+1, msg.Block.Height-1)
+		utils.StartDataSync(lastBlock.Height+1, msg.Block.Height-1)
 		n.EnqueueBlock(*blockChain.NewBlockValidated(&msg.Block, map[string][]byte{}))
 		return dataSync
 	}
 	if reflect.DeepEqual(msg.Block.PrevBlock, prevHash) {
 		logger.Warningf("[Node.Run] PrevBlock is invalid")
-		return invalid
-	}
-	if !service2.CertificateAuthorityX509.Exits(msg.From) {
-		logger.Warningf("[ValidateBlock] msg.From is not exist")
 		return invalid
 	}
 	if !msg.VerifyBlock() {
@@ -239,22 +242,6 @@ func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
 		return invalid
 	}
 	return ok
-}
-
-func (n *Node) StartDataSync(lastH, h uint) {
-	for i := lastH; i <= h; i++ {
-		syncMsg, err := NewDataSyncMessage(i)
-		if err != nil {
-			logger.Warningf("[DataSync] NewDataSyncMessage error=%v", err)
-			continue
-		}
-		jsonData, err := json.Marshal(syncMsg)
-		if err != nil {
-			logger.Warningf("[DataSync] json.Marshal error=%v", err)
-			continue
-		}
-		service.Net.BroadCast(jsonData, service.DataSyncMsg)
-	}
 }
 
 func (n *Node) EnqueueBlock(block blockChain.BlockValidated) {
@@ -306,7 +293,7 @@ func (n *Node) ExecuteBlock(b *blockChain.BlockValidated) {
 
 func (n *Node) SendReply(b *blockChain.Block) {
 	for _, p := range b.ProposalMessages {
-		msg, err := NewProposalReplyMessage(p.Id)
+		msg, err := messages.NewProposalReplyMessage(p.Id)
 		if err != nil {
 			logger.Warningf("[SendReply] NewProposalReplyMessage error=%v", err)
 			continue

@@ -1,7 +1,6 @@
 package blockChain
 
 import (
-	"BCDns_0.1/consensusMy/service"
 	"BCDns_0.1/dao"
 	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
@@ -17,9 +16,7 @@ const dbFile = "blockchain_%s.db"
 const blocksBucket = "blocks"
 
 var (
-	BlockChain                *Blockchain
-	LeaderAuditedProposalPool = new(messages.AuditedProposalPool)
-	AbandonedProposalPool     = new(messages.ProposalPool)
+	BlockChain *Blockchain
 )
 
 // Blockchain implements interactions with a DB
@@ -169,13 +166,13 @@ func (bc *Blockchain) AddBlock(block *BlockValidated) error {
 }
 
 // FindTransaction finds a transaction by its ID
-func (bc *Blockchain) FindProposal(ID []byte) (service.ProposalMessage, error) {
+func (bc *Blockchain) FindProposal(ID []byte) (messages.ProposalMessage, error) {
 	bci := bc.Iterator()
 
 	for {
 		block, err := bci.Next()
 		if err != nil {
-			return service.ProposalMessage{}, err
+			return messages.ProposalMessage{}, err
 		}
 
 		for _, p := range block.ProposalMessages {
@@ -189,7 +186,7 @@ func (bc *Blockchain) FindProposal(ID []byte) (service.ProposalMessage, error) {
 		}
 	}
 
-	return service.ProposalMessage{}, errors.New("Transaction is not found")
+	return messages.ProposalMessage{}, errors.New("Transaction is not found")
 }
 
 // Iterator returns a BlockchainIterat
@@ -298,7 +295,7 @@ func (bc *Blockchain) GetBlockHashes() [][]byte {
 }
 
 // MineBlock mines a new block with the provided transactions
-func (bc *Blockchain) MineBlock(proposals service.ProposalMessages) (*Block, error) {
+func (bc *Blockchain) MineBlock(proposals messages.ProposalMessages) (*Block, error) {
 	block, err := bc.GetLatestBlock()
 	if err != nil {
 		return nil, err
@@ -316,7 +313,7 @@ func (bc *Blockchain) MineBlock(proposals service.ProposalMessages) (*Block, err
 	return newBlock, nil
 }
 
-func (bc *Blockchain) FindDomain(name string) (*service.ProposalMessage, error) {
+func (bc *Blockchain) FindDomain(name string) (*messages.ProposalMessage, error) {
 	bci := bc.Iterator()
 
 	for {
@@ -367,8 +364,8 @@ func (bc *Blockchain) Set(key, value []byte) error {
 	return nil
 }
 
-func ReverseSlice(s service.ProposalMessages) service.ProposalMessages {
-	ss := make(service.ProposalMessages, len(s))
+func ReverseSlice(s messages.ProposalMessages) messages.ProposalMessages {
+	ss := make(messages.ProposalMessages, len(s))
 	for i, j := 0, len(s)-1; i <= j; i, j = i+1, j-1 {
 		ss[i], ss[j] = s[j], s[i]
 	}

@@ -28,7 +28,9 @@ var (
 	ProposalReplyChan   chan []byte
 	ProposalConfirmChan chan []byte
 	ViewChangeChan      chan []byte
-	JoinReplyChan chan JoinReplyMessage
+	NewViewChan         chan []byte
+	InitLeaderChan      chan []byte
+	JoinReplyChan       chan JoinReplyMessage
 )
 
 func init() {
@@ -41,6 +43,8 @@ func init() {
 	ProposalReplyChan = make(chan []byte, ChanSize)
 	ProposalConfirmChan = make(chan []byte, ChanSize)
 	ViewChangeChan = make(chan []byte, ChanSize)
+	NewViewChan = make(chan []byte, ChanSize)
+	InitLeaderChan = make(chan []byte, ChanSize)
 	JoinReplyChan = make(chan JoinReplyMessage, ChanSize)
 }
 
@@ -54,8 +58,9 @@ const (
 	DataSyncRespMsg
 	ProposalReplyMsg
 	ProposalConfirmMsg
+	InitLeaderMsg
 	ViewChangeMsg
-	ViewChangeResult
+	NewViewMsg
 	RetrieveLeader
 	RetrieveLeaderResponse
 )
@@ -71,7 +76,8 @@ type DNode struct {
 	Pass       bool
 	RemoteAddr string
 	Name       string
-	conn       net.Conn
+	NodeId     int64
+	Conn       net.Conn
 }
 
 func NewDNet() *DNet {
@@ -128,13 +134,14 @@ func (n *DNet) handleConn(conn net.Conn) {
 				Pass:       true,
 				RemoteAddr: conn.RemoteAddr().String(),
 				Name:       message.From,
-				conn:       conn,
+				NodeId:     message.NodeId,
+				Conn:       conn,
 			}
 			n.Members = append(n.Members, node)
 			n.Mutex.Lock()
 			n.Map[node.Name] = node
 			n.Mutex.Unlock()
-			replyMsg, err := NewJoinReplyMessage(ViewManager.View, ViewManager.Proof)
+			replyMsg, err := NewJoinReplyMessage(ViewManager.View, map[string][]byte{})
 			if err != nil {
 				logger.Warningf("[Network] handleConn NewJoinReplyMessage error=%v", err)
 				continue
@@ -221,16 +228,22 @@ func (n *DNet) PushAndPull(conn net.Conn, localData []byte) error {
 	if err != nil {
 		return err
 	}
-	node := DNode{
-		Pass:       true,
-		RemoteAddr: conn.RemoteAddr().String(),
-		Name:       msg.From,
-		conn:       conn,
+	if !msg.VerifySignature() {
+		return errors.New("[PushAndPull] JoinReplyMessage.VerifySignature failed")
 	}
-	n.Members = append(n.Members, node)
-	n.Mutex.Lock()
-	defer n.Mutex.Unlock()
-	n.Map[node.Name] = node
+	if _, ok := n.Map[msg.From]; !ok {
+		node := DNode{
+			Pass:       true,
+			RemoteAddr: conn.RemoteAddr().String(),
+			Name:       msg.From,
+			NodeId:     msg.NodeId,
+			Conn:       conn,
+		}
+		n.Members = append(n.Members, node)
+		n.Mutex.Lock()
+		defer n.Mutex.Unlock()
+		n.Map[node.Name] = node
+	}
 	JoinReplyChan <- msg
 	return nil
 }
@@ -289,7 +302,7 @@ func (n *DNet) SendToLeader(payload []byte, t MessageTypeT) {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return
 	}
-	name, err := utils.GetCertId(*service.CertificateAuthorityX509.CertificatesOrder[Leader.LeaderId])
+	name, err := utils.GetCertId(*service.CertificateAuthorityX509.CertificatesOrder[ViewManager.LeaderId])
 	if err != nil {
 		logger.Warningf("[SendToLeader] GetCertId failed err=%v", err)
 		return
@@ -297,6 +310,14 @@ func (n *DNet) SendToLeader(payload []byte, t MessageTypeT) {
 	n.Mutex.Lock()
 	defer n.Mutex.Unlock()
 	_, _ = n.Map[name].Send(data)
+}
+
+func (n *DNet) GetAllNodeIds() []int64 {
+	var ids []int64
+	for _, node := range n.Members {
+		ids = append(ids, node.NodeId)
+	}
+	return ids
 }
 
 func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
@@ -330,12 +351,20 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 		msg = MessageViewChange{
 			Payload: payload,
 		}
+	case NewViewMsg:
+		msg = MessageNewView{
+			Payload: payload,
+		}
 	case RetrieveLeader:
 		msg = MessageRetrieveLeader{
 			Payload: payload,
 		}
 	case ProposalConfirmMsg:
 		msg = MessageProposalConfirm{
+			Payload: payload,
+		}
+	case InitLeaderMsg:
+		msg = MessageInitLeader{
 			Payload: payload,
 		}
 	default:
@@ -345,5 +374,5 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 }
 
 func (n *DNode) Send(msg []byte) (int, error) {
-	return n.conn.Write(msg)
+	return n.Conn.Write(msg)
 }

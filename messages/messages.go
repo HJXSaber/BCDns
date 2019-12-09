@@ -1,18 +1,23 @@
-package service
+package messages
 
 import (
 	"BCDns_0.1/bcDns/conf"
+	"BCDns_0.1/blockChain"
 	"BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/dao"
-	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
 	"bytes"
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"github.com/op/go-logging"
 	"github.com/syndtr/goleveldb/leveldb"
 	"sync"
 	"time"
+)
+
+var (
+	logger *logging.Logger // package-level logger
 )
 
 type OperationType uint8
@@ -23,7 +28,7 @@ const (
 	Mod
 )
 
-
+const Dereliction = "No owner"
 
 type ProposalMessage struct {
 	utils.Base
@@ -34,6 +39,10 @@ type ProposalMessage struct {
 	Nonce     uint32
 	Id        []byte
 	Signature []byte
+}
+
+func init() {
+	logger = logging.MustGetLogger("messages")
 }
 
 func NewProposal(zoneName string, t OperationType, values map[string]string) *ProposalMessage {
@@ -64,7 +73,7 @@ func NewProposal(zoneName string, t OperationType, values map[string]string) *Pr
 			Base:     base,
 			Type:     Del,
 			ZoneName: zoneName,
-			Owner:    messages.Dereliction,
+			Owner:    Dereliction,
 			Values:   values,
 		}
 	case Mod:
@@ -78,7 +87,7 @@ func NewProposal(zoneName string, t OperationType, values map[string]string) *Pr
 				fmt.Printf("[NewProposal] UnMarshalProposalMassage error=%v\n", err)
 				return nil
 			}
-			if blockProposal.From == messages.Dereliction {
+			if blockProposal.From == Dereliction {
 				fmt.Printf("[ValidateMod] ZoneName is not exist\n")
 				return nil
 			}
@@ -265,7 +274,7 @@ func (msg *ProposalMessage) ValidateAdd() bool {
 			logger.Warningf("[ValidateAdd] UnMarshalProposalMassage error=%v", err)
 			return false
 		}
-		if blockProposal.Owner != messages.Dereliction {
+		if blockProposal.Owner != Dereliction {
 			logger.Warningf("[ValidateAdd] ZoneName exits or get failed err=%v", err)
 			return false
 		}
@@ -295,7 +304,7 @@ func (msg *ProposalMessage) ValidateDel() bool {
 		logger.Warningf("[ValidateDel] TimeStamp is invalid t=%v", msg.TimeStamp)
 		return false
 	}
-	if msg.Owner != messages.Dereliction {
+	if msg.Owner != Dereliction {
 		logger.Warningf("[ValidateDel] Owner is wrong")
 		return false
 	}
@@ -589,19 +598,21 @@ func (msg *ProposalReplyMessage) VerifySignature() bool {
 	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
 
-type ViewChangeMessage struct {
+type NewViewMessage struct {
 	utils.Base
-	N         uint
-	Signature []byte
+	View           int64
+	ViewChangeMsgs map[string]blockChain.ViewChangeMessage
+	Signature      []byte
 }
 
-func NewViewChangeMessage(n uint) (*ViewChangeMessage, error) {
-	msg := &ViewChangeMessage{
+func NewNewViewMessage(msgs map[string]blockChain.ViewChangeMessage, view int64) (*NewViewMessage, error) {
+	msg := &NewViewMessage{
 		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		},
-		N: n,
+		View:           view,
+		ViewChangeMsgs: msgs,
 	}
 	err := msg.Sign()
 	if err != nil {
@@ -610,31 +621,34 @@ func NewViewChangeMessage(n uint) (*ViewChangeMessage, error) {
 	return msg, nil
 }
 
-func (msg *ViewChangeMessage) Hash() ([]byte, error) {
+func (msg *NewViewMessage) Hash() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
 	if err := enc.Encode(msg.Base); err != nil {
 		return nil, err
 	}
-	if err := enc.Encode(msg.N); err != nil {
+	if err := enc.Encode(msg.View); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.ViewChangeMsgs); err != nil {
 		return nil, err
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }
 
-func (msg *ViewChangeMessage) Sign() error {
+func (msg *NewViewMessage) Sign() error {
 	hash, err := msg.Hash()
 	if err != nil {
 		return err
 	}
-	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+	if sig := service.CertificateAuthorityX509.Sign(hash); err != nil {
 		msg.Signature = sig
 		return nil
 	}
-	return errors.New("[ViewChangeMessage] Generate signature failed")
+	return errors.New("[NewViewMessage] Generate signature failed")
 }
 
-func (msg *ViewChangeMessage) VerifySignature() bool {
+func (msg *NewViewMessage) VerifySignature() bool {
 	hash, err := msg.Hash()
 	if err != nil {
 		return false
@@ -642,3 +656,11 @@ func (msg *ViewChangeMessage) VerifySignature() bool {
 	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
 
+func (msg *NewViewMessage) VerifyMsgs() bool {
+	for _, msg := range msg.ViewChangeMsgs {
+		if !msg.VerifySignature() {
+			return false
+		}
+	}
+	return true
+}

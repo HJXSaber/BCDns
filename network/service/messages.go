@@ -36,6 +36,10 @@ type MessageViewChange struct {
 	Payload []byte
 }
 
+type MessageNewView struct {
+	Payload []byte
+}
+
 type MessageRetrieveLeader struct {
 	Payload []byte
 }
@@ -60,20 +64,26 @@ type MessageProposalReply struct {
 	Payload []byte
 }
 
+type MessageInitLeader struct {
+	Payload []byte
+}
+
 type JoinMessage struct {
 	utils.Base
-	Cert []byte
+	Cert      []byte
+	NodeId    int64
 	Signature []byte
 }
 
 func NewJoinMessage() (*JoinMessage, error) {
 	_, cert := service.CertificateAuthorityX509.GetLocalCertificate()
 	msg := &JoinMessage{
-		Base:utils.Base{
-			From:conf.BCDnsConfig.HostName,
-			TimeStamp:time.Now().Unix(),
+		Base: utils.Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
 		},
-		Cert:cert,
+		Cert:   cert,
+		NodeId: service.CertificateAuthorityX509.NodeId,
 	}
 	err := msg.Sign()
 	if err != nil {
@@ -89,6 +99,9 @@ func (msg *JoinMessage) Hash() ([]byte, error) {
 		return nil, err
 	}
 	if err := enc.Encode(msg.Cert); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.NodeId); err != nil {
 		return nil, err
 	}
 	return utils.SHA256(buf.Bytes()), nil
@@ -116,20 +129,26 @@ func (msg *JoinMessage) VerifySignature() bool {
 
 type JoinReplyMessage struct {
 	utils.Base
-	View int
+	View       int64
 	Signatures map[string][]byte
-	Signature []byte
+	NodeId     int64
+	Signature  []byte
 }
 
-func NewJoinReplyMessage(view int, signatures map[string][]byte) (*JoinReplyMessage, error) {
+func NewJoinReplyMessage(view int64, signatures map[string][]byte) (*JoinReplyMessage, error) {
 	msg := &JoinReplyMessage{
-		Base:utils.Base{
-			From:conf.BCDnsConfig.HostName,
-			TimeStamp:time.Now().Unix(),
+		Base: utils.Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
 		},
-		View:view,
-		Signatures:signatures,
+		View:       view,
+		Signatures: signatures,
 	}
+	err := msg.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 
 func (msg *JoinReplyMessage) Hash() ([]byte, error) {
@@ -161,6 +180,59 @@ func (msg *JoinReplyMessage) Sign() error {
 }
 
 func (msg *JoinReplyMessage) VerifySignature() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}
+
+type InitLeaderMessage struct {
+	utils.Base
+	NodeIds   []int64
+	Signature []byte
+}
+
+func NewInitLeaderMessage(nodeIds []int64) (*InitLeaderMessage, error) {
+	msg := &InitLeaderMessage{
+		Base: utils.Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
+		},
+		NodeIds: nodeIds,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func (msg *InitLeaderMessage) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg.Base); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.NodeIds); err != nil {
+		return nil, err
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *InitLeaderMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[InitLeaderMessage] Generate signature failed")
+}
+
+func (msg *InitLeaderMessage) VerifySignature() bool {
 	hash, err := msg.Hash()
 	if err != nil {
 		return false

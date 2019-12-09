@@ -3,7 +3,7 @@ package blockChain
 import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
-	service2 "BCDns_0.1/consensusMy/service"
+	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
 	"bytes"
 	"encoding/gob"
@@ -44,7 +44,7 @@ func (bs BlockSlice) PreviousBlock() *Block {
 
 type Block struct {
 	BlockHeader
-	service2.ProposalMessages
+	messages.ProposalMessages
 }
 
 type BlockHeader struct {
@@ -54,7 +54,7 @@ type BlockHeader struct {
 	Height     uint
 }
 
-func NewBlock(proposals service2.ProposalMessages, previousBlock []byte, height uint) *Block {
+func NewBlock(proposals messages.ProposalMessages, previousBlock []byte, height uint) *Block {
 	header := BlockHeader{
 		PrevBlock: previousBlock,
 		Height:    height,
@@ -66,7 +66,7 @@ func NewBlock(proposals service2.ProposalMessages, previousBlock []byte, height 
 }
 
 func NewGenesisBlock() *Block {
-	return NewBlock(service2.ProposalMessages{}, []byte{}, 0)
+	return NewBlock(messages.ProposalMessages{}, []byte{}, 0)
 }
 
 func (b *Block) VerifyBlock() bool {
@@ -107,8 +107,8 @@ func (b *Block) GenerateMerkelRoot() []byte {
 		}
 	}
 
-	ts, ok := Map(func(t service2.ProposalMessage) ([]byte, error) { return t.Id, nil },
-		[]service2.ProposalMessage(b.ProposalMessages)).([][]byte)
+	ts, ok := Map(func(t messages.ProposalMessage) ([]byte, error) { return t.Id, nil },
+		[]messages.ProposalMessage(b.ProposalMessages)).([][]byte)
 	if !ok {
 		return nil
 	}
@@ -172,16 +172,16 @@ func Map(f interface{}, vs interface{}) interface{} {
 }
 
 type BlockMessage struct {
-	service2.Base
+	utils.Base
 	Block
-	AbandonedProposal service2.ProposalMessages
+	AbandonedProposal messages.ProposalMessages
 	Signature         []byte
 }
 
 //TODO
-func NewBlockMessage(b *Block, abandonedP service2.ProposalMessages) (BlockMessage, error) {
+func NewBlockMessage(b *Block, abandonedP messages.ProposalMessages) (BlockMessage, error) {
 	msg := BlockMessage{
-		Base: service2.Base{
+		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		},
@@ -266,14 +266,14 @@ func UnMarshalBlockValidated(data []byte) (*BlockValidated, error) {
 }
 
 type DataSyncRespMessage struct {
-	service2.Base
+	utils.Base
 	BlockValidated
 	Signature []byte
 }
 
 func NewDataSyncRespMessage(b *BlockValidated) (DataSyncRespMessage, error) {
 	msg := DataSyncRespMessage{
-		Base: service2.Base{
+		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		},
@@ -341,6 +341,84 @@ func (msg *DataSyncRespMessage) Validate() bool {
 			if !service.CertificateAuthorityX509.Check(count) {
 				return false
 			}
+		}
+	}
+	return true
+}
+
+type ViewChangeMessage struct {
+	utils.Base
+	BlockHeader
+	Signatures map[string][]byte
+	View       int64
+	Signature  []byte
+}
+
+func NewViewChangeMessage(n uint, view int64, header BlockHeader, signatures map[string][]byte) (
+	*ViewChangeMessage, error) {
+	msg := &ViewChangeMessage{
+		Base: utils.Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
+		},
+		BlockHeader: header,
+		Signatures:  signatures,
+		View:        view,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func (msg *ViewChangeMessage) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg.Base); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.BlockHeader); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.Signatures); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.View); err != nil {
+		return nil, err
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *ViewChangeMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[ViewChangeMessage] Generate signature failed")
+}
+
+func (msg *ViewChangeMessage) VerifySignature() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}
+
+func (msg *ViewChangeMessage) VerifySignatures() bool {
+	headerHash, err := msg.BlockHeader.MarshalBlockHeader()
+	if err != nil {
+		return false
+	}
+	hash := utils.SHA256(headerHash)
+	for host, sig := range msg.Signatures {
+		if !service.CertificateAuthorityX509.VerifySignature(sig, hash, host) {
+			return false
 		}
 	}
 	return true

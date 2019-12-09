@@ -17,7 +17,7 @@ var (
 
 type Leader struct {
 	Mutex        sync.Mutex
-	MessagePool  ProposalMessagePool
+	MessagePool  messages.ProposalMessagePool
 	BlockConfirm bool
 }
 
@@ -44,24 +44,24 @@ func (l *Leader) Run(done chan uint) {
 	for {
 		select {
 		case msgByte := <-ProposalMessageChan:
-			var msg ProposalMessage
+			var msg messages.ProposalMessage
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
 				logger.Warningf("[Leader.Run] json.Unmarshal error=%v", err)
 				continue
 			}
 			switch msg.Type {
-			case Add:
+			case messages.Add:
 				if !msg.ValidateAdd() {
 					logger.Warningf("[Leader.Run] ValidateAdd failed")
 					continue
 				}
-			case Del:
+			case messages.Del:
 				if !msg.ValidateDel() {
 					logger.Warningf("[Leader.Run] ValidateDel failed")
 					continue
 				}
-			case Mod:
+			case messages.Mod:
 				if !msg.ValidateMod() {
 					logger.Warningf("[Leader.Run] ValidateMod failed")
 					continue
@@ -110,10 +110,11 @@ func (l *Leader) Confirm() {
 	l.BlockConfirm = true
 }
 
-func CheckProposals(proposals ProposalMessages) (ProposalMessages, ProposalMessages) {
-	filter := make(map[string]ProposalMessages)
-	abandoneP := ProposalMessagePool{}
-	validP := ProposalMessagePool{}
+func CheckProposals(proposals messages.ProposalMessages) (
+	messages.ProposalMessages, messages.ProposalMessages) {
+	filter := make(map[string]messages.ProposalMessages)
+	abandoneP := messages.ProposalMessagePool{}
+	validP := messages.ProposalMessagePool{}
 	for _, p := range proposals {
 		if fp, ok := filter[p.ZoneName]; !ok {
 			filter[p.ZoneName] = append(filter[p.ZoneName], p)
@@ -130,19 +131,19 @@ func CheckProposals(proposals ProposalMessages) (ProposalMessages, ProposalMessa
 				//TODO: Two conflicted proposal
 				tmpP := fp[len(fp)-1]
 				switch p.Type {
-				case Add:
+				case messages.Add:
 					if tmpP.Owner != messages.Dereliction {
 						abandoneP.AddProposal(p)
 					} else {
 						validP.AddProposal(p)
 					}
-				case Mod:
+				case messages.Mod:
 					if tmpP.Owner != p.Owner || tmpP.Owner != p.From {
 						abandoneP.AddProposal(p)
 					} else {
 						validP.AddProposal(p)
 					}
-				case Del:
+				case messages.Del:
 					if p.Owner != messages.Dereliction || tmpP.Owner != p.From {
 						abandoneP.AddProposal(p)
 					} else {
@@ -156,7 +157,7 @@ func CheckProposals(proposals ProposalMessages) (ProposalMessages, ProposalMessa
 }
 
 func ValidateProposals(msg *blockChain.BlockMessage) bool {
-	tmpPool := ProposalMessages{}
+	tmpPool := messages.ProposalMessages{}
 	tmpPool = append(tmpPool, msg.ProposalMessages...)
 	tmpPool = append(tmpPool, msg.AbandonedProposal...)
 	validP, _ := CheckProposals(tmpPool)

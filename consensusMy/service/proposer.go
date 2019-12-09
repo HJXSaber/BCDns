@@ -3,6 +3,7 @@ package service
 import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
+	"BCDns_0.1/messages"
 	service2 "BCDns_0.1/network/service"
 	"context"
 	"encoding/json"
@@ -20,7 +21,7 @@ var (
 type Proposer struct {
 	ReplyMutex sync.Mutex
 
-	Proposals map[string]ProposalMessage
+	Proposals map[string]messages.ProposalMessage
 	Replys    map[string]map[string]uint8
 	Contexts  map[string]context.Context
 	Conn      *net.UDPConn
@@ -51,7 +52,7 @@ func (p *Proposer) Run(done chan uint) {
 			}
 			p.handleOrder(msg)
 		case msgByte := <-service2.ProposalReplyChan:
-			var msg ProposalReplyMessage
+			var msg messages.ProposalReplyMessage
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
 				logger.Warningf("[Proposer.Run] json.Unmarshal error=%v", err)
@@ -84,7 +85,7 @@ func (p *Proposer) Run(done chan uint) {
 }
 
 type Order struct {
-	OptType  OperationType
+	OptType  messages.OperationType
 	ZoneName string
 	Values   map[string]string
 }
@@ -104,7 +105,7 @@ func (p *Proposer) ReceiveOrder() {
 }
 
 func (p *Proposer) handleOrder(msg Order) {
-	if proposal := NewProposal(msg.ZoneName, msg.OptType, msg.Values); proposal != nil {
+	if proposal := messages.NewProposal(msg.ZoneName, msg.OptType, msg.Values); proposal != nil {
 		proposalByte, err := json.Marshal(proposal)
 		if err != nil {
 			logger.Warningf("[handleOrder] json.Marshal error=%v", err)
@@ -120,7 +121,7 @@ func (p *Proposer) handleOrder(msg Order) {
 	}
 }
 
-func (p *Proposer) timer(ctx context.Context, proposal *ProposalMessage) {
+func (p *Proposer) timer(ctx context.Context, proposal *messages.ProposalMessage) {
 	select {
 	case <-time.After(conf.BCDnsConfig.ProposalTimeout):
 		p.ReplyMutex.Lock()
@@ -136,7 +137,7 @@ func (p *Proposer) timer(ctx context.Context, proposal *ProposalMessage) {
 			delete(p.Replys, string(proposal.Id))
 			delete(p.Contexts, string(proposal.Id))
 		} else {
-			confirmMsg := NewProposalConfirm(proposal.Id)
+			confirmMsg := messages.NewProposalConfirm(proposal.Id)
 			if confirmMsg == nil {
 				logger.Warningf("[Proposer.timer] NewProposalConfirm failed")
 				return
