@@ -16,19 +16,7 @@ type MessageProposal struct {
 	Payload []byte
 }
 
-type MessageEndorsement struct {
-	Payload []byte
-}
-
-type MessageCommit struct {
-	Payload []byte
-}
-
 type MessageBlock struct {
-	Payload []byte
-}
-
-type MessageReply struct {
 	Payload []byte
 }
 
@@ -37,10 +25,6 @@ type MessageViewChange struct {
 }
 
 type MessageNewView struct {
-	Payload []byte
-}
-
-type MessageRetrieveLeader struct {
 	Payload []byte
 }
 

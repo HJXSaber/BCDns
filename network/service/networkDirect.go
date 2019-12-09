@@ -61,8 +61,6 @@ const (
 	InitLeaderMsg
 	ViewChangeMsg
 	NewViewMsg
-	RetrieveLeader
-	RetrieveLeaderResponse
 )
 
 type DNet struct {
@@ -166,8 +164,6 @@ func (n *DNet) handleConn(conn net.Conn) {
 			ProposalReplyChan <- message.Payload
 		case MessageViewChange:
 			ViewChangeChan <- message.Payload
-		case MessageRetrieveLeader:
-			RetrieveLeaderMsgChan <- message.Payload
 		case MessageProposalConfirm:
 			ProposalConfirmChan <- message.Payload
 		default:
@@ -353,10 +349,6 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 		}
 	case NewViewMsg:
 		msg = MessageNewView{
-			Payload: payload,
-		}
-	case RetrieveLeader:
-		msg = MessageRetrieveLeader{
 			Payload: payload,
 		}
 	case ProposalConfirmMsg:

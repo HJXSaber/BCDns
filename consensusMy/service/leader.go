@@ -72,7 +72,7 @@ func (l *Leader) Run(done chan uint) {
 				interruptTimer <- 1
 			}
 		case <-interrupt:
-			if !service.Leader.IsLeader() {
+			if !service.ViewManager.IsLeader() {
 				continue
 			}
 			if l.MessagePool.Size() <= 0 {
