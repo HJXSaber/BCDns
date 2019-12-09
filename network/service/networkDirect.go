@@ -52,6 +52,8 @@ const (
 	DataSyncRespMsg
 	ProposalReplyMsg
 	ProposalConfirmMsg
+	JoinMsg
+	JoinReplyMsg
 	ViewChangeMsg
 	ViewChangeResult
 	RetrieveLeader
@@ -113,7 +115,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 			continue
 		}
 		switch message := msg.(type) {
-		case MessageJoin:
+		case JoinMessage:
 			if !message.VerifySignature() {
 				logger.Warningf("[Network] handleConn signature is invalid")
 				continue
@@ -125,13 +127,24 @@ func (n *DNet) handleConn(conn net.Conn) {
 			node := DNode{
 				Pass:       true,
 				RemoteAddr: conn.RemoteAddr().String(),
-				Name:       message.Name,
+				Name:       message.From,
 				conn:       conn,
 			}
 			n.Members = append(n.Members, node)
 			n.Mutex.Lock()
 			n.Map[node.Name] = node
 			n.Mutex.Unlock()
+			replyMsg, err := NewJoinReplyMessage(ViewManager.View, ViewManager.Proof)
+			if err != nil {
+				logger.Warningf("[Network] handleConn NewJoinReplyMessage error=%v", err)
+				continue
+			}
+			jsonData, err := json.Marshal(replyMsg)
+			if err != nil {
+				logger.Warningf("[Network] handleConn json.Marshal error=%v", err)
+				continue
+			}
+			n.SendTo(jsonData, JoinReplyMsg, message.From)
 		case MessageProposal:
 			ProposalChan <- message.Payload
 		case MessageBlock:
@@ -146,6 +159,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 			ProposalReplyChan <- message.Payload
 		case MessageViewChange:
 			ViewChangeChan <- message.Payload
+
 		case MessageRetrieveLeader:
 			RetrieveLeaderMsgChan <- message.Payload
 		case MessageProposalConfirm:
@@ -158,10 +172,9 @@ func (n *DNet) handleConn(conn net.Conn) {
 
 // If non-node is reached, return error
 func (n *DNet) Join(seeds []string) error {
-	_, certData := service.CertificateAuthorityX509.GetLocalCertificate()
-	msg := MessageJoin{
-		Cert: certData,
-		Name: conf.BCDnsConfig.HostName,
+	msg, err := NewJoinMessage()
+	if err != nil {
+		return err
 	}
 	localData, err := json.Marshal(msg)
 	if err != nil {
@@ -203,7 +216,7 @@ func (n *DNet) PushAndPull(conn net.Conn, localData []byte) error {
 	if err != nil {
 		return err
 	}
-	var msg MessageJoin
+	var msg JoinReplyMessage
 	err = json.Unmarshal(remoteData[:l], &msg)
 	if err != nil {
 		return err
@@ -211,7 +224,7 @@ func (n *DNet) PushAndPull(conn net.Conn, localData []byte) error {
 	node := DNode{
 		Pass:       true,
 		RemoteAddr: conn.RemoteAddr().String(),
-		Name:       msg.Name,
+		Name:       msg.From,
 		conn:       conn,
 	}
 	n.Members = append(n.Members, node)
@@ -315,6 +328,10 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 	case ViewChangeMsg:
 		msg = MessageViewChange{
 			Payload: payload,
+		}
+	case JoinReplyMsg:
+		msg = MessageJoinReply{
+			Payload:payload,
 		}
 	case RetrieveLeader:
 		msg = MessageRetrieveLeader{

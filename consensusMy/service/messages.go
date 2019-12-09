@@ -23,13 +23,10 @@ const (
 	Mod
 )
 
-type Base struct {
-	From      string
-	TimeStamp int64
-}
+
 
 type ProposalMessage struct {
-	Base
+	utils.Base
 	Type      OperationType
 	ZoneName  string
 	Owner     string
@@ -42,7 +39,7 @@ type ProposalMessage struct {
 func NewProposal(zoneName string, t OperationType, values map[string]string) *ProposalMessage {
 	var (
 		err  error
-		base = Base{
+		base = utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		}
@@ -196,14 +193,14 @@ func UnMarshalProposalMessage(data []byte) (*ProposalMessage, error) {
 }
 
 type ProposalConfirm struct {
-	Base
+	utils.Base
 	ProposalHash []byte
 	Signature    []byte
 }
 
 func NewProposalConfirm(proposalHash []byte) *ProposalConfirm {
 	msg := ProposalConfirm{
-		Base: Base{
+		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		},
@@ -424,14 +421,14 @@ func (msgs *ProposalMessages) FindByZoneName(name string) *ProposalMessage {
 }
 
 type BlockConfirmMessage struct {
-	Base
+	utils.Base
 	Id        []byte
 	Signature []byte
 }
 
 func NewBlockConfirmMessage(id []byte) (BlockConfirmMessage, error) {
 	msg := BlockConfirmMessage{
-		Base: Base{
+		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		},
@@ -487,14 +484,14 @@ func (msg *BlockConfirmMessage) Verify() bool {
 }
 
 type DataSyncMessage struct {
-	Base
+	utils.Base
 	Height    uint
 	Signature []byte
 }
 
 func NewDataSyncMessage(h uint) (DataSyncMessage, error) {
 	msg := DataSyncMessage{
-		Base: Base{
+		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		},
@@ -540,14 +537,14 @@ func (msg *DataSyncMessage) VerifySignature() bool {
 }
 
 type ProposalReplyMessage struct {
-	Base
+	utils.Base
 	Id        []byte
 	Signature []byte
 }
 
 func NewProposalReplyMessage(id []byte) (*ProposalReplyMessage, error) {
 	msg := &ProposalReplyMessage{
-		Base: Base{
+		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		},
@@ -593,14 +590,14 @@ func (msg *ProposalReplyMessage) VerifySignature() bool {
 }
 
 type ViewChangeMessage struct {
-	Base
+	utils.Base
 	N         uint
 	Signature []byte
 }
 
 func NewViewChangeMessage(n uint) (*ViewChangeMessage, error) {
 	msg := &ViewChangeMessage{
-		Base: Base{
+		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
 		},
@@ -644,3 +641,4 @@ func (msg *ViewChangeMessage) VerifySignature() bool {
 	}
 	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
+
