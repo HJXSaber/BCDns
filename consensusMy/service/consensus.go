@@ -23,9 +23,9 @@ func NewConsensus(done chan uint) (*Consensus, error) {
 	if l == nil {
 		return nil, errors.New("[Consensus] NewLeader failed")
 	}
-	p.Run(done)
-	n.Run(done)
-	l.Run(done)
+	go p.Run(done)
+	go n.Run(done)
+	go l.Run(done)
 	return &Consensus{
 		*p,
 		*n,

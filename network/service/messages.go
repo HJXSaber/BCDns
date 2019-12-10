@@ -10,46 +10,16 @@ import (
 	"time"
 )
 
-type Message interface{}
-
-type MessageProposal struct {
+type Message struct {
+	MessageTypeT
 	Payload []byte
 }
 
-type MessageBlock struct {
-	Payload []byte
-}
-
-type MessageViewChange struct {
-	Payload []byte
-}
-
-type MessageNewView struct {
-	Payload []byte
-}
-
-type MessageProposalConfirm struct {
-	Payload []byte
-}
-
-type MessageBlockConfirm struct {
-	Payload []byte
-}
-
-type MessageDataSync struct {
-	Payload []byte
-}
-
-type MessageDataSyncResp struct {
-	Payload []byte
-}
-
-type MessageProposalReply struct {
-	Payload []byte
-}
-
-type MessageInitLeader struct {
-	Payload []byte
+func NewMessage(t MessageTypeT, payload []byte) Message {
+	return Message{
+		t,
+		payload,
+	}
 }
 
 type JoinMessage struct {

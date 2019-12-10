@@ -5,8 +5,8 @@ import (
 	service2 "BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
 	"BCDns_0.1/network/service"
+	"bytes"
 	"encoding/json"
-	"reflect"
 )
 
 const (
@@ -30,8 +30,8 @@ type Node struct {
 
 func NewNode() *Node {
 	return &Node{
-		Proposals: map[string]uint8{},
-		Blocks: []blockChain.BlockValidated{},
+		Proposals:       map[string]uint8{},
+		Blocks:          []blockChain.BlockValidated{},
 		BlockPrepareMsg: map[string][]byte{},
 	}
 }
@@ -41,10 +41,20 @@ func (n *Node) Run(done chan uint) {
 	for {
 		select {
 		case msgByte := <-service.ProposalChan:
+			var proposal messages.ProposalMessage
+			err := json.Unmarshal(msgByte, &proposal)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if !n.handleProposal(proposal) {
+				continue
+			}
+			n.Proposals[string(proposal.Id)] = unconfirmed
 			if service.ViewManager.IsLeader() {
-				ProposalMessageChan <- msgByte
+				ProposalMessageChan <- proposal
 			} else {
-				n.handleProposal(msgByte)
+				service.Net.SendToLeader(msgByte, service.ProposalMsg)
 			}
 		case msgByte := <-service.BlockChan:
 			if service.ViewManager.IsOnChanging() {
@@ -108,6 +118,9 @@ func (n *Node) Run(done chan uint) {
 					continue
 				}
 				n.ExecuteBlock(blockValidated)
+				if service.ViewManager.IsLeader() {
+					BlockConfirmChan <- 1
+				}
 			}
 		case msgByte := <-service.DataSyncChan:
 			var msg messages.DataSyncMessage
@@ -188,32 +201,25 @@ func (n *Node) Run(done chan uint) {
 	}
 }
 
-func (n *Node) handleProposal(msgByte []byte) {
-	var proposal messages.ProposalMessage
-	err := json.Unmarshal(msgByte, &proposal)
-	if err != nil {
-		logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
-		return
-	}
+func (n *Node) handleProposal(proposal messages.ProposalMessage) bool {
 	switch proposal.Type {
 	case messages.Add:
 		if !proposal.ValidateAdd() {
 			logger.Warningf("[handleProposal] ValidateAdd failed")
-			return
+			return false
 		}
 	case messages.Del:
 		if !proposal.ValidateDel() {
 			logger.Warningf("[handleProposal] ValidateDel failed")
-			return
+			return false
 		}
 	case messages.Mod:
 		if !proposal.ValidateMod() {
 			logger.Warningf("[handleProposal] ValidateMod failed")
-			return
+			return false
 		}
 	}
-	n.Proposals[string(proposal.Id)] = unconfirmed
-	service.Net.SendToLeader(msgByte, service.ProposalMsg)
+	return true
 }
 
 func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
@@ -232,7 +238,7 @@ func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
 		n.EnqueueBlock(*blockChain.NewBlockValidated(&msg.Block, map[string][]byte{}))
 		return dataSync
 	}
-	if reflect.DeepEqual(msg.Block.PrevBlock, prevHash) {
+	if bytes.Compare(msg.Block.PrevBlock, prevHash) != 0 {
 		logger.Warningf("[Node.Run] PrevBlock is invalid")
 		return invalid
 	}

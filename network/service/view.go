@@ -23,7 +23,11 @@ var (
 )
 
 func NewViewManager() (*ViewManagerT, error) {
-	manager := new(ViewManagerT)
+	manager := &ViewManagerT{
+		ViewChangeMsgs:     map[string]blockChain.ViewChangeMessage{},
+		JoinReplyMessages:  map[string]JoinReplyMessage{},
+		InitLeaderMessages: map[string]InitLeaderMessage{},
+	}
 	manager.View = -1
 	manager.LeaderId = -1
 	return manager, nil

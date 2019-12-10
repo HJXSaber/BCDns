@@ -6,6 +6,7 @@ import (
 	"BCDns_0.1/utils"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/op/go-logging"
 	"net"
 	"strings"
@@ -15,7 +16,7 @@ import (
 
 var (
 	logger          *logging.Logger // package-level logger
-	ListenAddr      = "0,0,0,0"
+	ListenAddr      = "0.0.0.0"
 	MaxPacketLength = 65536
 	Net             *DNet
 
@@ -61,6 +62,7 @@ const (
 	InitLeaderMsg
 	ViewChangeMsg
 	NewViewMsg
+	JoinMsg
 )
 
 type DNet struct {
@@ -79,12 +81,11 @@ type DNode struct {
 }
 
 func NewDNet() (*DNet, error) {
-	dNet := new(DNet)
-	go dNet.handleStram()
-	err := dNet.Join(service.CertificateAuthorityX509.GetSeeds())
-	if err != nil {
-		return nil, err
+	dNet := &DNet{
+		Members: []DNode{},
+		Map:     map[string]DNode{},
 	}
+	go dNet.handleStram()
 	return dNet, nil
 }
 
@@ -122,8 +123,15 @@ func (n *DNet) handleConn(conn net.Conn) {
 			logger.Warningf("[Network] handleConn json.Unmarshal error=%v", err)
 			continue
 		}
-		switch message := msg.(type) {
-		case JoinMessage:
+		fmt.Println("start handle")
+		switch msg.MessageTypeT {
+		case JoinMsg:
+			var message JoinMessage
+			err := json.Unmarshal(msg.Payload, &message)
+			if err != nil {
+				logger.Warningf("[Network] handleConn json.Unmarshal error=%v", err)
+				continue
+			}
 			if !message.VerifySignature() {
 				logger.Warningf("[Network] handleConn signature is invalid")
 				continue
@@ -153,26 +161,29 @@ func (n *DNet) handleConn(conn net.Conn) {
 				logger.Warningf("[Network] handleConn json.Marshal error=%v", err)
 				continue
 			}
-			node.Send(jsonData)
-		case MessageProposal:
-			ProposalChan <- message.Payload
-		case MessageBlock:
-			BlockChan <- message.Payload
-		case MessageBlockConfirm:
-			BlockConfirmChan <- message.Payload
-		case MessageDataSync:
-			DataSyncChan <- message.Payload
-		case MessageDataSyncResp:
-			DataSyncRespChan <- message.Payload
-		case MessageProposalReply:
-			ProposalReplyChan <- message.Payload
-		case MessageViewChange:
-			ViewChangeChan <- message.Payload
-		case MessageProposalConfirm:
-			ProposalConfirmChan <- message.Payload
+			_, _ = node.Send(jsonData)
+		case ProposalMsg:
+			ProposalChan <- msg.Payload
+		case BlockMsg:
+			BlockChan <- msg.Payload
+		case BlockConfirmMsg:
+			BlockConfirmChan <- msg.Payload
+		case DataSyncMsg:
+			DataSyncChan <- msg.Payload
+		case DataSyncRespMsg:
+			DataSyncRespChan <- msg.Payload
+		case ProposalReplyMsg:
+			ProposalReplyChan <- msg.Payload
+		case ProposalConfirmMsg:
+			ProposalConfirmChan <- msg.Payload
+		case InitLeaderMsg:
+			InitLeaderChan <- msg.Payload
+		case ViewChangeMsg:
+			ViewChangeChan <- msg.Payload
 		default:
 			logger.Warningf("[Network] handleConn Unknown message type")
 		}
+		fmt.Println("finish handle")
 	}
 }
 
@@ -182,27 +193,34 @@ func (n *DNet) Join(seeds []string) error {
 	if err != nil {
 		return err
 	}
-	localData, err := json.Marshal(msg)
+	jsonData, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	localData, err := json.Marshal(NewMessage(JoinMsg, jsonData))
 	if err != nil {
 		return err
 	}
 	success := int32(0)
 	wg := sync.WaitGroup{}
 	for _, seed := range seeds {
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			conn, err := JoinNode(seed)
 			if err != nil {
+				logger.Warningf("[Network] JoinNode error=%v", err)
 				return
 			}
-			err = n.PushAndPull(conn, localData)
+			joinSelf, err := n.PushAndPull(conn, localData)
 			if err != nil {
 				logger.Warningf("[Network] Join push&pull error=%v", err)
 				return
 			}
 			atomic.AddInt32(&success, 1)
-			go n.handleConn(conn)
+			if !joinSelf {
+				go n.handleConn(conn)
+			}
 		}()
 	}
 	wg.Wait()
@@ -212,25 +230,26 @@ func (n *DNet) Join(seeds []string) error {
 	return nil
 }
 
-func (n *DNet) PushAndPull(conn net.Conn, localData []byte) error {
+func (n *DNet) PushAndPull(conn net.Conn, localData []byte) (bool, error) {
 	_, err := conn.Write(localData)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	remoteData := make([]byte, MaxPacketLength)
 	l, err := conn.Read(remoteData)
 	if err != nil {
-		return err
+		return false, err
 	}
 	var msg JoinReplyMessage
 	err = json.Unmarshal(remoteData[:l], &msg)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !msg.VerifySignature() {
-		return errors.New("[PushAndPull] JoinReplyMessage.VerifySignature failed")
+		return false, errors.New("[PushAndPull] JoinReplyMessage.VerifySignature failed")
 	}
+	JoinReplyChan <- msg
 	if _, ok := n.Map[msg.From]; !ok {
 		node := DNode{
 			Pass:       true,
@@ -243,9 +262,9 @@ func (n *DNet) PushAndPull(conn net.Conn, localData []byte) error {
 		n.Mutex.Lock()
 		defer n.Mutex.Unlock()
 		n.Map[node.Name] = node
+		return true, nil
 	}
-	JoinReplyChan <- msg
-	return nil
+	return false, nil
 }
 
 func JoinNode(addr string) (net.Conn, error) {
@@ -257,12 +276,7 @@ func JoinNode(addr string) (net.Conn, error) {
 }
 
 func (n *DNet) BroadCast(payload []byte, t MessageTypeT) {
-	msg, err := ConvertMessage(payload, t)
-	if err != nil {
-		logger.Warningf("[Network] BroadCast ConvertMessage error=%v", err)
-		return
-	}
-	data, err := json.Marshal(msg)
+	data, err := json.Marshal(NewMessage(t, payload))
 	if err != nil {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return
@@ -276,12 +290,7 @@ func (n *DNet) BroadCast(payload []byte, t MessageTypeT) {
 }
 
 func (n *DNet) SendTo(payload []byte, t MessageTypeT, to string) {
-	msg, err := ConvertMessage(payload, t)
-	if err != nil {
-		logger.Warningf("[Network] BroadCast ConvertMessage error=%v", err)
-		return
-	}
-	data, err := json.Marshal(msg)
+	data, err := json.Marshal(NewMessage(t, payload))
 	if err != nil {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return
@@ -292,12 +301,7 @@ func (n *DNet) SendTo(payload []byte, t MessageTypeT, to string) {
 }
 
 func (n *DNet) SendToLeader(payload []byte, t MessageTypeT) {
-	msg, err := ConvertMessage(payload, t)
-	if err != nil {
-		logger.Warningf("[Network] BroadCast ConvertMessage error=%v", err)
-		return
-	}
-	data, err := json.Marshal(msg)
+	data, err := json.Marshal(NewMessage(t, payload))
 	if err != nil {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return
@@ -318,55 +322,6 @@ func (n *DNet) GetAllNodeIds() []int64 {
 		ids = append(ids, node.NodeId)
 	}
 	return ids
-}
-
-func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
-	var msg Message
-	switch t {
-	case ProposalMsg:
-		msg = MessageProposal{
-			Payload: payload,
-		}
-	case BlockMsg:
-		msg = MessageBlock{
-			Payload: payload,
-		}
-	case BlockConfirmMsg:
-		msg = MessageBlockConfirm{
-			Payload: payload,
-		}
-	case DataSyncMsg:
-		msg = MessageDataSync{
-			Payload: payload,
-		}
-	case DataSyncRespMsg:
-		msg = MessageDataSyncResp{
-			Payload: payload,
-		}
-	case ProposalReplyMsg:
-		msg = MessageProposalReply{
-			Payload: payload,
-		}
-	case ViewChangeMsg:
-		msg = MessageViewChange{
-			Payload: payload,
-		}
-	case NewViewMsg:
-		msg = MessageNewView{
-			Payload: payload,
-		}
-	case ProposalConfirmMsg:
-		msg = MessageProposalConfirm{
-			Payload: payload,
-		}
-	case InitLeaderMsg:
-		msg = MessageInitLeader{
-			Payload: payload,
-		}
-	default:
-		return nil, errors.New("[ConvertMessage] Unknown messageType")
-	}
-	return msg, nil
 }
 
 func (n DNode) Send(msg []byte) (int, error) {

@@ -3,6 +3,7 @@ package main
 import (
 	"BCDns_0.1/bcDns/conf"
 	blockChain2 "BCDns_0.1/blockChain"
+	service2 "BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/consensusMy/service"
 	dao2 "BCDns_0.1/dao"
 	service3 "BCDns_0.1/network/service"
@@ -30,6 +31,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = service3.Net.Join(service2.CertificateAuthorityX509.GetSeeds())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("[Leader.Start]")
 	service3.ViewManager.Start()
 	fmt.Println("[Init Consensus]")
 	done := make(chan uint)
@@ -37,6 +43,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("[System running]")
 	_ = <-done
 	fmt.Println("[Err] System exit")
 }

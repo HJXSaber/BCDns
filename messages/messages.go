@@ -159,6 +159,9 @@ func (msg *ProposalMessage) Hash() ([]byte, error) {
 	if err := enc.Encode(msg.Values); err != nil {
 		return nil, err
 	}
+	if err := enc.Encode(msg.Nonce); err != nil {
+		return nil, err
+	}
 	return utils.SHA256(buf.Bytes()), nil
 }
 
@@ -167,7 +170,7 @@ func (msg *ProposalMessage) Sign() error {
 	if err != nil {
 		return err
 	}
-	if sig := service.CertificateAuthorityX509.Sign(hash); err != nil {
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
 		msg.Signature = sig
 		return nil
 	}
@@ -237,7 +240,7 @@ func (msg *ProposalConfirm) Sign() error {
 	if err != nil {
 		return err
 	}
-	if sig := service.CertificateAuthorityX509.Sign(hash); err != nil {
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
 		msg.Signature = sig
 		return nil
 	}
@@ -393,8 +396,8 @@ type ProposalMessagePool struct {
 
 func NewProposalMessagePool() ProposalMessagePool {
 	pool := ProposalMessagePool{
-		ProposalMessages:ProposalMessages{},
-		ProposalState: map[string]uint8{},
+		ProposalMessages: ProposalMessages{},
+		ProposalState:    map[string]uint8{},
 	}
 	return pool
 }
@@ -590,7 +593,7 @@ func (msg *ProposalReplyMessage) Sign() error {
 	if err != nil {
 		return err
 	}
-	if sig := service.CertificateAuthorityX509.Sign(hash); err != nil {
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
 		msg.Signature = sig
 		return nil
 	}
@@ -604,7 +607,3 @@ func (msg *ProposalReplyMessage) VerifySignature() bool {
 	}
 	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
-
-
-
-

@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	ProposalMessageChan chan []byte
+	ProposalMessageChan chan messages.ProposalMessage
+	BlockConfirmChan    chan uint
 )
 
 type Leader struct {
@@ -22,12 +23,14 @@ type Leader struct {
 }
 
 func init() {
-	ProposalMessageChan = make(chan []byte, 1024)
+	ProposalMessageChan = make(chan messages.ProposalMessage, 1024)
+	BlockConfirmChan = make(chan uint, 1024)
 }
 
 func NewLeader() *Leader {
 	return &Leader{
-		MessagePool: messages.NewProposalMessagePool(),
+		MessagePool:  messages.NewProposalMessagePool(),
+		BlockConfirm: true,
 	}
 }
 
@@ -49,30 +52,7 @@ func (l *Leader) Run(done chan uint) {
 	}()
 	for {
 		select {
-		case msgByte := <-ProposalMessageChan:
-			var msg messages.ProposalMessage
-			err := json.Unmarshal(msgByte, &msg)
-			if err != nil {
-				logger.Warningf("[Leader.Run] json.Unmarshal error=%v", err)
-				continue
-			}
-			switch msg.Type {
-			case messages.Add:
-				if !msg.ValidateAdd() {
-					logger.Warningf("[Leader.Run] ValidateAdd failed")
-					continue
-				}
-			case messages.Del:
-				if !msg.ValidateDel() {
-					logger.Warningf("[Leader.Run] ValidateDel failed")
-					continue
-				}
-			case messages.Mod:
-				if !msg.ValidateMod() {
-					logger.Warningf("[Leader.Run] ValidateMod failed")
-					continue
-				}
-			}
+		case msg := <-ProposalMessageChan:
 			l.MessagePool.AddProposal(msg)
 			if l.BlockConfirm && l.MessagePool.Size() >= blockChain.BlockMaxSize {
 				interruptTimer <- 1
@@ -85,7 +65,11 @@ func (l *Leader) Run(done chan uint) {
 				fmt.Printf("[Leader.Run] CurrentBlock is empty\n")
 				continue
 			}
-			validP, abandonedP := CheckProposals(l.MessagePool.ProposalMessages[:blockChain.BlockMaxSize])
+			bound := blockChain.BlockMaxSize
+			if len(l.MessagePool.ProposalMessages)-1 < blockChain.BlockMaxSize {
+				bound = len(l.MessagePool.ProposalMessages) - 1
+			}
+			validP, abandonedP := CheckProposals(l.MessagePool.ProposalMessages[:bound])
 			block, err := blockChain.BlockChain.MineBlock(validP)
 			if err != nil {
 				logger.Warningf("[Leader.Run] MineBlock error=%v", err)
@@ -102,10 +86,12 @@ func (l *Leader) Run(done chan uint) {
 				continue
 			}
 			service.Net.BroadCast(jsonData, service.BlockMsg)
-			l.MessagePool.Clear(blockChain.BlockMaxSize)
+			l.MessagePool.Clear(bound)
 			l.Mutex.Lock()
 			l.BlockConfirm = false
 			l.Mutex.Unlock()
+		case <-BlockConfirmChan:
+			l.Confirm()
 		}
 	}
 }

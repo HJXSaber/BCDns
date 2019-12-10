@@ -71,7 +71,7 @@ func NewGenesisBlock() *Block {
 
 func (b *Block) VerifyBlock() bool {
 	merkel := b.GenerateMerkelRoot()
-	return reflect.DeepEqual(merkel, b.BlockHeader.MerkelRoot)
+	return bytes.Compare(merkel, b.MerkelRoot) == 0
 }
 
 func (b *Block) Hash() ([]byte, error) {

@@ -15,7 +15,8 @@ import (
 )
 
 var (
-	logger *logging.Logger // package-level logger
+	logger     *logging.Logger // package-level logger
+	UdpAddress = "127.0.0.1:8888"
 )
 
 type Proposer struct {
@@ -29,11 +30,20 @@ type Proposer struct {
 }
 
 func NewProposer() *Proposer {
+	udpaddr, err := net.ResolveUDPAddr("udp", UdpAddress)
+	if err != nil {
+		panic(err)
+	}
+	conn, err := net.ListenUDP("udp", udpaddr)
+	if err != nil {
+		panic(err)
+	}
 	return &Proposer{
 		Proposals: map[string]messages.ProposalMessage{},
-		Replys: map[string]map[string]uint8{},
-		Contexts: map[string]context.Context{},
-		OrderChan:make(chan []byte, 1024),
+		Replys:    map[string]map[string]uint8{},
+		Contexts:  map[string]context.Context{},
+		OrderChan: make(chan []byte, 1024),
+		Conn:      conn,
 	}
 }
 
@@ -68,9 +78,7 @@ func (p *Proposer) Run(done chan uint) {
 				continue
 			}
 			p.Mutex.Lock()
-			_, ok := p.Proposals[string(msg.Id)]
-			if !ok {
-				logger.Warningf("[Proposer.Run] Proposal is not exist %v", msg)
+			if _, ok := p.Proposals[string(msg.Id)]; !ok {
 				continue
 			}
 			p.Replys[string(msg.Id)][msg.From] = 0
