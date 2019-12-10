@@ -369,6 +369,6 @@ func ConvertMessage(payload []byte, t MessageTypeT) (interface{}, error) {
 	return msg, nil
 }
 
-func (n *DNode) Send(msg []byte) (int, error) {
+func (n DNode) Send(msg []byte) (int, error) {
 	return n.Conn.Write(msg)
 }

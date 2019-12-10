@@ -117,7 +117,7 @@ func (m *ViewManagerT) Run() {
 					StartDataSync(localH, h)
 				}
 				if m.IsNextLeader() {
-					newViewMsg, err := messages.NewNewViewMessage(m.ViewChangeMsgs, m.View)
+					newViewMsg, err := blockChain.NewNewViewMessage(m.ViewChangeMsgs, m.View)
 					if err != nil {
 						logger.Warningf("[ViewManagerT.Run] NewNewViewMessage error=%v", err)
 						continue
@@ -131,7 +131,7 @@ func (m *ViewManagerT) Run() {
 				}
 			}
 		case msgByte := <-NewViewChan:
-			var msg messages.NewViewMessage
+			var msg blockChain.NewViewMessage
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
 				logger.Warningf("[ViewManagerT.Run] json.Unmarshal error=%v", err)

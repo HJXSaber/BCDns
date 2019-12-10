@@ -201,7 +201,7 @@ func (msg *BlockMessage) Hash() ([]byte, error) {
 	if err := enc.Encode(msg.Base); err != nil {
 		return nil, err
 	}
-	if err := enc.Encode(AbandonedProposalPool); err != nil {
+	if err := enc.Encode(msg.AbandonedProposal); err != nil {
 		return nil, err
 	}
 	if hash, err := msg.Block.Hash(); err != nil {
@@ -418,6 +418,73 @@ func (msg *ViewChangeMessage) VerifySignatures() bool {
 	hash := utils.SHA256(headerHash)
 	for host, sig := range msg.Signatures {
 		if !service.CertificateAuthorityX509.VerifySignature(sig, hash, host) {
+			return false
+		}
+	}
+	return true
+}
+
+type NewViewMessage struct {
+	utils.Base
+	View           int64
+	ViewChangeMsgs map[string]ViewChangeMessage
+	Signature      []byte
+}
+
+func NewNewViewMessage(msgs map[string]ViewChangeMessage, view int64) (*NewViewMessage, error) {
+	msg := &NewViewMessage{
+		Base: utils.Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
+		},
+		View:           view,
+		ViewChangeMsgs: msgs,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func (msg *NewViewMessage) Hash() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(msg.Base); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.View); err != nil {
+		return nil, err
+	}
+	if err := enc.Encode(msg.ViewChangeMsgs); err != nil {
+		return nil, err
+	}
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *NewViewMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); err != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[NewViewMessage] Generate signature failed")
+}
+
+func (msg *NewViewMessage) VerifySignature() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}
+
+func (msg *NewViewMessage) VerifyMsgs() bool {
+	for _, msg := range msg.ViewChangeMsgs {
+		if !msg.VerifySignature() {
 			return false
 		}
 	}
