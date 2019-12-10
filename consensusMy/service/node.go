@@ -5,7 +5,6 @@ import (
 	service2 "BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
 	"BCDns_0.1/network/service"
-	"BCDns_0.1/utils"
 	"encoding/json"
 	"reflect"
 )
@@ -221,7 +220,7 @@ func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
 		return invalid
 	}
 	if lastBlock.Height < msg.Block.Height-1 {
-		utils.StartDataSync(lastBlock.Height+1, msg.Block.Height-1)
+		service.StartDataSync(lastBlock.Height+1, msg.Block.Height-1)
 		n.EnqueueBlock(*blockChain.NewBlockValidated(&msg.Block, map[string][]byte{}))
 		return dataSync
 	}

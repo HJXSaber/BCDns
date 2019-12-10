@@ -4,7 +4,6 @@ import (
 	"BCDns_0.1/blockChain"
 	service2 "BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
-	"BCDns_0.1/utils"
 	"encoding/json"
 	"sync"
 )
@@ -115,7 +114,7 @@ func (m *ViewManagerT) Run() {
 			if service2.CertificateAuthorityX509.Check(len(m.ViewChangeMsgs)) {
 				localH, h := m.GetLatestHeight()
 				if localH != h {
-					utils.StartDataSync(localH, h)
+					StartDataSync(localH, h)
 				}
 				if m.IsNextLeader() {
 					newViewMsg, err := messages.NewNewViewMessage(m.ViewChangeMsgs, m.View)
@@ -189,4 +188,20 @@ func (m *ViewManagerT) IsOnChanging() bool {
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
 	return m.OnChange
+}
+
+func StartDataSync(lastH, h uint) {
+	for i := lastH; i <= h; i++ {
+		syncMsg, err := messages.NewDataSyncMessage(i)
+		if err != nil {
+			logger.Warningf("[DataSync] NewDataSyncMessage error=%v", err)
+			continue
+		}
+		jsonData, err := json.Marshal(syncMsg)
+		if err != nil {
+			logger.Warningf("[DataSync] json.Marshal error=%v", err)
+			continue
+		}
+		Net.BroadCast(jsonData, DataSyncMsg)
+	}
 }
