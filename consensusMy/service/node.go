@@ -28,7 +28,15 @@ type Node struct {
 	BlockPrepareMsg map[string][]byte
 }
 
-func (n *Node) Run(done chan uint8) {
+func NewNode() *Node {
+	return &Node{
+		Proposals: map[string]uint8{},
+		Blocks: []blockChain.BlockValidated{},
+		BlockPrepareMsg: map[string][]byte{},
+	}
+}
+
+func (n *Node) Run(done chan uint) {
 	defer close(done)
 	for {
 		select {

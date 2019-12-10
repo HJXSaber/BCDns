@@ -392,6 +392,14 @@ type ProposalMessagePool struct {
 	ProposalState map[string]uint8
 }
 
+func NewProposalMessagePool() ProposalMessagePool {
+	pool := ProposalMessagePool{
+		ProposalMessages:ProposalMessages{},
+		ProposalState: map[string]uint8{},
+	}
+	return pool
+}
+
 func (pool *ProposalMessagePool) AddProposal(p ProposalMessage) {
 	if !pool.Exist(p) {
 		pool.ProposalMessages = append(pool.ProposalMessages, p)

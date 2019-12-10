@@ -19,7 +19,7 @@ var (
 )
 
 type Proposer struct {
-	ReplyMutex sync.Mutex
+	Mutex sync.Mutex
 
 	Proposals map[string]messages.ProposalMessage
 	Replys    map[string]map[string]uint8
@@ -29,7 +29,12 @@ type Proposer struct {
 }
 
 func NewProposer() *Proposer {
-	return &Proposer{}
+	return &Proposer{
+		Proposals: map[string]messages.ProposalMessage{},
+		Replys: map[string]map[string]uint8{},
+		Contexts: map[string]context.Context{},
+		OrderChan:make(chan []byte, 1024),
+	}
 }
 
 func init() {
@@ -58,20 +63,16 @@ func (p *Proposer) Run(done chan uint) {
 				logger.Warningf("[Proposer.Run] json.Unmarshal error=%v", err)
 				continue
 			}
-			if !service.CertificateAuthorityX509.Exits(msg.From) {
-				logger.Warningf("[Proposer.Run] msg.From is not exist")
-				continue
-			}
 			if !msg.VerifySignature() {
 				logger.Warningf("[Proposer.Run] Signature is invalid")
 				continue
 			}
+			p.Mutex.Lock()
 			_, ok := p.Proposals[string(msg.Id)]
 			if !ok {
 				logger.Warningf("[Proposer.Run] Proposal is not exist %v", msg)
 				continue
 			}
-			p.ReplyMutex.Lock()
 			p.Replys[string(msg.Id)][msg.From] = 0
 			if service.CertificateAuthorityX509.Check(len(p.Replys[string(msg.Id)])) {
 				fmt.Printf("[Proposer.Run] ProposalMsgT execute successfully %v\n", p.Proposals[string(msg.Id)])
@@ -80,6 +81,7 @@ func (p *Proposer) Run(done chan uint) {
 				p.Contexts[string(msg.Id)].Done()
 				delete(p.Contexts, string(msg.Id))
 			}
+			p.Mutex.Unlock()
 		}
 	}
 }
@@ -111,10 +113,13 @@ func (p *Proposer) handleOrder(msg Order) {
 			logger.Warningf("[handleOrder] json.Marshal error=%v", err)
 			return
 		}
+		p.Mutex.Lock()
+		p.Proposals[string(proposal.Id)] = *proposal
 		p.Replys[string(proposal.Id)] = map[string]uint8{}
 		ctx := context.Background()
 		go p.timer(ctx, proposal)
 		p.Contexts[string(proposal.Id)] = ctx
+		p.Mutex.Unlock()
 		service2.Net.BroadCast(proposalByte, service2.ProposalMsg)
 	} else {
 		logger.Warningf("[handleOrder] NewProposal failed")
@@ -124,8 +129,8 @@ func (p *Proposer) handleOrder(msg Order) {
 func (p *Proposer) timer(ctx context.Context, proposal *messages.ProposalMessage) {
 	select {
 	case <-time.After(conf.BCDnsConfig.ProposalTimeout):
-		p.ReplyMutex.Lock()
-		defer p.ReplyMutex.Unlock()
+		p.Mutex.Lock()
+		defer p.Mutex.Unlock()
 		replies, ok := p.Replys[string(proposal.Id)]
 		if !ok {
 			logger.Warningf("[Proposer.timer] ProposalMsgT is not exist")

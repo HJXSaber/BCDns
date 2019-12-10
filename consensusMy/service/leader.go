@@ -25,6 +25,12 @@ func init() {
 	ProposalMessageChan = make(chan []byte, 1024)
 }
 
+func NewLeader() *Leader {
+	return &Leader{
+		MessagePool: messages.NewProposalMessagePool(),
+	}
+}
+
 func (l *Leader) Run(done chan uint) {
 	defer close(done)
 	interrupt := make(chan int)

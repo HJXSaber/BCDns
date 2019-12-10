@@ -3,17 +3,14 @@ package main
 import (
 	"BCDns_0.1/bcDns/conf"
 	blockChain2 "BCDns_0.1/blockChain"
-	service2 "BCDns_0.1/consensus/service"
+	"BCDns_0.1/consensusMy/service"
 	dao2 "BCDns_0.1/dao"
 	service3 "BCDns_0.1/network/service"
 	"fmt"
-	"time"
 )
 
 func main() {
 	var err error
-	//fmt.Println("[Init Certificate]")
-	//service.CertificateAuthorityX509 = new(service.CAX509)
 	fmt.Println("[Init Dao]")
 	dao2.Dao, err = NewDao()
 	if err != nil {
@@ -21,35 +18,25 @@ func main() {
 	}
 	defer blockChain2.BlockChain.Close()
 	fmt.Println("[Init NetWork]")
-	service3.Net = service3.NewDNet()
+	service3.Net, err = service3.NewDNet()
+	if err != nil {
+		panic(err)
+	}
 	if service3.Net == nil {
 		panic("NewDNet failed")
 	}
 	fmt.Println("[Init Leader]")
-	service3.Leader = service3.NewLeader()
-	if service3.Leader == nil {
-		panic("NewLeader failed")
+	service3.ViewManager, err = service3.NewViewManager()
+	if err != nil {
+		panic(err)
 	}
-	fmt.Println("[Init Proposer]")
-	service2.Proposer = service2.NewProposer(15 * time.Second)
-	if service2.Proposer == nil {
-		panic("NewProposer failed")
-	}
-	fmt.Println("[Init Node]")
-	service2.Node = service2.NewNode()
-	if service2.Node == nil {
-		panic("NewNode failed")
-	}
-	fmt.Println("[Init LeaderNode]")
-	service2.LeaderNode = service2.NewLeaderNode()
-	if service2.LeaderNode == nil {
-		panic("NewLeaderNode failed")
-	}
-	fmt.Println("[Run]")
+	service3.ViewManager.Start()
+	fmt.Println("[Init Consensus]")
 	done := make(chan uint)
-	go service2.Proposer.Run(done)
-	go service2.Node.Run(done)
-	go service2.LeaderNode.Run(done)
+	service.ConsensusCenter, err = service.NewConsensus(done)
+	if err != nil {
+		panic(err)
+	}
 	_ = <-done
 	fmt.Println("[Err] System exit")
 }

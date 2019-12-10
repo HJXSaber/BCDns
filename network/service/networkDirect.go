@@ -78,10 +78,14 @@ type DNode struct {
 	Conn       net.Conn
 }
 
-func NewDNet() *DNet {
+func NewDNet() (*DNet, error) {
 	dNet := new(DNet)
 	go dNet.handleStram()
-	return dNet
+	err := dNet.Join(service.CertificateAuthorityX509.GetSeeds())
+	if err != nil {
+		return nil, err
+	}
+	return dNet, nil
 }
 
 func (n *DNet) handleStram() {
