@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"sync"
 	"time"
 )
 
@@ -17,7 +16,6 @@ var (
 )
 
 type Leader struct {
-	Mutex        sync.Mutex
 	MessagePool  messages.ProposalMessagePool
 	BlockConfirm bool
 }
@@ -66,8 +64,8 @@ func (l *Leader) Run(done chan uint) {
 				continue
 			}
 			bound := blockChain.BlockMaxSize
-			if len(l.MessagePool.ProposalMessages)-1 < blockChain.BlockMaxSize {
-				bound = len(l.MessagePool.ProposalMessages) - 1
+			if len(l.MessagePool.ProposalMessages) < blockChain.BlockMaxSize {
+				bound = len(l.MessagePool.ProposalMessages)
 			}
 			validP, abandonedP := CheckProposals(l.MessagePool.ProposalMessages[:bound])
 			block, err := blockChain.BlockChain.MineBlock(validP)
@@ -87,19 +85,11 @@ func (l *Leader) Run(done chan uint) {
 			}
 			service.Net.BroadCast(jsonData, service.BlockMsg)
 			l.MessagePool.Clear(bound)
-			l.Mutex.Lock()
 			l.BlockConfirm = false
-			l.Mutex.Unlock()
 		case <-BlockConfirmChan:
-			l.Confirm()
+			l.BlockConfirm = true
 		}
 	}
-}
-
-func (l *Leader) Confirm() {
-	l.Mutex.Lock()
-	defer l.Mutex.Unlock()
-	l.BlockConfirm = true
 }
 
 func CheckProposals(proposals messages.ProposalMessages) (

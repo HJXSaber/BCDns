@@ -126,6 +126,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 		fmt.Println("start handle")
 		switch msg.MessageTypeT {
 		case JoinMsg:
+			fmt.Println("Join")
 			var message JoinMessage
 			err := json.Unmarshal(msg.Payload, &message)
 			if err != nil {
@@ -163,23 +164,35 @@ func (n *DNet) handleConn(conn net.Conn) {
 			}
 			_, _ = node.Send(jsonData)
 		case ProposalMsg:
+			fmt.Println("proposal")
 			ProposalChan <- msg.Payload
 		case BlockMsg:
+			fmt.Println("block")
 			BlockChan <- msg.Payload
 		case BlockConfirmMsg:
+			fmt.Println("blockConfirm")
 			BlockConfirmChan <- msg.Payload
 		case DataSyncMsg:
+			fmt.Println("dataSync")
 			DataSyncChan <- msg.Payload
 		case DataSyncRespMsg:
+			fmt.Println("dataSyncReply")
 			DataSyncRespChan <- msg.Payload
 		case ProposalReplyMsg:
+			fmt.Println("proposalReply")
 			ProposalReplyChan <- msg.Payload
 		case ProposalConfirmMsg:
+			fmt.Println("proposalConfirm")
 			ProposalConfirmChan <- msg.Payload
 		case InitLeaderMsg:
+			fmt.Println("InitLeaderMsg")
 			InitLeaderChan <- msg.Payload
 		case ViewChangeMsg:
+			fmt.Println("ViewChangeMsg")
 			ViewChangeChan <- msg.Payload
+		case NewViewMsg:
+			fmt.Println("NewVIewMsg")
+			NewViewChan <- msg.Payload
 		default:
 			logger.Warningf("[Network] handleConn Unknown message type")
 		}

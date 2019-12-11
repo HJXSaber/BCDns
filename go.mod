@@ -11,14 +11,13 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/izqui/helpers v0.0.0-20150821122028-c69cdb8bbd19
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
-	github.com/rs/xid v1.2.1
+	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
+	github.com/sasha-s/go-deadlock v0.2.0
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
 	github.com/spf13/viper v1.4.0
 	github.com/syndtr/goleveldb v1.0.0
 	golang.org/x/crypto v0.0.0-20191105034135-c7e5f84aec59 // indirect
 	golang.org/x/net v0.0.0-20191105084925-a882066a44e0 // indirect
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/sys v0.0.0-20191104094858-e8c54fb511f6 // indirect
-	golang.org/x/tools v0.0.0-20190907020128-2ca718005c18
 	google.golang.org/grpc v1.24.0
 )

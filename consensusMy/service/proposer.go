@@ -24,7 +24,7 @@ type Proposer struct {
 
 	Proposals map[string]messages.ProposalMessage
 	Replys    map[string]map[string]uint8
-	Contexts  map[string]context.Context
+	Contexts  map[string]context.CancelFunc
 	Conn      *net.UDPConn
 	OrderChan chan []byte
 }
@@ -41,7 +41,7 @@ func NewProposer() *Proposer {
 	return &Proposer{
 		Proposals: map[string]messages.ProposalMessage{},
 		Replys:    map[string]map[string]uint8{},
-		Contexts:  map[string]context.Context{},
+		Contexts:  map[string]context.CancelFunc{},
 		OrderChan: make(chan []byte, 1024),
 		Conn:      conn,
 	}
@@ -86,7 +86,7 @@ func (p *Proposer) Run(done chan uint) {
 				fmt.Printf("[Proposer.Run] ProposalMsgT execute successfully %v\n", p.Proposals[string(msg.Id)])
 				delete(p.Proposals, string(msg.Id))
 				delete(p.Replys, string(msg.Id))
-				p.Contexts[string(msg.Id)].Done()
+				p.Contexts[string(msg.Id)]()
 				delete(p.Contexts, string(msg.Id))
 			}
 			p.Mutex.Unlock()
@@ -124,9 +124,9 @@ func (p *Proposer) handleOrder(msg Order) {
 		p.Mutex.Lock()
 		p.Proposals[string(proposal.Id)] = *proposal
 		p.Replys[string(proposal.Id)] = map[string]uint8{}
-		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(context.Background())
 		go p.timer(ctx, proposal)
-		p.Contexts[string(proposal.Id)] = ctx
+		p.Contexts[string(proposal.Id)] = cancelFunc
 		p.Mutex.Unlock()
 		service2.Net.BroadCast(proposalByte, service2.ProposalMsg)
 	} else {
@@ -163,6 +163,6 @@ func (p *Proposer) timer(ctx context.Context, proposal *messages.ProposalMessage
 			service2.Net.BroadCast(confirmMsgByte, service2.ProposalConfirmMsg)
 		}
 	case <-ctx.Done():
-		fmt.Printf("[Proposer.timer] haha")
+		fmt.Println("[Proposer.timer] haha")
 	}
 }

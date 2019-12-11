@@ -5,11 +5,11 @@ import (
 	service2 "BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
 	"encoding/json"
-	"sync"
+	"github.com/sasha-s/go-deadlock"
 )
 
 type ViewManagerT struct {
-	Mutex              sync.Mutex
+	Mutex              deadlock.Mutex
 	OnChange           bool
 	View               int64
 	LeaderId           int64

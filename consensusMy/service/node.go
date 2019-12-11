@@ -111,7 +111,7 @@ func (n *Node) Run(done chan uint) {
 				continue
 			}
 			n.BlockPrepareMsg[msg.From] = msg.Signature
-			if service2.CertificateAuthorityX509.Check(len(n.BlockPrepareMsg[msg.From])) {
+			if service2.CertificateAuthorityX509.Check(len(n.BlockPrepareMsg)) {
 				blockValidated := blockChain.NewBlockValidated(&n.Block, n.BlockPrepareMsg)
 				if blockValidated == nil {
 					logger.Warningf("[Node.Run] NewBlockValidated failed")

@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const BlockMaxSize = 50
+const BlockMaxSize = 500
 
 type BlockSlice []Block
 

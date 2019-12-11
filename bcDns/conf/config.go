@@ -47,5 +47,5 @@ func init() {
 	BCDnsConfig.Port = viper.GetString("PORT")
 	BCDnsConfig.HostName = viper.GetString("HOSTNAME")
 	BCDnsConfig.ProposalBufferSize = 10000
-	BCDnsConfig.ProposalTimeout = 15 * time.Second
+	BCDnsConfig.ProposalTimeout = 60 * time.Second
 }
