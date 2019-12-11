@@ -83,9 +83,11 @@ func (l *Leader) Run(done chan uint) {
 				logger.Warningf("[Leader.Run] json.Marshal error=%v", err)
 				continue
 			}
+
 			service.Net.BroadCast(jsonData, service.BlockMsg)
 			l.MessagePool.Clear(bound)
 			l.BlockConfirm = false
+			fmt.Println("block broadcast fin", len(jsonData))
 		case <-BlockConfirmChan:
 			l.BlockConfirm = true
 		}

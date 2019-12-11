@@ -79,6 +79,7 @@ func (p *Proposer) Run(done chan uint) {
 			}
 			p.Mutex.Lock()
 			if _, ok := p.Proposals[string(msg.Id)]; !ok {
+				goto end
 				continue
 			}
 			p.Replys[string(msg.Id)][msg.From] = 0
@@ -89,6 +90,7 @@ func (p *Proposer) Run(done chan uint) {
 				p.Contexts[string(msg.Id)]()
 				delete(p.Contexts, string(msg.Id))
 			}
+end:
 			p.Mutex.Unlock()
 		}
 	}
