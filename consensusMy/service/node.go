@@ -173,7 +173,7 @@ func (n *Node) Run(done chan uint) {
 				continue
 			}
 			if state, ok := n.Proposals[string(msg.ProposalHash)]; !ok || state == drop {
-				logger.Warningf("[Node.Run] I have never received this proposal")
+				logger.Warningf("[Node.Run] I have never received this proposal, exist=%v state=%v", ok, state)
 				continue
 			} else if state == unconfirmed {
 				//TODO start view change
@@ -196,6 +196,7 @@ func (n *Node) Run(done chan uint) {
 				service.Net.BroadCast(jsonData, service.ViewChangeMsg)
 			} else {
 				//This proposal is unready
+				logger.Warningf("[Node.Run] proposal is unready")
 			}
 		}
 	}

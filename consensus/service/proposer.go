@@ -59,7 +59,7 @@ func (p *ProposerT) Run(done chan uint) {
 			responsesI, err := p.AuditResponses.Get(string(msg.ProposalHash))
 			if err != nil {
 				fmt.Printf("[Proposer.Run] ConcurrentMap error=%v\n", err)
-				continue
+				continue3
 			}
 			if responses, ok := responsesI.(messages.ProposalAuditResponses); ok {
 				responses[msg.Auditor] = msg

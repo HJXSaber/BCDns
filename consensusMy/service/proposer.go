@@ -57,6 +57,7 @@ func (p *Proposer) Run(done chan uint) {
 	)
 	defer close(done)
 	go p.ReceiveOrder()
+	count := 0
 	for {
 		select {
 		case msgByte := <-p.OrderChan:
@@ -78,19 +79,18 @@ func (p *Proposer) Run(done chan uint) {
 				continue
 			}
 			p.Mutex.Lock()
-			if _, ok := p.Proposals[string(msg.Id)]; !ok {
-				goto end
-				continue
+			if _, ok := p.Proposals[string(msg.Id)]; ok {
+				p.Replys[string(msg.Id)][msg.From] = 0
+				if service.CertificateAuthorityX509.Check(len(p.Replys[string(msg.Id)])) {
+					fmt.Printf("[Proposer.Run] ProposalMsgT execute successfully %v\n", p.Proposals[string(msg.Id)])
+					fmt.Println("count", count)
+					count++
+					delete(p.Proposals, string(msg.Id))
+					delete(p.Replys, string(msg.Id))
+					p.Contexts[string(msg.Id)]()
+					delete(p.Contexts, string(msg.Id))
+				}
 			}
-			p.Replys[string(msg.Id)][msg.From] = 0
-			if service.CertificateAuthorityX509.Check(len(p.Replys[string(msg.Id)])) {
-				fmt.Printf("[Proposer.Run] ProposalMsgT execute successfully %v\n", p.Proposals[string(msg.Id)])
-				delete(p.Proposals, string(msg.Id))
-				delete(p.Replys, string(msg.Id))
-				p.Contexts[string(msg.Id)]()
-				delete(p.Contexts, string(msg.Id))
-			}
-end:
 			p.Mutex.Unlock()
 		}
 	}
@@ -143,11 +143,10 @@ func (p *Proposer) timer(ctx context.Context, proposal *messages.ProposalMessage
 		defer p.Mutex.Unlock()
 		replies, ok := p.Replys[string(proposal.Id)]
 		if !ok {
-			logger.Warningf("[Proposer.timer] ProposalMsgT is not exist")
 			return
 		}
 		if service.CertificateAuthorityX509.Check(len(replies)) {
-			fmt.Printf("[Proposer.timer] ProposalMsgT=%v execute successfully", string(proposal.Id))
+			fmt.Printf("[Proposer.timer] ProposalMsgT=%v execute successfully\n", string(proposal.Id))
 			delete(p.Proposals, string(proposal.Id))
 			delete(p.Replys, string(proposal.Id))
 			delete(p.Contexts, string(proposal.Id))
