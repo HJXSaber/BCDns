@@ -114,6 +114,7 @@ func (bc *Blockchain) AddBlock(block *BlockValidated) error {
 	defer dao.Dao.Mutex.Unlock()
 	for _, p := range block.ProposalMessages {
 		err := dao.Db.Delete([]byte(p.ZoneName), nil)
+		ZoneStatePool.Modify(p.ZoneName)
 		if err != nil {
 			fmt.Printf("[AddBlock] Db.Delete error=%v\n", err)
 			return err
