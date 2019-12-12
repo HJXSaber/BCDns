@@ -29,7 +29,7 @@ func NewZoneStatePool() (*ZoneStatePoolT, error) {
 }
 
 func (z *ZoneStatePoolT) Modify(zoneName string) {
-	z.DB.Set([]byte(zoneName), []byte{})
+	_ = z.DB.Set([]byte(zoneName), []byte{})
 }
 
 func (z *ZoneStatePoolT) GetModifiedData() (map[string]ZoneRecord, error) {
@@ -46,7 +46,7 @@ func (z *ZoneStatePoolT) GetModifiedData() (map[string]ZoneRecord, error) {
 			Owner: record.Owner,
 			Values:record.Values,
 		}
-		z.DB.Delete(iter.Key(), nil)
+		_ = z.DB.Delete(iter.Key(), nil)
 	}
 	return result, nil
 }
