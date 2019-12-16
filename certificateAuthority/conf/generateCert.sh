@@ -2,19 +2,11 @@
 
 rm -f Local*
 
-config="authorityKeyIdentifier=keyid,issuer
-basicConstraints=CA:FALSE
-keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
-subjectAltName = @alt_names
-
-[alt_names]
-IP.1="
-
 ip=$(ifconfig |grep "$1" -C 1|grep "inet"|awk  '{print $2}')
 
 sed "s/0.0.0.0/$ip/g" v3.txt -i
 
-ssh-keygen -b 1024 -f LocalPrivate.pem -N ""
+ssh-keygen -t rsa -b 1024 -f LocalPrivate.pem -N "" -m PEM
 
 openssl req -new -key LocalPrivate.pem -out LocalCertificate.csr -subj "/C=$2/ST=$3/L=$4/O=$5/OU=$6/CN=$7"
 
