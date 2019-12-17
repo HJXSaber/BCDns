@@ -5,7 +5,6 @@ import (
 	service2 "BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
 	"encoding/json"
-	"fmt"
 	"github.com/sasha-s/go-deadlock"
 )
 
@@ -45,7 +44,6 @@ func (m *ViewManagerT) Start() {
 				return
 			}
 			m.JoinReplyMessages[msg.From] = msg
-			fmt.Println("1", len(m.JoinReplyMessages), msg)
 			if service2.CertificateAuthorityX509.Check(len(m.JoinReplyMessages) + len(m.JoinMessages)) {
 				initLeaderMsg, err := NewInitLeaderMessage(Net.GetAllNodeIds())
 				if err != nil {
@@ -61,7 +59,6 @@ func (m *ViewManagerT) Start() {
 			}
 		case msg := <- JoinChan:
 			m.JoinMessages[msg.From] = msg
-			fmt.Println("2", len(m.JoinMessages), msg)
 			if service2.CertificateAuthorityX509.Check(len(m.JoinReplyMessages) + len(m.JoinMessages)) {
 				initLeaderMsg, err := NewInitLeaderMessage(Net.GetAllNodeIds())
 				if err != nil {
@@ -87,7 +84,6 @@ func (m *ViewManagerT) Start() {
 				continue
 			}
 			m.InitLeaderMessages[msg.From] = msg
-			fmt.Println("initleader", len(m.InitLeaderMessages), msg)
 			if service2.CertificateAuthorityX509.Check(len(m.InitLeaderMessages)) {
 				m.View, m.LeaderId = m.GetLeaderNode()
 				if m.View == -1 {

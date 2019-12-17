@@ -134,7 +134,6 @@ func (n *DNet) handleConn(conn net.Conn) {
 		fmt.Println("start handle")
 		switch msg.MessageTypeT {
 		case JoinMsg:
-			fmt.Println("Join")
 			var message JoinMessage
 			err := json.Unmarshal(msg.Payload, &message)
 			if err != nil {
@@ -300,7 +299,6 @@ func (n *DNet) BroadCast(payload []byte, t MessageTypeT) {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return
 	}
-	fmt.Println("members", len(n.Members), n.Members)
 	for _, m := range n.Members {
 		_, err := m.Send(data)
 		if err != nil {
