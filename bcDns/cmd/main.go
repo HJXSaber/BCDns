@@ -31,6 +31,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("[Join]")
 	err = service3.Net.Join(service2.CertificateAuthorityX509.GetSeeds())
 	if err != nil {
 		panic(err)

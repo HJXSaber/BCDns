@@ -224,6 +224,7 @@ func (n *DNet) Join(seeds []string) error {
 	}
 	success := int32(0)
 	wg := sync.WaitGroup{}
+	fmt.Println(seeds)
 	for _, seed := range seeds {
 		wg.Add(1)
 		go func(seed string) {

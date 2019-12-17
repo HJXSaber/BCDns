@@ -20,7 +20,7 @@ func main() {
 		}
 		b := blockChain.NewBlock(messages.AuditedProposalSlice{
 			*ap,
-		}, []byte("test"), 0)
+		}, []byte("test"), 0, true)
 		m, err := blockChain.NewBlockMessage(b)
 		if err != nil {
 			panic(err)

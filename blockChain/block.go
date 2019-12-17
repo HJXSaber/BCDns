@@ -54,11 +54,15 @@ type BlockHeader struct {
 	Height     uint
 }
 
-func NewBlock(proposals messages.ProposalMessages, previousBlock []byte, height uint) *Block {
+func NewBlock(proposals messages.ProposalMessages, previousBlock []byte, height uint, genesis bool) *Block {
+	t := time.Now().Unix()
+	if genesis {
+		t = 0
+	}
 	header := BlockHeader{
 		PrevBlock: previousBlock,
 		Height:    height,
-		Timestamp: time.Now().Unix(),
+		Timestamp: t,
 	}
 	b := &Block{header, proposals}
 	b.MerkelRoot = b.GenerateMerkelRoot()
@@ -66,7 +70,7 @@ func NewBlock(proposals messages.ProposalMessages, previousBlock []byte, height 
 }
 
 func NewGenesisBlock() *Block {
-	return NewBlock(messages.ProposalMessages{}, []byte{}, 0)
+	return NewBlock(messages.ProposalMessages{}, []byte{}, 0, true)
 }
 
 func (b *Block) VerifyBlock() bool {

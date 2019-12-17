@@ -306,7 +306,7 @@ func (bc *Blockchain) MineBlock(proposals messages.ProposalMessages) (*Block, er
 		return nil, err
 	}
 
-	newBlock := NewBlock(proposals, lastHash, block.Height+1)
+	newBlock := NewBlock(proposals, lastHash, block.Height+1, false)
 	if newBlock == nil {
 		return nil, errors.New("[MineBlock] NewBlock failed")
 	}
