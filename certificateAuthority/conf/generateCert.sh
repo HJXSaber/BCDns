@@ -13,3 +13,5 @@ openssl req -new -key LocalPrivate.pem -out LocalCertificate.csr -subj "/C=$2/ST
 openssl x509 -req -days 365 -sha1 -extfile v3.txt -CA RootCertificate.cer -CAkey RootPrivate.pem -CAserial ca.srl -in LocalCertificate.csr -out LocalCertificate.cer
 
 sed "s/$ip/0.0.0.0/g" v3.txt -i
+
+cp Local* Root* $7

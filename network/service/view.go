@@ -5,6 +5,7 @@ import (
 	service2 "BCDns_0.1/certificateAuthority/service"
 	"BCDns_0.1/messages"
 	"encoding/json"
+	"fmt"
 	"github.com/sasha-s/go-deadlock"
 )
 
@@ -15,6 +16,7 @@ type ViewManagerT struct {
 	LeaderId           int64
 	ViewChangeMsgs     map[string]blockChain.ViewChangeMessage
 	JoinReplyMessages  map[string]JoinReplyMessage
+	JoinMessages map[string]JoinMessage
 	InitLeaderMessages map[string]InitLeaderMessage
 }
 
@@ -26,6 +28,7 @@ func NewViewManager() (*ViewManagerT, error) {
 	manager := &ViewManagerT{
 		ViewChangeMsgs:     map[string]blockChain.ViewChangeMessage{},
 		JoinReplyMessages:  map[string]JoinReplyMessage{},
+		JoinMessages: map[string]JoinMessage{},
 		InitLeaderMessages: map[string]InitLeaderMessage{},
 	}
 	manager.View = -1
@@ -42,7 +45,24 @@ func (m *ViewManagerT) Start() {
 				return
 			}
 			m.JoinReplyMessages[msg.From] = msg
-			if service2.CertificateAuthorityX509.Check(len(m.JoinReplyMessages)) {
+			fmt.Println("1", len(m.JoinReplyMessages), msg)
+			if service2.CertificateAuthorityX509.Check(len(m.JoinReplyMessages) + len(m.JoinMessages)) {
+				initLeaderMsg, err := NewInitLeaderMessage(Net.GetAllNodeIds())
+				if err != nil {
+					logger.Warningf("[ViewManagerT.Start] NewInitLeaderMessage error=%v", err)
+					panic(err)
+				}
+				jsonData, err := json.Marshal(initLeaderMsg)
+				if err != nil {
+					logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
+					panic(err)
+				}
+				Net.BroadCast(jsonData, InitLeaderMsg)
+			}
+		case msg := <- JoinChan:
+			m.JoinMessages[msg.From] = msg
+			fmt.Println("2", len(m.JoinMessages), msg)
+			if service2.CertificateAuthorityX509.Check(len(m.JoinReplyMessages) + len(m.JoinMessages)) {
 				initLeaderMsg, err := NewInitLeaderMessage(Net.GetAllNodeIds())
 				if err != nil {
 					logger.Warningf("[ViewManagerT.Start] NewInitLeaderMessage error=%v", err)
@@ -67,6 +87,7 @@ func (m *ViewManagerT) Start() {
 				continue
 			}
 			m.InitLeaderMessages[msg.From] = msg
+			fmt.Println("initleader", len(m.InitLeaderMessages), msg)
 			if service2.CertificateAuthorityX509.Check(len(m.InitLeaderMessages)) {
 				m.View, m.LeaderId = m.GetLeaderNode()
 				if m.View == -1 {

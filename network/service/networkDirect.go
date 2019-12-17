@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/op/go-logging"
+	"github.com/sasha-s/go-deadlock"
+	"io"
 	"net"
 	"strings"
 	"sync"
@@ -32,6 +34,7 @@ var (
 	NewViewChan         chan []byte
 	InitLeaderChan      chan []byte
 	JoinReplyChan       chan JoinReplyMessage
+	JoinChan chan JoinMessage
 )
 
 func init() {
@@ -47,6 +50,7 @@ func init() {
 	NewViewChan = make(chan []byte, ChanSize)
 	InitLeaderChan = make(chan []byte, ChanSize)
 	JoinReplyChan = make(chan JoinReplyMessage, ChanSize)
+	JoinChan = make(chan JoinMessage, ChanSize)
 }
 
 type MessageTypeT uint8
@@ -66,7 +70,7 @@ const (
 )
 
 type DNet struct {
-	Mutex   sync.Mutex
+	Mutex   deadlock.Mutex
 	Members []DNode
 	Map     map[string]DNode
 	Node    DNode
@@ -115,6 +119,10 @@ func (n *DNet) handleConn(conn net.Conn) {
 		dataBuf := make([]byte, MaxPacketLength)
 		l, err := conn.Read(dataBuf)
 		if err != nil {
+			if err == io.EOF {
+				logger.Warningf("[Network] handleConn closed", conn.RemoteAddr())
+				return
+			}
 			logger.Warningf("[Network] handleConn Read error=%v", err)
 			continue
 		}
@@ -162,6 +170,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 				logger.Warningf("[Network] handleConn json.Marshal error=%v", err)
 				continue
 			}
+			JoinChan <- message
 			_, _ = node.Send(jsonData)
 		case ProposalMsg:
 			fmt.Println("proposal")
@@ -218,23 +227,21 @@ func (n *DNet) Join(seeds []string) error {
 	wg := sync.WaitGroup{}
 	for _, seed := range seeds {
 		wg.Add(1)
-		go func() {
+		go func(seed string) {
 			defer wg.Done()
 			conn, err := JoinNode(seed)
 			if err != nil {
 				logger.Warningf("[Network] JoinNode error=%v", err)
 				return
 			}
-			joinSelf, err := n.PushAndPull(conn, localData)
+			err = n.PushAndPull(conn, localData)
 			if err != nil {
 				logger.Warningf("[Network] Join push&pull error=%v", err)
 				return
 			}
+			go n.handleConn(conn)
 			atomic.AddInt32(&success, 1)
-			if !joinSelf {
-				go n.handleConn(conn)
-			}
-		}()
+		}(seed)
 	}
 	wg.Wait()
 	if success == 0 {
@@ -243,27 +250,26 @@ func (n *DNet) Join(seeds []string) error {
 	return nil
 }
 
-func (n *DNet) PushAndPull(conn net.Conn, localData []byte) (bool, error) {
+func (n *DNet) PushAndPull(conn net.Conn, localData []byte) error {
 	_, err := conn.Write(localData)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	remoteData := make([]byte, MaxPacketLength)
 	l, err := conn.Read(remoteData)
 	if err != nil {
-		return false, err
+		return err
 	}
 	var msg JoinReplyMessage
 	err = json.Unmarshal(remoteData[:l], &msg)
 	if err != nil {
-		return false, err
+		return err
 	}
 	if !msg.VerifySignature() {
-		return false, errors.New("[PushAndPull] JoinReplyMessage.VerifySignature failed")
+		return errors.New("[PushAndPull] JoinReplyMessage.VerifySignature failed")
 	}
-	JoinReplyChan <- msg
-	if _, ok := n.Map[msg.From]; !ok {
+	if msg.From != conf.BCDnsConfig.HostName {
 		node := DNode{
 			Pass:       true,
 			RemoteAddr: conn.RemoteAddr().String(),
@@ -275,9 +281,9 @@ func (n *DNet) PushAndPull(conn net.Conn, localData []byte) (bool, error) {
 		n.Mutex.Lock()
 		defer n.Mutex.Unlock()
 		n.Map[node.Name] = node
-		return true, nil
+		JoinReplyChan <- msg
 	}
-	return false, nil
+	return nil
 }
 
 func JoinNode(addr string) (net.Conn, error) {
@@ -294,6 +300,7 @@ func (n *DNet) BroadCast(payload []byte, t MessageTypeT) {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return
 	}
+	fmt.Println("members", len(n.Members), n.Members)
 	for _, m := range n.Members {
 		_, err := m.Send(data)
 		if err != nil {

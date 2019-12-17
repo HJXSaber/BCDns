@@ -1,0 +1,60 @@
+version: "3"
+services:
+  s1:
+    image: bcdns
+    volumes:
+      - /var/run/bcdns/s1:/go/src/BCDns_0.1/certificateAuthority/conf/s1
+      - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
+    networks:
+      - test-net
+    container_name: s1
+    environment:
+      - BCDNSConfFile=/go/src/BCDns_0.1/bcDns/conf/s1/BCDNS
+      - CertificatesPath=/go/src/BCDns_0.1/certificateAuthority/conf/s1/
+    command: /bin/bash
+    tty: true
+
+  s2:
+    image: bcdns
+    volumes:
+      - /var/run/bcdns/s2:/go/src/BCDns_0.1/certificateAuthority/conf/s2
+      - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
+    networks:
+      - test-net
+    container_name: s2
+    environment:
+      - BCDNSConfFile=/go/src/BCDns_0.1/bcDns/conf/s2/BCDNS
+      - CertificatesPath=/go/src/BCDns_0.1/certificateAuthority/conf/s2/
+    command: /bin/bash
+    tty: true
+
+  s3:
+    image: bcdns
+    volumes:
+      - /var/run/bcdns/s3:/go/src/BCDns_0.1/certificateAuthority/conf/s3
+      - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
+    networks:
+      - test-net
+    container_name: s3
+    environment:
+      - BCDNSConfFile=/go/src/BCDns_0.1/bcDns/conf/s3/BCDNS
+      - CertificatesPath=/go/src/BCDns_0.1/certificateAuthority/conf/s3/
+    command: /bin/bash
+    tty: true
+
+  s4:
+    image: bcdns
+    volumes:
+      - /var/run/bcdns/s4:/go/src/BCDns_0.1/certificateAuthority/conf/s4
+      - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
+    networks:
+      - test-net
+    container_name: s4
+    environment:
+      - BCDNSConfFile=/go/src/BCDns_0.1/bcDns/conf/s4/BCDNS
+      - CertificatesPath=/go/src/BCDns_0.1/certificateAuthority/conf/s4/
+    command: /bin/bash
+    tty: true
+
+networks:
+  test-net:

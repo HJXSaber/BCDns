@@ -4,6 +4,6 @@ WORKDIR $GOPATH/src
 
 COPY ./ ./BCDns_0.1
 
-ENV GO111MODULE on && ENV GOPROXY https://goproxy.cn
+ENV GO111MODULE="on" GOPROXY="https://goproxy.cn"
 
-RUN apt update && apt install net-tools
+RUN apt update && apt install net-tools && cd BCDns_0.1 && go mod tidy
