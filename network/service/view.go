@@ -41,6 +41,7 @@ func (m *ViewManagerT) Start() {
 		case msg := <-JoinReplyChan:
 			if msg.View != -1 {
 				m.View = msg.View
+				m.LeaderId = m.View % int64(service2.CertificateAuthorityX509.GetNetworkSize())
 				return
 			}
 			m.JoinReplyMessages[msg.From] = msg

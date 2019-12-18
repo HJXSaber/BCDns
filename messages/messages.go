@@ -6,7 +6,7 @@ import (
 	"BCDns_0.1/dao"
 	"BCDns_0.1/utils"
 	"bytes"
-	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/op/go-logging"
@@ -142,25 +142,36 @@ func (msg *ProposalMessage) ValidatePow() bool {
 }
 
 func (msg *ProposalMessage) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg.Base); err != nil {
+	buf := bytes.Buffer{}
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.Type); err != nil {
+	if jsonData, err := json.Marshal(msg.Type); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.ZoneName); err != nil {
+	if jsonData, err := json.Marshal(msg.ZoneName); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.Owner); err != nil {
+	if jsonData, err := json.Marshal(msg.Owner); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.Values); err != nil {
+	if jsonData, err := json.Marshal(msg.Values); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.Nonce); err != nil {
+	if jsonData, err := json.Marshal(msg.Nonce); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }
@@ -186,18 +197,17 @@ func (msg *ProposalMessage) VerifySignature() bool {
 }
 
 func (msg *ProposalMessage) MarshalProposalMessage() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg); err != nil {
+	jsonData, err := json.Marshal(msg)
+	if err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return jsonData, nil
 }
 
 func UnMarshalProposalMessage(data []byte) (*ProposalMessage, error) {
 	msg := new(ProposalMessage)
-	dec := gob.NewDecoder(bytes.NewBuffer(data))
-	if err := dec.Decode(msg); err != nil {
+	err := json.Unmarshal(data, msg)
+	if err != nil {
 		return nil, err
 	}
 	return msg, nil
@@ -224,13 +234,16 @@ func NewProposalConfirm(proposalHash []byte) *ProposalConfirm {
 }
 
 func (msg *ProposalConfirm) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg.Base); err != nil {
+	buf := bytes.Buffer{}
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.ProposalHash); err != nil {
+	if jsonData, err := json.Marshal(msg.ProposalHash); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }
@@ -368,24 +381,6 @@ func (msg *ProposalMessage) ValidateMod() bool {
 	return true
 }
 
-func (msg *ProposalMessage) MarshalProposalMassage() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func UnMarshalProposalMassage(data []byte) (*ProposalMessage, error) {
-	p := new(ProposalMessage)
-	dec := gob.NewDecoder(bytes.NewBuffer(data))
-	if err := dec.Decode(p); err != nil {
-		return nil, err
-	}
-	return p, nil
-}
-
 type ProposalMessages []ProposalMessage
 
 type ProposalMessagePool struct {
@@ -460,13 +455,16 @@ func NewBlockConfirmMessage(id []byte) (BlockConfirmMessage, error) {
 }
 
 func (msg *BlockConfirmMessage) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg.Base); err != nil {
+	buf := bytes.Buffer{}
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.Id); err != nil {
+	if jsonData, err := json.Marshal(msg.Id); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }
@@ -524,13 +522,16 @@ func NewDataSyncMessage(h uint) (DataSyncMessage, error) {
 }
 
 func (msg *DataSyncMessage) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg.Base); err != nil {
+	buf := bytes.Buffer{}
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.Height); err != nil {
+	if jsonData, err := json.Marshal(msg.Height); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }
@@ -577,13 +578,16 @@ func NewProposalReplyMessage(id []byte) (*ProposalReplyMessage, error) {
 }
 
 func (msg *ProposalReplyMessage) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg.Base); err != nil {
+	buf := bytes.Buffer{}
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.Id); err != nil {
+	if jsonData, err := json.Marshal(msg.Id); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }

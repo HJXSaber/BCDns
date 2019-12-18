@@ -6,14 +6,13 @@ import (
 	"BCDns_0.1/messages"
 	"BCDns_0.1/utils"
 	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"reflect"
 	"time"
 )
 
-const BlockMaxSize = 100
+const BlockMaxSize = 20
 
 type BlockSlice []Block
 
@@ -138,13 +137,11 @@ func UnmarshalBlock(d []byte) (*Block, error) {
 }
 
 func (h *BlockHeader) MarshalBlockHeader() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(h); err != nil {
+	jsonData, err := json.Marshal(h)
+	if err != nil {
 		return nil, err
 	}
-
-	return buf.Bytes(), nil
+	return jsonData, nil
 }
 
 func UnmarshalBlockHeader(d []byte) (*BlockHeader, error) {
@@ -200,21 +197,21 @@ func NewBlockMessage(b *Block, abandonedP messages.ProposalMessages) (BlockMessa
 }
 
 func (msg *BlockMessage) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg.Base); err != nil {
-		return nil, err
-	}
-	if err := enc.Encode(msg.AbandonedProposal); err != nil {
-		return nil, err
-	}
+	buf := bytes.Buffer{}
 	if hash, err := msg.Block.Hash(); err != nil {
 		return nil, err
 	} else {
-		_, err := buf.Write(hash)
-		if err != nil {
-			return nil, err
-		}
+		buf.Write(hash)
+	}
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
+		return nil, err
+	} else {
+		buf.Write(jsonData)
+	}
+	if jsonData, err := json.Marshal(msg.AbandonedProposal); err != nil {
+		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }
@@ -291,17 +288,16 @@ func NewDataSyncRespMessage(b *BlockValidated) (DataSyncRespMessage, error) {
 }
 
 func (msg *DataSyncRespMessage) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg.Base); err != nil {
-		return nil, err
-	}
+	buf := bytes.Buffer{}
 	bHash, err := msg.BlockValidated.Hash()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := buf.Write(bHash); err != nil {
+	buf.Write(bHash)
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }
@@ -377,19 +373,26 @@ func NewViewChangeMessage(n uint, view int64, header BlockHeader, signatures map
 }
 
 func (msg *ViewChangeMessage) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg.Base); err != nil {
+	buf := bytes.Buffer{}
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.BlockHeader); err != nil {
+	if jsonData, err := msg.BlockHeader.MarshalBlockHeader(); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.Signatures); err != nil {
+	if jsonData, err := json.Marshal(msg.Signatures); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.View); err != nil {
+	if jsonData, err := json.Marshal(msg.View); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }
@@ -452,16 +455,21 @@ func NewNewViewMessage(msgs map[string]ViewChangeMessage, view int64) (*NewViewM
 }
 
 func (msg *NewViewMessage) Hash() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(msg.Base); err != nil {
+	buf := bytes.Buffer{}
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.View); err != nil {
+	if jsonData, err := json.Marshal(msg.View); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
-	if err := enc.Encode(msg.ViewChangeMsgs); err != nil {
+	if jsonData, err := json.Marshal(msg.ViewChangeMsgs); err != nil {
 		return nil, err
+	} else {
+		buf.Write(jsonData)
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }

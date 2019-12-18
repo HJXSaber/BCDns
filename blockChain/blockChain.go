@@ -345,7 +345,7 @@ func (bc *Blockchain) Get(key []byte) ([]byte, error) {
 		ps := ReverseSlice(block.ProposalMessages)
 		for _, p := range ps {
 			if p.ZoneName == string(key) {
-				data, err := p.MarshalProposalMassage()
+				data, err := p.MarshalProposalMessage()
 				if err != nil {
 					return nil, err
 				}
