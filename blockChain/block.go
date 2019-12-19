@@ -8,11 +8,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 )
 
-const BlockMaxSize = 20
+const BlockMaxSize = 50
 
 type BlockSlice []Block
 
@@ -323,9 +324,6 @@ func (msg *DataSyncRespMessage) VerifySignature() bool {
 }
 
 func (msg *DataSyncRespMessage) Validate() bool {
-	if !service.CertificateAuthorityX509.Exits(msg.From) {
-		return false
-	}
 	hash, err := msg.Hash()
 	if err != nil {
 		return false
@@ -335,8 +333,8 @@ func (msg *DataSyncRespMessage) Validate() bool {
 	}
 	count := len(msg.Signatures)
 	for host, sig := range msg.Signatures {
-		if !service.CertificateAuthorityX509.Exits(host) ||
-			!service.CertificateAuthorityX509.VerifySignature(sig, hash, host) {
+		if !service.CertificateAuthorityX509.VerifySignature(sig, hash, host) {
+			fmt.Println("???", host, sig)
 			count--
 			if !service.CertificateAuthorityX509.Check(count) {
 				return false

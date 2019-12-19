@@ -6,13 +6,27 @@ import (
 	"BCDns_0.1/utils"
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
+	"github.com/golang/snappy"
 	"time"
 )
+
+const (
+	MagicNumber = 0x66
+	HeaderLen = 8
+)
+
+var MagicNumberByte = utils.IntToBytes(MagicNumber)
 
 type Message struct {
 	MessageTypeT
 	Payload []byte
+}
+
+type PacketHeader struct {
+	Magic int
+	Len int
 }
 
 func NewMessage(t MessageTypeT, payload []byte) Message {
@@ -20,6 +34,47 @@ func NewMessage(t MessageTypeT, payload []byte) Message {
 		t,
 		payload,
 	}
+}
+
+func PackMessage(msg Message) ([]byte, error) {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	dataCompress := snappy.Encode(nil, data)
+	if len(dataCompress) > MaxPacketLength {
+		return nil, errors.New("[PackMessage] Msg'length is too large")
+	}
+	var header []byte
+	header = append(append(header, MagicNumberByte...), utils.IntToBytes(len(dataCompress) + HeaderLen)...)
+	return append(header, dataCompress...), nil
+}
+
+func UnpackMessage(data []byte) (Message, error) {
+	payload := data[HeaderLen:]
+	data, err := snappy.Decode(nil, payload)
+	if err != nil {
+		return Message{}, err
+	}
+	var msg Message
+	err = json.Unmarshal(data, &msg)
+	if err != nil {
+		return Message{}, err
+	}
+	return msg, nil
+}
+
+func GetPacketHeader(data []byte) (*PacketHeader, error) {
+	header := data[:HeaderLen]
+	magic := utils.BytesToInt(header[:4])
+	if magic != MagicNumber {
+		return nil, errors.New("[GetPacketHeader] Wrong magic")
+	}
+	len := utils.BytesToInt(header[4:])
+	return &PacketHeader{
+		Magic:magic,
+		Len:len,
+	}, nil
 }
 
 type JoinMessage struct {

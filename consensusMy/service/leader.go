@@ -6,6 +6,7 @@ import (
 	"BCDns_0.1/network/service"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/snappy"
 	"reflect"
 	"time"
 )
@@ -18,6 +19,7 @@ var (
 type Leader struct {
 	MessagePool  messages.ProposalMessagePool
 	BlockConfirm bool
+	UnConfirmedH uint
 }
 
 func init() {
@@ -29,6 +31,7 @@ func NewLeader() *Leader {
 	return &Leader{
 		MessagePool:  messages.NewProposalMessagePool(),
 		BlockConfirm: true,
+		UnConfirmedH: 0,
 	}
 }
 
@@ -87,9 +90,13 @@ func (l *Leader) Run(done chan uint) {
 			service.Net.BroadCast(jsonData, service.BlockMsg)
 			l.MessagePool.Clear(bound)
 			l.BlockConfirm = false
-			fmt.Println("block broadcast fin", len(jsonData))
-		case <-BlockConfirmChan:
-			l.BlockConfirm = true
+			l.UnConfirmedH = block.Height
+			dc := snappy.Encode(nil, jsonData)
+			fmt.Println("block broadcast fin", len(dc))
+		case h := <-BlockConfirmChan:
+			if h == l.UnConfirmedH {
+				l.BlockConfirm = true
+			}
 		}
 	}
 }

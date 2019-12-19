@@ -69,6 +69,11 @@ const (
 	JoinMsg
 )
 
+const (
+	Packed = iota
+	Packing
+)
+
 type DNet struct {
 	Mutex   deadlock.Mutex
 	Members []DNode
@@ -114,7 +119,13 @@ func (n *DNet) handleStram() {
 }
 
 func (n *DNet) handleConn(conn net.Conn) {
-	var msg Message
+	var (
+		msg Message
+		header *PacketHeader
+		length = 0
+		data = make([]byte, 0)
+	)
+	state := Packed
 	for {
 		dataBuf := make([]byte, MaxPacketLength)
 		l, err := conn.Read(dataBuf)
@@ -126,12 +137,29 @@ func (n *DNet) handleConn(conn net.Conn) {
 			logger.Warningf("[Network] handleConn Read error=%v", err)
 			continue
 		}
-		err = json.Unmarshal(dataBuf[:l], &msg)
-		if err != nil {
-			logger.Warningf("[Network] handleConn json.Unmarshal error=%v", err)
-			continue
+		length += l
+		data = append(data, dataBuf[:l]...)
+		if state == Packed {
+			header, err = GetPacketHeader(data)
+			if err != nil {
+				length, data = 0, data[:0]
+				logger.Warningf("[NetWork] handleConn GetPacketHeader error=%v", err)
+				continue
+			}
 		}
-		fmt.Println("start handle")
+		if length < header.Len {
+			state = Packing
+			continue
+		} else {
+			state = Packed
+			msg, err = UnpackMessage(data[:header.Len])
+			data = data[header.Len:]
+			length -= header.Len
+			if err != nil {
+				logger.Warningf("[NetWork] handleConn UnpackMessage error=%v", err)
+				continue
+			}
+		}
 		switch msg.MessageTypeT {
 		case JoinMsg:
 			var message JoinMessage
@@ -170,7 +198,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 				continue
 			}
 			JoinChan <- message
-			_, _ = node.Send(jsonData)
+			node.Send(jsonData)
 		case ProposalMsg:
 			fmt.Println("proposal")
 			ProposalChan <- msg.Payload
@@ -218,7 +246,7 @@ func (n *DNet) Join(seeds []string) error {
 	if err != nil {
 		return err
 	}
-	localData, err := json.Marshal(NewMessage(JoinMsg, jsonData))
+	localData, err := PackMessage(NewMessage(JoinMsg, jsonData))
 	if err != nil {
 		return err
 	}
@@ -295,7 +323,7 @@ func JoinNode(addr string) (net.Conn, error) {
 }
 
 func (n *DNet) BroadCast(payload []byte, t MessageTypeT) {
-	data, err := json.Marshal(NewMessage(t, payload))
+	data, err := PackMessage(NewMessage(t, payload))
 	if err != nil {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return
@@ -309,7 +337,7 @@ func (n *DNet) BroadCast(payload []byte, t MessageTypeT) {
 }
 
 func (n *DNet) SendTo(payload []byte, t MessageTypeT, to string) {
-	data, err := json.Marshal(NewMessage(t, payload))
+	data, err := PackMessage(NewMessage(t, payload))
 	if err != nil {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return
@@ -320,7 +348,7 @@ func (n *DNet) SendTo(payload []byte, t MessageTypeT, to string) {
 }
 
 func (n *DNet) SendToLeader(payload []byte, t MessageTypeT) {
-	data, err := json.Marshal(NewMessage(t, payload))
+	data, err := PackMessage(NewMessage(t, payload))
 	if err != nil {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return

@@ -7,6 +7,7 @@ import (
 	"BCDns_0.1/network/service"
 	"bytes"
 	"encoding/json"
+	"fmt"
 )
 
 const (
@@ -119,7 +120,7 @@ func (n *Node) Run(done chan uint) {
 				}
 				n.ExecuteBlock(blockValidated)
 				if service.ViewManager.IsLeader() {
-					BlockConfirmChan <- 1
+					BlockConfirmChan <- blockValidated.Height
 				}
 			}
 		case msgByte := <-service.DataSyncChan:
@@ -239,6 +240,13 @@ func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
 		n.EnqueueBlock(*blockChain.NewBlockValidated(&msg.Block, map[string][]byte{}))
 		return dataSync
 	}
+	if lastBlock.Height > msg.Block.Height - 1 {
+		fmt.Println("b", lastBlock.Height, lastBlock)
+		fmt.Println("b1", msg.Height, msg.Block)
+		logger.Warningf("[Node.Run] Block is out of time")
+		return invalid
+	}
+	fmt.Println(msg.Block.PrevBlock, prevHash)
 	if bytes.Compare(msg.Block.PrevBlock, prevHash) != 0 {
 		logger.Warningf("[Node.Run] PrevBlock is invalid")
 		return invalid

@@ -6,6 +6,7 @@ require (
 	github.com/boltdb/bolt v1.3.1
 	github.com/fanliao/go-concurrentMap v0.0.0-20141114143905-7d2d7a5ea67b
 	github.com/golang/protobuf v1.3.2
+	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
 	github.com/izqui/helpers v0.0.0-20150821122028-c69cdb8bbd19
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
