@@ -8,10 +8,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 const (
-	unconfirmed uint8 = iota
+	unreceived uint8 = iota
 	keep
 	drop
 )
@@ -22,18 +23,29 @@ const (
 	invalid
 )
 
+var (
+	blockChan chan blockChain.BlockMessage
+)
+
+func init() {
+	blockChan = make(chan blockChain.BlockMessage, service.ChanSize)
+}
+
 type Node struct {
 	Proposals       map[string]uint8
 	Blocks          []blockChain.BlockValidated
-	Block           blockChain.Block
-	BlockPrepareMsg map[string][]byte
+	BlockMessages []blockChain.BlockMessage
+	Block           map[string]blockChain.Block
+	BlockPrepareMsg map[string]map[string][]byte
 }
 
 func NewNode() *Node {
 	return &Node{
 		Proposals:       map[string]uint8{},
 		Blocks:          []blockChain.BlockValidated{},
-		BlockPrepareMsg: map[string][]byte{},
+		BlockMessages: []blockChain.BlockMessage{},
+		Block: map[string]blockChain.Block{},
+		BlockPrepareMsg: map[string]map[string][]byte{},
 	}
 }
 
@@ -41,6 +53,18 @@ func (n *Node) Run(done chan uint) {
 	defer close(done)
 	for {
 		select {
+		case msgByte := <-service.DataSyncRespChan:
+			var msg blockChain.DataSyncRespMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if !msg.Validate() {
+				logger.Warningf("[Node.Run] DataSyncRespMessage.Validate failed")
+				continue
+			}
+			n.ExecuteBlock(&msg.BlockValidated)
 		case msgByte := <-service.ProposalChan:
 			var proposal messages.ProposalMessage
 			err := json.Unmarshal(msgByte, &proposal)
@@ -48,79 +72,15 @@ func (n *Node) Run(done chan uint) {
 				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
 				continue
 			}
-			if !n.handleProposal(proposal) {
-				continue
-			}
-			n.Proposals[string(proposal.Id)] = unconfirmed
-			if service.ViewManager.IsLeader() {
-				ProposalMessageChan <- proposal
-			} else {
-				service.Net.SendToLeader(msgByte, service.ProposalMsg)
-			}
-		case msgByte := <-service.BlockChan:
-			if service.ViewManager.IsOnChanging() {
-				//TODO Add feedback mechanism which send msg to client
-				continue
-			}
-			var msg blockChain.BlockMessage
-			err := json.Unmarshal(msgByte, &msg)
-			if err != nil {
-				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
-				continue
-			}
-			id, err := msg.Block.Hash()
-			if err != nil {
-				logger.Warningf("[Node.Run] block.Hash error=%v", err)
-				continue
-			}
-			switch n.ValidateBlock(&msg) {
-			case dataSync:
-				continue
-			case invalid:
-				logger.Warningf("[Node.Run] block is invalid")
-				continue
-			}
-			n.Block = msg.Block
-			n.BlockPrepareMsg = map[string][]byte{}
-			for _, p := range msg.AbandonedProposal {
-				n.Proposals[string(p.Id)] = drop
-			}
-			for _, p := range msg.ProposalMessages {
-				n.Proposals[string(p.Id)] = keep
-			}
-			n.Block = msg.Block
-			blockConfirmMsg, err := messages.NewBlockConfirmMessage(id)
-			if err != nil {
-				logger.Warningf("[Node.Run] NewBlockConfirmMessage error=%v", err)
-				continue
-			}
-			jsonData, err := json.Marshal(blockConfirmMsg)
-			if err != nil {
-				logger.Warningf("[Node.Run] json.Marshal error=%v", err)
-				continue
-			}
-			service.Net.BroadCast(jsonData, service.BlockConfirmMsg)
-		case msgByte := <-service.BlockConfirmChan:
-			var msg messages.BlockConfirmMessage
-			err := json.Unmarshal(msgByte, &msg)
-			if err != nil {
-				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
-				continue
-			}
-			if !msg.Verify() {
-				logger.Warningf("[Node.Run] msg.Verify failed")
-				continue
-			}
-			n.BlockPrepareMsg[msg.From] = msg.Signature
-			if service2.CertificateAuthorityX509.Check(len(n.BlockPrepareMsg)) {
-				blockValidated := blockChain.NewBlockValidated(&n.Block, n.BlockPrepareMsg)
-				if blockValidated == nil {
-					logger.Warningf("[Node.Run] NewBlockValidated failed")
+			if _, exist := n.Proposals[string(proposal.Id)]; !exist {
+				if !n.handleProposal(proposal) {
 					continue
 				}
-				n.ExecuteBlock(blockValidated)
+				n.Proposals[string(proposal.Id)] = unreceived
 				if service.ViewManager.IsLeader() {
-					BlockConfirmChan <- blockValidated.Height
+					ProposalMessageChan <- proposal
+				} else {
+					service.Net.SendToLeader(msgByte, service.ProposalMsg)
 				}
 			}
 		case msgByte := <-service.DataSyncChan:
@@ -154,18 +114,45 @@ func (n *Node) Run(done chan uint) {
 				continue
 			}
 			service.Net.SendTo(jsonData, service.DataSyncRespMsg, msg.From)
-		case msgByte := <-service.DataSyncRespChan:
-			var msg blockChain.DataSyncRespMessage
+		case msgByte := <-service.BlockConfirmChan:
+			var msg messages.BlockConfirmMessage
 			err := json.Unmarshal(msgByte, &msg)
 			if err != nil {
 				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
 				continue
 			}
-			if !msg.Validate() {
-				logger.Warningf("[Node.Run] DataSyncRespMessage.Validate failed")
+			if !msg.Verify() {
+				logger.Warningf("[Node.Run] msg.Verify failed")
 				continue
 			}
-			n.ExecuteBlock(&msg.BlockValidated)
+			if _, ok := n.BlockPrepareMsg[string(msg.Id)]; !ok {
+				n.BlockPrepareMsg[string(msg.Id)] = map[string][]byte{}
+			}
+			n.BlockPrepareMsg[string(msg.Id)][msg.From] = msg.Signature
+			if _, ok := n.Block[string(msg.Id)]; ok && service2.CertificateAuthorityX509.Check(len(n.BlockPrepareMsg[string(msg.Id)])) {
+				blockValidated := blockChain.NewBlockValidated(n.Block[string(msg.Id)], n.BlockPrepareMsg[string(msg.Id)])
+				if blockValidated == nil {
+					logger.Warningf("[Node.Run] NewBlockValidated failed")
+					continue
+				}
+				n.ExecuteBlock(blockValidated)
+				delete(n.BlockPrepareMsg, string(msg.Id))
+				delete(n.Block, string(msg.Id))
+			}
+		case blockMsg := <-blockChan:
+			n.ProcessBlockMessage(&blockMsg)
+		case msgByte := <-service.BlockChan:
+			if service.ViewManager.IsOnChanging() {
+				//TODO Add feedback mechanism which send msg to client
+				continue
+			}
+			var msg blockChain.BlockMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			n.ProcessBlockMessage(&msg)
 		case msgByte := <-service.ProposalConfirmChan:
 			var msg messages.ProposalConfirm
 			err := json.Unmarshal(msgByte, &msg)
@@ -176,7 +163,7 @@ func (n *Node) Run(done chan uint) {
 			if state, ok := n.Proposals[string(msg.ProposalHash)]; !ok || state == drop {
 				logger.Warningf("[Node.Run] I have never received this proposal, exist=%v state=%v", ok, state)
 				continue
-			} else if state == unconfirmed {
+			} else if state == unreceived {
 				//TODO start view change
 				lastBlock, err := blockChain.BlockChain.GetLatestBlock()
 				if err != nil {
@@ -237,16 +224,13 @@ func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
 	}
 	if lastBlock.Height < msg.Block.Height-1 {
 		service.StartDataSync(lastBlock.Height+1, msg.Block.Height-1)
-		n.EnqueueBlock(*blockChain.NewBlockValidated(&msg.Block, map[string][]byte{}))
+		n.EnqueueBlockMessage(msg)
 		return dataSync
 	}
 	if lastBlock.Height > msg.Block.Height - 1 {
-		fmt.Println("b", lastBlock.Height, lastBlock)
-		fmt.Println("b1", msg.Height, msg.Block)
 		logger.Warningf("[Node.Run] Block is out of time")
 		return invalid
 	}
-	fmt.Println(msg.Block.PrevBlock, prevHash)
 	if bytes.Compare(msg.Block.PrevBlock, prevHash) != 0 {
 		logger.Warningf("[Node.Run] PrevBlock is invalid")
 		return invalid
@@ -264,6 +248,24 @@ func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
 		return invalid
 	}
 	return ok
+}
+
+func (n *Node) EnqueueBlockMessage(msg *blockChain.BlockMessage) {
+	insert := false
+	for i, b := range n.BlockMessages {
+		if msg.Height < b.Height {
+			n.BlockMessages = append(n.BlockMessages[:i+1], n.BlockMessages[i:]...)
+			n.BlockMessages[i] = *msg
+			insert = true
+			break
+		} else if msg.Height == b.Height {
+			insert = true
+			break
+		}
+	}
+	if !insert {
+		n.BlockMessages = append(n.BlockMessages, *msg)
+	}
 }
 
 func (n *Node) EnqueueBlock(block blockChain.BlockValidated) {
@@ -290,9 +292,6 @@ func (n *Node) ExecuteBlock(b *blockChain.BlockValidated) {
 		logger.Warningf("[Node.Run] ExecuteBlock GetLatestBlock error=%v", err)
 		return
 	}
-	if lastBlock.Height >= b.Height {
-		return
-	}
 	n.EnqueueBlock(*b)
 	h := lastBlock.Height + 1
 	for _, bb := range n.Blocks {
@@ -302,18 +301,43 @@ func (n *Node) ExecuteBlock(b *blockChain.BlockValidated) {
 			err := blockChain.BlockChain.AddBlock(b)
 			if err != nil {
 				logger.Warningf("[Node.Run] ExecuteBlock AddBlock error=%v", err)
-				return
+				break
 			}
 			n.SendReply(&b.Block)
 			n.Blocks = n.Blocks[1:]
 		} else {
-			return
+			break
 		}
 		h++
+	}
+	for _, msg := range n.BlockMessages {
+		if msg.Height < h {
+			n.BlockMessages = n.BlockMessages[1:]
+			n.ModifyProposalState(&msg)
+		} else if msg.Height == h {
+			blockChan <- msg
+			n.BlockMessages = n.BlockMessages[1:]
+		} else {
+			break
+		}
+		h++
+	}
+	if service.ViewManager.IsLeader() {
+		BlockConfirmChan <- b.Height
+	}
+}
+
+func (n *Node) ModifyProposalState(msg *blockChain.BlockMessage) {
+	for _, p := range msg.AbandonedProposal {
+		n.Proposals[string(p.Id)] = drop
+	}
+	for _, p := range msg.ProposalMessages {
+		n.Proposals[string(p.Id)] = keep
 	}
 }
 
 func (n *Node) SendReply(b *blockChain.Block) {
+	l := 0
 	for _, p := range b.ProposalMessages {
 		msg, err := messages.NewProposalReplyMessage(p.Id)
 		if err != nil {
@@ -326,5 +350,47 @@ func (n *Node) SendReply(b *blockChain.Block) {
 			continue
 		}
 		service.Net.SendTo(jsonData, service.ProposalReplyMsg, p.From)
+		time.Sleep(10 * time.Millisecond)
+		l++
+	}
+	fmt.Println("sendreply", len(b.ProposalMessages), l)
+}
+
+func (n *Node) ProcessBlockMessage(msg *blockChain.BlockMessage) {
+	id, err := msg.Block.Hash()
+	if err != nil {
+		logger.Warningf("[Node.Run] block.Hash error=%v", err)
+		return
+	}
+	switch n.ValidateBlock(msg) {
+	case dataSync:
+		return
+	case invalid:
+		logger.Warningf("[Node.Run] block is invalid")
+		return
+	}
+	n.Block[string(id)] = msg.Block
+	n.ModifyProposalState(msg)
+	if _, ok := n.BlockPrepareMsg[string(id)]; ok && service2.CertificateAuthorityX509.Check(len(n.BlockPrepareMsg[string(id)])) {
+		blockValidated := blockChain.NewBlockValidated(n.Block[string(id)], n.BlockPrepareMsg[string(id)])
+		if blockValidated == nil {
+			logger.Warningf("[Node.Run] NewBlockValidated failed")
+			return
+		}
+		n.ExecuteBlock(blockValidated)
+		delete(n.BlockPrepareMsg, string(id))
+		delete(n.Block, string(id))
+	} else {
+		blockConfirmMsg, err := messages.NewBlockConfirmMessage(id)
+		if err != nil {
+			logger.Warningf("[Node.Run] NewBlockConfirmMessage error=%v", err)
+			return
+		}
+		jsonData, err := json.Marshal(blockConfirmMsg)
+		if err != nil {
+			logger.Warningf("[Node.Run] json.Marshal error=%v", err)
+			return
+		}
+		service.Net.BroadCast(jsonData, service.BlockConfirmMsg)
 	}
 }

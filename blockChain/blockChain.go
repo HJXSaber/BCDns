@@ -30,7 +30,7 @@ func CreateBlockchain(dbFile string) (*Blockchain, error) {
 	var tip []byte
 
 	genesis := NewGenesisBlock()
-	genesisB := NewBlockValidated(genesis, map[string][]byte{})
+	genesisB := NewBlockValidated(*genesis, map[string][]byte{})
 
 	db, err := bolt.Open(dbFile, 0600, nil)
 	if err != nil {

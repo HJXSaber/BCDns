@@ -57,16 +57,8 @@ func (p *Proposer) Run(done chan uint) {
 	)
 	defer close(done)
 	go p.ReceiveOrder()
-	count := 0
 	for {
 		select {
-		case msgByte := <-p.OrderChan:
-			var msg Order
-			err = json.Unmarshal(msgByte, &msg)
-			if err != nil {
-				continue
-			}
-			p.handleOrder(msg)
 		case msgByte := <-service2.ProposalReplyChan:
 			var msg messages.ProposalReplyMessage
 			err := json.Unmarshal(msgByte, &msg)
@@ -81,10 +73,9 @@ func (p *Proposer) Run(done chan uint) {
 			p.Mutex.Lock()
 			if _, ok := p.Proposals[string(msg.Id)]; ok {
 				p.Replys[string(msg.Id)][msg.From] = 0
+				fmt.Println("replies", p.Replys[string(msg.Id)])
 				if service.CertificateAuthorityX509.Check(len(p.Replys[string(msg.Id)])) {
 					fmt.Printf("[Proposer.Run] ProposalMsgT execute successfully %v\n", p.Proposals[string(msg.Id)])
-					fmt.Println("count", count)
-					count++
 					delete(p.Proposals, string(msg.Id))
 					delete(p.Replys, string(msg.Id))
 					p.Contexts[string(msg.Id)]()
@@ -92,6 +83,14 @@ func (p *Proposer) Run(done chan uint) {
 				}
 			}
 			p.Mutex.Unlock()
+		case msgByte := <-p.OrderChan:
+			var msg Order
+			err = json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Proposer.Run] order json.Unmarshal error=%v", err)
+				continue
+			}
+			p.handleOrder(msg)
 		}
 	}
 }

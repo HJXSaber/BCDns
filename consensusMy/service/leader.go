@@ -38,67 +38,68 @@ func NewLeader() *Leader {
 func (l *Leader) Run(done chan uint) {
 	defer close(done)
 	interrupt := make(chan int)
-	interruptTimer := make(chan int)
 	go func() {
-		for true {
+		for {
 			select {
 			case <-time.After(10 * time.Second):
+				fmt.Println("Timeout", l.BlockConfirm, l.UnConfirmedH)
 				if l.BlockConfirm {
 					interrupt <- 1
 				}
-			case <-interruptTimer:
-				interrupt <- 1
 			}
 		}
 	}()
 	for {
 		select {
-		case msg := <-ProposalMessageChan:
-			l.MessagePool.AddProposal(msg)
-			if l.BlockConfirm && l.MessagePool.Size() >= blockChain.BlockMaxSize {
-				interruptTimer <- 1
-			}
 		case <-interrupt:
-			if !service.ViewManager.IsLeader() {
-				continue
-			}
-			if l.MessagePool.Size() <= 0 {
-				fmt.Printf("[Leader.Run] CurrentBlock is empty\n")
-				continue
-			}
-			bound := blockChain.BlockMaxSize
-			if len(l.MessagePool.ProposalMessages) < blockChain.BlockMaxSize {
-				bound = len(l.MessagePool.ProposalMessages)
-			}
-			validP, abandonedP := CheckProposals(l.MessagePool.ProposalMessages[:bound])
-			block, err := blockChain.BlockChain.MineBlock(validP)
-			if err != nil {
-				logger.Warningf("[Leader.Run] MineBlock error=%v", err)
-				continue
-			}
-			blockMessage, err := blockChain.NewBlockMessage(block, abandonedP)
-			if err != nil {
-				logger.Warningf("[Leader.Run] NewBlockMessage error=%v", err)
-				continue
-			}
-			jsonData, err := json.Marshal(blockMessage)
-			if err != nil {
-				logger.Warningf("[Leader.Run] json.Marshal error=%v", err)
-				continue
-			}
-
-			service.Net.BroadCast(jsonData, service.BlockMsg)
-			l.MessagePool.Clear(bound)
-			l.BlockConfirm = false
-			l.UnConfirmedH = block.Height
-			dc := snappy.Encode(nil, jsonData)
-			fmt.Println("block broadcast fin", len(dc))
+			l.generateBlock()
 		case h := <-BlockConfirmChan:
 			if h == l.UnConfirmedH {
 				l.BlockConfirm = true
 			}
+		case msg := <-ProposalMessageChan:
+			l.MessagePool.AddProposal(msg)
+			if l.BlockConfirm && l.MessagePool.Size() >= blockChain.BlockMaxSize {
+				l.generateBlock()
+			}
 		}
 	}
+}
+
+func (l *Leader) generateBlock() {
+	if !service.ViewManager.IsLeader() {
+		return
+	}
+	if l.MessagePool.Size() <= 0 {
+		fmt.Printf("[Leader.Run] CurrentBlock is empty\n")
+		return
+	}
+	bound := blockChain.BlockMaxSize
+	if len(l.MessagePool.ProposalMessages) < blockChain.BlockMaxSize {
+		bound = len(l.MessagePool.ProposalMessages)
+	}
+	validP, abandonedP := CheckProposals(l.MessagePool.ProposalMessages[:bound])
+	block, err := blockChain.BlockChain.MineBlock(validP)
+	if err != nil {
+		logger.Warningf("[Leader.Run] MineBlock error=%v", err)
+		return
+	}
+	blockMessage, err := blockChain.NewBlockMessage(block, abandonedP)
+	if err != nil {
+		logger.Warningf("[Leader.Run] NewBlockMessage error=%v", err)
+		return
+	}
+	jsonData, err := json.Marshal(blockMessage)
+	if err != nil {
+		logger.Warningf("[Leader.Run] json.Marshal error=%v", err)
+		return
+	}
+	service.Net.BroadCast(jsonData, service.BlockMsg)
+	l.MessagePool.Clear(bound)
+	l.BlockConfirm = false
+	l.UnConfirmedH = block.Height
+	dc := snappy.Encode(nil, jsonData)
+	fmt.Println("block broadcast fin", len(dc), block.Height, len(validP), validP[len(validP) - 1].Values)
 }
 
 func CheckProposals(proposals messages.ProposalMessages) (

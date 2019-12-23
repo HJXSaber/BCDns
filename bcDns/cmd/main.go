@@ -8,9 +8,20 @@ import (
 	dao2 "BCDns_0.1/dao"
 	service3 "BCDns_0.1/network/service"
 	"fmt"
+	"net/http"
+	"net/http/pprof"
 )
 
 func main() {
+	go func() {
+		http.HandleFunc("/debug/pprof/block", pprof.Index)
+		http.HandleFunc("/debug/pprof/goroutine", pprof.Index)
+		http.HandleFunc("/debug/pprof/heap", pprof.Index)
+		http.HandleFunc("/debug/pprof/threadcreate", pprof.Index)
+
+		http.ListenAndServe("0.0.0.0:8888", nil)
+	}()
+
 	var err error
 	fmt.Println("[Init Dao]")
 	dao2.Dao, err = NewDao()

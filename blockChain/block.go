@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const BlockMaxSize = 50
+const BlockMaxSize = 200
 
 type BlockSlice []Block
 
@@ -242,9 +242,9 @@ type BlockValidated struct {
 	Signatures map[string][]byte
 }
 
-func NewBlockValidated(b *Block, signatures map[string][]byte) *BlockValidated {
+func NewBlockValidated(b Block, signatures map[string][]byte) *BlockValidated {
 	msg := &BlockValidated{
-		Block:      *b,
+		Block:      b,
 		Signatures: signatures,
 	}
 	return msg
@@ -328,9 +328,11 @@ func (msg *DataSyncRespMessage) Validate() bool {
 	if err != nil {
 		return false
 	}
+	fmt.Println("???", hash)
 	if !service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From) {
 		return false
 	}
+	fmt.Println("???", msg.Signatures)
 	count := len(msg.Signatures)
 	for host, sig := range msg.Signatures {
 		if !service.CertificateAuthorityX509.VerifySignature(sig, hash, host) {

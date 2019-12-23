@@ -398,9 +398,7 @@ func NewProposalMessagePool() ProposalMessagePool {
 }
 
 func (pool *ProposalMessagePool) AddProposal(p ProposalMessage) {
-	if !pool.Exist(p) {
-		pool.ProposalMessages = append(pool.ProposalMessages, p)
-	}
+	pool.ProposalMessages = append(pool.ProposalMessages, p)
 }
 
 func (pool *ProposalMessagePool) Exist(p ProposalMessage) bool {

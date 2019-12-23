@@ -232,7 +232,6 @@ func (n *DNet) handleConn(conn net.Conn) {
 		default:
 			logger.Warningf("[Network] handleConn Unknown message type")
 		}
-		fmt.Println("finish handle")
 	}
 }
 
