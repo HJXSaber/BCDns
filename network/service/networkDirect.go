@@ -200,7 +200,6 @@ func (n *DNet) handleConn(conn net.Conn) {
 			JoinChan <- message
 			node.Send(jsonData)
 		case ProposalMsg:
-			fmt.Println("proposal")
 			ProposalChan <- msg.Payload
 		case BlockMsg:
 			fmt.Println("block")
@@ -215,7 +214,6 @@ func (n *DNet) handleConn(conn net.Conn) {
 			fmt.Println("dataSyncReply")
 			DataSyncRespChan <- msg.Payload
 		case ProposalReplyMsg:
-			fmt.Println("proposalReply")
 			ProposalReplyChan <- msg.Payload
 		case ProposalConfirmMsg:
 			fmt.Println("proposalConfirm")
