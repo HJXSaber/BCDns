@@ -8,6 +8,7 @@ import (
 	dao2 "BCDns_0.1/dao"
 	service3 "BCDns_0.1/network/service"
 	"fmt"
+	"time"
 )
 
 func main() {
@@ -53,6 +54,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("[System running]")
+	fmt.Println("[Start Time]", time.Now())
 	_ = <-done
 	fmt.Println("[Err] System exit")
 }

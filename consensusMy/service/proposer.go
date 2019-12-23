@@ -23,6 +23,7 @@ type Proposer struct {
 	Mutex sync.Mutex
 
 	Proposals map[string]messages.ProposalMessage
+	proposalsT map[string]time.Time
 	Replys    map[string]map[string]uint8
 	Contexts  map[string]context.CancelFunc
 	Conn      *net.UDPConn
@@ -40,6 +41,7 @@ func NewProposer() *Proposer {
 	}
 	return &Proposer{
 		Proposals: map[string]messages.ProposalMessage{},
+		proposalsT: map[string]time.Time{},
 		Replys:    map[string]map[string]uint8{},
 		Contexts:  map[string]context.CancelFunc{},
 		OrderChan: make(chan []byte, 1024),
@@ -75,7 +77,8 @@ func (p *Proposer) Run(done chan uint) {
 				p.Replys[string(msg.Id)][msg.From] = 0
 				fmt.Println("replies", p.Replys[string(msg.Id)])
 				if service.CertificateAuthorityX509.Check(len(p.Replys[string(msg.Id)])) {
-					fmt.Printf("[Proposer.Run] ProposalMsgT execute successfully %v\n", p.Proposals[string(msg.Id)])
+					fmt.Printf("%v[Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now(), p.Proposals[string(msg.Id)],
+						time.Now().Sub(p.proposalsT[string(msg.Id)]).Seconds())
 					delete(p.Proposals, string(msg.Id))
 					delete(p.Replys, string(msg.Id))
 					p.Contexts[string(msg.Id)]()
@@ -124,6 +127,7 @@ func (p *Proposer) handleOrder(msg Order) {
 		}
 		p.Mutex.Lock()
 		p.Proposals[string(proposal.Id)] = *proposal
+		p.proposalsT[string((proposal.Id))] = time.Now()
 		p.Replys[string(proposal.Id)] = map[string]uint8{}
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		go p.timer(ctx, proposal)
@@ -145,7 +149,8 @@ func (p *Proposer) timer(ctx context.Context, proposal *messages.ProposalMessage
 			return
 		}
 		if service.CertificateAuthorityX509.Check(len(replies)) {
-			fmt.Printf("[Proposer.timer] ProposalMsgT=%v execute successfully\n", string(proposal.Id))
+			fmt.Printf("%v[Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now(), p.Proposals[string(proposal.Id)],
+				time.Now().Sub(p.proposalsT[string(proposal.Id)]).Seconds())
 			delete(p.Proposals, string(proposal.Id))
 			delete(p.Replys, string(proposal.Id))
 			delete(p.Contexts, string(proposal.Id))
