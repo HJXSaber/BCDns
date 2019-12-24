@@ -140,7 +140,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 						break
 					}
 				}
-				if service.CertificateAuthorityX509.Check(len(n.Members)) {
+				if !service.CertificateAuthorityX509.Check(len(n.Members)) {
 					panic("[Network] Not enough nodes alive")
 				}
 				n.Mutex.Unlock()
@@ -214,10 +214,8 @@ func (n *DNet) handleConn(conn net.Conn) {
 		case ProposalMsg:
 			ProposalChan <- msg.Payload
 		case BlockMsg:
-			fmt.Println("block")
 			BlockChan <- msg.Payload
 		case BlockConfirmMsg:
-			fmt.Println("blockConfirm")
 			BlockConfirmChan <- msg.Payload
 		case DataSyncMsg:
 			fmt.Println("dataSync")
