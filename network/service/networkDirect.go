@@ -132,6 +132,18 @@ func (n *DNet) handleConn(conn net.Conn) {
 		if err != nil {
 			if err == io.EOF {
 				logger.Warningf("[Network] handleConn closed", conn.RemoteAddr())
+				n.Mutex.Lock()
+				for i, member := range n.Members {
+					if strings.Compare(member.RemoteAddr, conn.RemoteAddr().String()) == 0 {
+						delete(n.Map, member.Name)
+						n.Members = append(n.Members[:i], n.Members[i + 1:]...)
+						break
+					}
+				}
+				if service.CertificateAuthorityX509.Check(len(n.Members)) {
+					panic("[Network] Not enough nodes alive")
+				}
+				n.Mutex.Unlock()
 				return
 			}
 			logger.Warningf("[Network] handleConn Read error=%v", err)
