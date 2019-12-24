@@ -278,10 +278,6 @@ func (msg *ProposalMessage) ValidateAdd() bool {
 		logger.Warningf("[ValidateAdd] json.Marshal failed err=%v", err)
 		return false
 	}
-	if time.Now().Before(time.Unix(msg.TimeStamp, 0)) {
-		logger.Warningf("[ValidateAdd] TimeStamp is invalid t=%v", msg.TimeStamp)
-		return false
-	}
 	blockProposal := new(ProposalMessage)
 	if data, err := dao.Dao.GetZoneName(msg.ZoneName); err != leveldb.ErrNotFound {
 		blockProposal, err = UnMarshalProposalMessage(data)
@@ -313,10 +309,6 @@ func (msg *ProposalMessage) ValidateDel() bool {
 	bodyByte, err := msg.Hash()
 	if err != nil {
 		logger.Warningf("[ValidateDel] json.Marshal failed err=%v", err)
-		return false
-	}
-	if time.Now().Before(time.Unix(msg.TimeStamp, 0)) {
-		logger.Warningf("[ValidateDel] TimeStamp is invalid t=%v", msg.TimeStamp)
 		return false
 	}
 	if msg.Owner != Dereliction {
@@ -353,10 +345,6 @@ func (msg *ProposalMessage) ValidateMod() bool {
 	bodyByte, err := msg.Hash()
 	if err != nil {
 		logger.Warningf("[ValidateMod] json.Marshal failed err=%v", err)
-		return false
-	}
-	if time.Now().Before(time.Unix(msg.TimeStamp, 0)) {
-		logger.Warningf("[ValidateMod] TimeStamp is invalid t=%v", msg.TimeStamp)
 		return false
 	}
 	blockProposal := new(ProposalMessage)
