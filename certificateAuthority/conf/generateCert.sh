@@ -2,7 +2,7 @@
 
 rm -f Local*
 
-ip=$(ifconfig |grep "$1" -C 1|grep "inet"|awk  '{print $2}')
+ip=$(ifconfig |grep ens3 -C 1|grep "inet"|awk  '{print $2}'|awk -F ":" '{print $2}')
 
 sed "s/0.0.0.0/$ip/g" v3.txt -i
 
