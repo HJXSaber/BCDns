@@ -10,10 +10,12 @@ import (
 	"github.com/op/go-logging"
 	"github.com/sasha-s/go-deadlock"
 	"io"
+	"math/rand"
 	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var (
@@ -335,10 +337,26 @@ func (n *DNet) BroadCast(payload []byte, t MessageTypeT) {
 		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
 		return
 	}
-	for _, m := range n.Members {
-		_, err := m.Send(data)
-		if err != nil {
-			logger.Warningf("[Network] BroadCast send error=%v", err)
+
+	if conf.BCDnsConfig.Byzantine && (t == ProposalMsg || t == BlockMsg || t == BlockConfirmMsg || t == ProposalReplyMsg) {
+		rand2 := rand.New(rand.NewSource(time.Now().UnixNano()))
+		ignored := rand2.Intn(service.CertificateAuthorityX509.GetNetworkSize() - 1)
+		for i, m := range n.Members {
+			if i != ignored || int64(i) == service.CertificateAuthorityX509.NodeId { //Pick a random replica and do not send message
+				_, err := m.Send(data)
+				if err != nil {
+					logger.Warningf("[Network] BroadCast send error=%v", err)
+				}
+			} else {
+				logger.Debugf("[Network] byzantine: not broadcasting to replica %v", i)
+			}
+		}
+	} else {
+		for _, m := range n.Members {
+			_, err := m.Send(data)
+			if err != nil {
+				logger.Warningf("[Network] BroadCast send error=%v", err)
+			}
 		}
 	}
 }
