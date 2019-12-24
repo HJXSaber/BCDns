@@ -24,7 +24,7 @@ type Proposer struct {
 
 	Proposals  map[string]messages.ProposalMessage
 	proposalsT map[string]time.Time
-	Replys     map[string]map[string]uint8
+	Replies    map[string]map[string]uint8
 	Contexts   map[string]context.CancelFunc
 	Conn       *net.UDPConn
 	OrderChan  chan []byte
@@ -42,7 +42,7 @@ func NewProposer() *Proposer {
 	return &Proposer{
 		Proposals:  map[string]messages.ProposalMessage{},
 		proposalsT: map[string]time.Time{},
-		Replys:     map[string]map[string]uint8{},
+		Replies:    map[string]map[string]uint8{},
 		Contexts:   map[string]context.CancelFunc{},
 		OrderChan:  make(chan []byte, 1024),
 		Conn:       conn,
@@ -74,13 +74,13 @@ func (p *Proposer) Run(done chan uint) {
 			}
 			p.Mutex.Lock()
 			if _, ok := p.Proposals[string(msg.Id)]; ok {
-				p.Replys[string(msg.Id)][msg.From] = 0
-				fmt.Println("replies", p.Replys[string(msg.Id)])
-				if service.CertificateAuthorityX509.Check(len(p.Replys[string(msg.Id)])) {
+				p.Replies[string(msg.Id)][msg.From] = 0
+				fmt.Println("replies", p.Replies[string(msg.Id)])
+				if service.CertificateAuthorityX509.Check(len(p.Replies[string(msg.Id)])) {
 					fmt.Printf("%v[Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now(), p.Proposals[string(msg.Id)],
 						time.Now().Sub(p.proposalsT[string(msg.Id)]).Seconds())
 					delete(p.Proposals, string(msg.Id))
-					delete(p.Replys, string(msg.Id))
+					delete(p.Replies, string(msg.Id))
 					p.Contexts[string(msg.Id)]()
 					delete(p.Contexts, string(msg.Id))
 				}
@@ -128,7 +128,7 @@ func (p *Proposer) handleOrder(msg Order) {
 		p.Mutex.Lock()
 		p.Proposals[string(proposal.Id)] = *proposal
 		p.proposalsT[string((proposal.Id))] = time.Now()
-		p.Replys[string(proposal.Id)] = map[string]uint8{}
+		p.Replies[string(proposal.Id)] = map[string]uint8{}
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		go p.timer(ctx, proposal)
 		p.Contexts[string(proposal.Id)] = cancelFunc
@@ -144,7 +144,7 @@ func (p *Proposer) timer(ctx context.Context, proposal *messages.ProposalMessage
 	case <-time.After(conf.BCDnsConfig.ProposalTimeout):
 		p.Mutex.Lock()
 		defer p.Mutex.Unlock()
-		replies, ok := p.Replys[string(proposal.Id)]
+		replies, ok := p.Replies[string(proposal.Id)]
 		if !ok {
 			return
 		}
@@ -152,7 +152,7 @@ func (p *Proposer) timer(ctx context.Context, proposal *messages.ProposalMessage
 			fmt.Printf("%v[Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now(), p.Proposals[string(proposal.Id)],
 				time.Now().Sub(p.proposalsT[string(proposal.Id)]).Seconds())
 			delete(p.Proposals, string(proposal.Id))
-			delete(p.Replys, string(proposal.Id))
+			delete(p.Replies, string(proposal.Id))
 			delete(p.Contexts, string(proposal.Id))
 		} else {
 			confirmMsg := messages.NewProposalConfirm(proposal.Id)
