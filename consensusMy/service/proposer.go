@@ -22,12 +22,12 @@ var (
 type Proposer struct {
 	Mutex sync.Mutex
 
-	Proposals map[string]messages.ProposalMessage
+	Proposals  map[string]messages.ProposalMessage
 	proposalsT map[string]time.Time
-	Replys    map[string]map[string]uint8
-	Contexts  map[string]context.CancelFunc
-	Conn      *net.UDPConn
-	OrderChan chan []byte
+	Replys     map[string]map[string]uint8
+	Contexts   map[string]context.CancelFunc
+	Conn       *net.UDPConn
+	OrderChan  chan []byte
 }
 
 func NewProposer() *Proposer {
@@ -40,12 +40,12 @@ func NewProposer() *Proposer {
 		panic(err)
 	}
 	return &Proposer{
-		Proposals: map[string]messages.ProposalMessage{},
+		Proposals:  map[string]messages.ProposalMessage{},
 		proposalsT: map[string]time.Time{},
-		Replys:    map[string]map[string]uint8{},
-		Contexts:  map[string]context.CancelFunc{},
-		OrderChan: make(chan []byte, 1024),
-		Conn:      conn,
+		Replys:     map[string]map[string]uint8{},
+		Contexts:   map[string]context.CancelFunc{},
+		OrderChan:  make(chan []byte, 1024),
+		Conn:       conn,
 	}
 }
 

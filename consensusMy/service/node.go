@@ -34,7 +34,7 @@ func init() {
 type Node struct {
 	Proposals       map[string]uint8
 	Blocks          []blockChain.BlockValidated
-	BlockMessages []blockChain.BlockMessage
+	BlockMessages   []blockChain.BlockMessage
 	Block           map[string]blockChain.Block
 	BlockPrepareMsg map[string]map[string][]byte
 }
@@ -43,8 +43,8 @@ func NewNode() *Node {
 	return &Node{
 		Proposals:       map[string]uint8{},
 		Blocks:          []blockChain.BlockValidated{},
-		BlockMessages: []blockChain.BlockMessage{},
-		Block: map[string]blockChain.Block{},
+		BlockMessages:   []blockChain.BlockMessage{},
+		Block:           map[string]blockChain.Block{},
 		BlockPrepareMsg: map[string]map[string][]byte{},
 	}
 }
@@ -227,7 +227,7 @@ func (n *Node) ValidateBlock(msg *blockChain.BlockMessage) uint8 {
 		n.EnqueueBlockMessage(msg)
 		return dataSync
 	}
-	if lastBlock.Height > msg.Block.Height - 1 {
+	if lastBlock.Height > msg.Block.Height-1 {
 		logger.Warningf("[Node.Run] Block is out of time")
 		return invalid
 	}

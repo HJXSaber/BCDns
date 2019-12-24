@@ -14,7 +14,7 @@ import (
 
 const (
 	MagicNumber = 0x66
-	HeaderLen = 8
+	HeaderLen   = 8
 )
 
 var MagicNumberByte = utils.IntToBytes(MagicNumber)
@@ -26,7 +26,7 @@ type Message struct {
 
 type PacketHeader struct {
 	Magic int
-	Len int
+	Len   int
 }
 
 func NewMessage(t MessageTypeT, payload []byte) Message {
@@ -46,7 +46,7 @@ func PackMessage(msg Message) ([]byte, error) {
 		return nil, errors.New("[PackMessage] Msg'length is too large")
 	}
 	var header []byte
-	header = append(append(header, MagicNumberByte...), utils.IntToBytes(len(dataCompress) + HeaderLen)...)
+	header = append(append(header, MagicNumberByte...), utils.IntToBytes(len(dataCompress)+HeaderLen)...)
 	return append(header, dataCompress...), nil
 }
 
@@ -72,8 +72,8 @@ func GetPacketHeader(data []byte) (*PacketHeader, error) {
 	}
 	len := utils.BytesToInt(header[4:])
 	return &PacketHeader{
-		Magic:magic,
-		Len:len,
+		Magic: magic,
+		Len:   len,
 	}, nil
 }
 

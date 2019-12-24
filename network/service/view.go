@@ -15,7 +15,7 @@ type ViewManagerT struct {
 	LeaderId           int64
 	ViewChangeMsgs     map[string]blockChain.ViewChangeMessage
 	JoinReplyMessages  map[string]JoinReplyMessage
-	JoinMessages map[string]JoinMessage
+	JoinMessages       map[string]JoinMessage
 	InitLeaderMessages map[string]InitLeaderMessage
 }
 
@@ -27,7 +27,7 @@ func NewViewManager() (*ViewManagerT, error) {
 	manager := &ViewManagerT{
 		ViewChangeMsgs:     map[string]blockChain.ViewChangeMessage{},
 		JoinReplyMessages:  map[string]JoinReplyMessage{},
-		JoinMessages: map[string]JoinMessage{},
+		JoinMessages:       map[string]JoinMessage{},
 		InitLeaderMessages: map[string]InitLeaderMessage{},
 	}
 	manager.View = -1
@@ -58,7 +58,7 @@ func (m *ViewManagerT) Start() {
 				}
 				Net.BroadCast(jsonData, InitLeaderMsg)
 			}
-		case msg := <- JoinChan:
+		case msg := <-JoinChan:
 			m.JoinMessages[msg.From] = msg
 			if service2.CertificateAuthorityX509.Check(len(m.JoinReplyMessages) + len(m.JoinMessages)) {
 				initLeaderMsg, err := NewInitLeaderMessage(Net.GetAllNodeIds())

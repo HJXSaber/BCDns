@@ -21,7 +21,7 @@ type Config struct {
 
 	LeaderMsgBufferSize int
 	PowDifficult        int
-	Byzantine bool
+	Byzantine           bool
 }
 
 var (

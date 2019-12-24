@@ -14,7 +14,7 @@ type ZoneStatePoolT struct {
 }
 
 type ZoneRecord struct {
-	Owner string
+	Owner  string
 	Values map[string]string
 }
 
@@ -24,7 +24,7 @@ func NewZoneStatePool() (*ZoneStatePoolT, error) {
 		return nil, err
 	}
 	return &ZoneStatePoolT{
-		DB:db,
+		DB: db,
 	}, nil
 }
 
@@ -43,11 +43,10 @@ func (z *ZoneStatePoolT) GetModifiedData() (map[string]ZoneRecord, error) {
 			continue
 		}
 		result[zoneName] = ZoneRecord{
-			Owner: record.Owner,
-			Values:record.Values,
+			Owner:  record.Owner,
+			Values: record.Values,
 		}
 		_ = z.DB.Delete(iter.Key(), nil)
 	}
 	return result, nil
 }
-

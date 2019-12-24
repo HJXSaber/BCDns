@@ -36,7 +36,7 @@ var (
 	NewViewChan         chan []byte
 	InitLeaderChan      chan []byte
 	JoinReplyChan       chan JoinReplyMessage
-	JoinChan chan JoinMessage
+	JoinChan            chan JoinMessage
 )
 
 func init() {
@@ -122,10 +122,10 @@ func (n *DNet) handleStram() {
 
 func (n *DNet) handleConn(conn net.Conn) {
 	var (
-		msg Message
+		msg    Message
 		header *PacketHeader
 		length = 0
-		data = make([]byte, 0)
+		data   = make([]byte, 0)
 	)
 	state := Packed
 	for {
@@ -138,7 +138,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 				for i, member := range n.Members {
 					if strings.Compare(member.RemoteAddr, conn.RemoteAddr().String()) == 0 {
 						delete(n.Map, member.Name)
-						n.Members = append(n.Members[:i], n.Members[i + 1:]...)
+						n.Members = append(n.Members[:i], n.Members[i+1:]...)
 						break
 					}
 				}

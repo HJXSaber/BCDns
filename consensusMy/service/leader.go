@@ -99,7 +99,7 @@ func (l *Leader) generateBlock() {
 	l.BlockConfirm = false
 	l.UnConfirmedH = block.Height
 	dc := snappy.Encode(nil, jsonData)
-	fmt.Println("block broadcast fin", len(dc), block.Height, len(validP), validP[len(validP) - 1].Values)
+	fmt.Println("block broadcast fin", len(dc), block.Height, len(validP), validP[len(validP)-1].Values)
 }
 
 func CheckProposals(proposals messages.ProposalMessages) (
