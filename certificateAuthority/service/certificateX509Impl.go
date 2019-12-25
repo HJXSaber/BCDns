@@ -319,6 +319,8 @@ func insertCertificateByOrder(certs []*x509.Certificate, cert *x509.Certificate)
 			certs = append(certs[:i+1], certs[i:]...)
 			certs[i] = cert
 			return certs
+		} else if c.SerialNumber.Cmp(cert.SerialNumber) == 0 {
+			panic("[Cert] Wrong SerialNumber")
 		}
 	}
 	return append(certs, cert)
