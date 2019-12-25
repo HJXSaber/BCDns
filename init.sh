@@ -32,7 +32,7 @@ else
             continue
         fi
         expect -c "
-        spawn scp onos@$ip:/go/src/BCDns_0.1/certificateAuthority/conf/$hostname/LocalCertificate.cer ./certificateAuthority/conf/$HOST/$hostname.cer
+        spawn scp ./certificateAuthority/conf/$HOST/LocalCertificate.cer onos@$ip:/go/src/BCDns_0.1/certificateAuthority/conf/$hostname/$HOST.cer
         expect {
         \"*assword\" {set timeout 300; send \"123456\r\"; exp_continue;}
         }"
