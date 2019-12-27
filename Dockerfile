@@ -8,4 +8,4 @@ COPY ./BCDns_client ./BCDns_client
 
 ENV GO111MODULE="on" GOPROXY="https://goproxy.cn"
 
-RUN apt update && apt install net-tools && cd BCDns_0.1 && go mod tidy
+RUN apt update && apt install -y net-tools && apt install -y expect && apt install -y vim && cd BCDns_0.1 && go mod tidy
