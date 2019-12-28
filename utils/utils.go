@@ -3,6 +3,8 @@ package utils
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
+	"net"
 	"os"
 )
 
@@ -41,4 +43,35 @@ func BytesToInt(b []byte) int {
 	binary.Read(bytesBuffer, binary.BigEndian, &x)
 
 	return int(x)
+}
+
+type ServerMsg struct {
+	IsLeader bool
+}
+
+func SendStatus(isLeader bool) {
+	rUdpaddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:5001")
+	if err != nil {
+		panic(err)
+	}
+	lUdpaddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:5002")
+	if err != nil {
+		panic(err)
+	}
+	conn, err := net.DialUDP("udp", lUdpaddr, rUdpaddr)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+	msg := ServerMsg{
+		IsLeader: isLeader,
+	}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+	_, err = conn.Write(data)
+	if err != nil {
+		panic(err)
+	}
 }

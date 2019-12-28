@@ -2,6 +2,10 @@
 
 mode="docker"
 
+cd /go/src/BCDns_0.1
+
+rm -f ./certificateAuthority/conf/$HOST/s*.cer
+
 if [[ $1 == ${mode} ]]; then
     cd /var/run/bcdns
     for i in $(seq 1 $2)

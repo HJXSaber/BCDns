@@ -1,9 +1,9 @@
 #!/bin/bash
 
-export HOST=$(ifconfig |grep eth0 -C 1|grep "inet"|awk  '{print $2}'|awk -F "." '{print $4}')
-export BCDNSConfFile="/go/src/BCDns_0.1/bcDns/conf/$HOST/BCDNS"
-export CertificatesPath="/go/src/BCDns_0.1/certificateAuthority/conf/$HOST/"
-bash /go/src/BCDns_0.1/init.sh
+#export HOST=$(ifconfig |grep eth0 -C 1|grep "inet"|awk  '{print $2}'|awk -F "." '{printf "s%d", $4}')
+#export BCDNSConfFile="/go/src/BCDns_0.1/bcDns/conf/$HOST/BCDNS"
+#export CertificatesPath="/go/src/BCDns_0.1/certificateAuthority/conf/$HOST/"
+#bash /go/src/BCDns_0.1/init.sh
 
 cd /go/src/BCDns_0.1/certificateAuthority/conf/
 if [ ! -d "./$HOST" ]; then

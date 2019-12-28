@@ -9,6 +9,6 @@
 #
 #go run main.go
 
-pid=$(ps -ef| grep -e "go run main.go"| grep -v "grep"| awk '{print $2}')
+pid=$(netstat -tualp|grep 8001| awk '{print $7}'| awk -F "/" '{print $1}')
 
 kill -9 $pid

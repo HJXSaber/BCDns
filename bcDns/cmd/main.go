@@ -7,6 +7,7 @@ import (
 	"BCDns_0.1/consensusMy/service"
 	dao2 "BCDns_0.1/dao"
 	service3 "BCDns_0.1/network/service"
+	"BCDns_0.1/utils"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
@@ -57,6 +58,7 @@ func main() {
 	}
 	fmt.Println("[System running]")
 	fmt.Println("[Start Time]", time.Now())
+	utils.SendStatus(service3.ViewManager.IsLeader())
 	_ = <-done
 	fmt.Println("[Err] System exit")
 }

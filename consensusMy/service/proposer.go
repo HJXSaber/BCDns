@@ -77,7 +77,7 @@ func (p *Proposer) Run(done chan uint) {
 				p.Replies[string(msg.Id)][msg.From] = 0
 				fmt.Println("replies", p.Replies[string(msg.Id)])
 				if service.CertificateAuthorityX509.Check(len(p.Replies[string(msg.Id)])) {
-					fmt.Printf("%v[Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now(), p.Proposals[string(msg.Id)],
+					fmt.Printf("%v [Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now().Unix(), p.Proposals[string(msg.Id)],
 						time.Now().Sub(p.proposalsT[string(msg.Id)]).Seconds())
 					delete(p.Proposals, string(msg.Id))
 					delete(p.Replies, string(msg.Id))
@@ -149,7 +149,7 @@ func (p *Proposer) timer(ctx context.Context, proposal *messages.ProposalMessage
 			return
 		}
 		if service.CertificateAuthorityX509.Check(len(replies)) {
-			fmt.Printf("%v[Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now(), p.Proposals[string(proposal.Id)],
+			fmt.Printf("%v [Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now().Unix(), p.Proposals[string(proposal.Id)],
 				time.Now().Sub(p.proposalsT[string(proposal.Id)]).Seconds())
 			delete(p.Proposals, string(proposal.Id))
 			delete(p.Replies, string(proposal.Id))
