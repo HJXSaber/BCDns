@@ -1,7 +1,7 @@
 version: "3"
 services:
   s1:
-    image: bcdns
+    image: zjoker/bcdns
     volumes:
       - /var/run/bcdns/s1:/go/src/BCDns_0.1/certificateAuthority/conf/s1
       - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
@@ -15,7 +15,7 @@ services:
     tty: true
 
   s2:
-    image: bcdns
+    image: zjoker/bcdns
     volumes:
       - /var/run/bcdns/s2:/go/src/BCDns_0.1/certificateAuthority/conf/s2
       - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
@@ -29,7 +29,7 @@ services:
     tty: true
 
   s3:
-    image: bcdns
+    image: zjoker/bcdns
     volumes:
       - /var/run/bcdns/s3:/go/src/BCDns_0.1/certificateAuthority/conf/s3
       - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
@@ -43,7 +43,7 @@ services:
     tty: true
 
   s4:
-    image: bcdns
+    image: zjoker/bcdns
     volumes:
       - /var/run/bcdns/s4:/go/src/BCDns_0.1/certificateAuthority/conf/s4
       - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
