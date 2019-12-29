@@ -4,6 +4,7 @@
 #export BCDNSConfFile="/go/src/BCDns_0.1/bcDns/conf/$HOST/BCDNS"
 #export CertificatesPath="/go/src/BCDns_0.1/certificateAuthority/conf/$HOST/"
 #bash /go/src/BCDns_0.1/init.sh
+#bash /go/src/BCDns_daemon/startDaemon.sh
 
 cd /go/src/BCDns_0.1/certificateAuthority/conf/
 if [ ! -d "./$HOST" ]; then
@@ -15,3 +16,12 @@ expect -c "
     expect {
         \"*pass*\" {set timeout 300; send \"0401\r\"; exp_continue;}
     }"
+
+cd /go/src/BCDns_0.1/bcDns/conf/
+if [ ! -d "./$HOST" ]; then
+    mkdir ./$HOST
+fi
+
+cp BCDNS.json ./$HOST
+
+sed "s/s[0-9]\+/$HOST/g" ./$HOST/BCDNS.json -i

@@ -1,5 +1,5 @@
 {
   "HOSTNAME": "s2",
   "PORT": "8001",
-  "Byzantine": true
+  "Byzantine": false
 }

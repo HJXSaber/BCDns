@@ -51,6 +51,9 @@ func main() {
 	fmt.Println("[Leader.Start]")
 	service3.ViewManager.Start()
 	fmt.Println("[Init Consensus]")
+	if service3.ViewManager.IsLeader() {
+		conf.BCDnsConfig.Byzantine = false
+	}
 	done := make(chan uint)
 	service.ConsensusCenter, err = service.NewConsensus(done)
 	if err != nil {

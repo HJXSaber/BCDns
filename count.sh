@@ -7,6 +7,7 @@ latency=$(grep "execute successfully" run.log | awk '{sum+=$NF} END {print sum/N
 l=0
 timeStart=0
 timeEnd=0
+fLatency=0
 
 grep "execute successfully" run.log > tmp.log
 while read line
@@ -15,17 +16,18 @@ do
         l=1
     elif [[ l -eq 1 ]]; then
         timeStart=$(echo $line| awk '{print $1}')
-	timeEnd=$(echo $line| awk '{print $1}')
+    	timeEnd=$(echo $line| awk '{print $1}')
+	    fLatency=$(echo $line| awk '{print $NF}'| awk -F "." '{print $1}')
         l=2
     else
 	timeEnd=$(echo $line| awk '{print $1}')
     fi
 done<tmp.log
 
-gap=$(($timeEnd-$timeStart))
+gap=$(($timeEnd-$timeStart+$fLatency))
 
 amount=$(grep "execute successfully" run.log | tail -1 | awk '{print $11}' | awk -F ":" '{print $2}' | awk -F "]" '{print $1}')
 
-throughout=$(($amount/$gap))
+throughout=$(printf "%.5f" `echo "scale=5;$amount/$gap"|bc`)
 
 echo "$latency $throughout"
