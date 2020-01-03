@@ -206,6 +206,12 @@ func (m *ViewManagerT) StartChanging() {
 	m.OnChange = true
 }
 
+func (m *ViewManagerT) FinishChanging() {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
+	m.OnChange = false
+}
+
 func (m *ViewManagerT) IsOnChanging() bool {
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
