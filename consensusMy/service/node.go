@@ -33,7 +33,7 @@ func init() {
 
 type Node struct {
 	Proposals       map[string]uint8
-	Blocks          []blockChain.BlockValidated
+	Blocks          []blockChain.BlockValidated  //Block's hole
 	BlockMessages   []blockChain.BlockMessage
 	Block           map[string]blockChain.Block
 	BlockPrepareMsg map[string]map[string][]byte
