@@ -3,7 +3,6 @@ package service
 import (
 	"BCDns_0.1/bcDns/conf"
 	"BCDns_0.1/certificateAuthority/service"
-	"BCDns_0.1/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -137,6 +136,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 				n.Mutex.Lock()
 				for i, member := range n.Members {
 					if strings.Compare(member.RemoteAddr, conn.RemoteAddr().String()) == 0 {
+						n.Map[member.Name].Conn.Close()
 						delete(n.Map, member.Name)
 						n.Members = append(n.Members[:i], n.Members[i+1:]...)
 						break
@@ -201,18 +201,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 			n.Mutex.Lock()
 			n.Map[node.Name] = node
 			n.Mutex.Unlock()
-			replyMsg, err := NewJoinReplyMessage(ViewManager.View, map[string][]byte{})
-			if err != nil {
-				logger.Warningf("[Network] handleConn NewJoinReplyMessage error=%v", err)
-				continue
-			}
-			jsonData, err := json.Marshal(replyMsg)
-			if err != nil {
-				logger.Warningf("[Network] handleConn json.Marshal error=%v", err)
-				continue
-			}
 			JoinChan <- message
-			node.Send(jsonData)
 		case ProposalMsg:
 			ProposalChan <- msg.Payload
 		case BlockMsg:
@@ -369,23 +358,9 @@ func (n *DNet) SendTo(payload []byte, t MessageTypeT, to string) {
 	}
 	n.Mutex.Lock()
 	defer n.Mutex.Unlock()
-	_, _ = n.Map[to].Send(data)
-}
-
-func (n *DNet) SendToLeader(payload []byte, t MessageTypeT) {
-	data, err := PackMessage(NewMessage(t, payload))
-	if err != nil {
-		logger.Warningf("[Network] BroadCast json.Marshal error=%v", err)
-		return
+	if _, ok := n.Map[to]; ok {
+		_, _ = n.Map[to].Send(data)
 	}
-	name, err := utils.GetCertId(*service.CertificateAuthorityX509.CertificatesOrder[ViewManager.LeaderId])
-	if err != nil {
-		logger.Warningf("[SendToLeader] GetCertId failed err=%v", err)
-		return
-	}
-	n.Mutex.Lock()
-	defer n.Mutex.Unlock()
-	_, _ = n.Map[name].Send(data)
 }
 
 func (n *DNet) GetAllNodeIds() []int64 {

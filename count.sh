@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cd /go/src/BCDns_0.1/bcDns/cmd
+cd /var/opt/go/src/BCDns_0.1/bcDns/cmd
 
 latency=$(grep "execute successfully" run.log | awk '{sum+=$NF} END {print sum/NR}')
 

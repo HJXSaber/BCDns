@@ -421,13 +421,15 @@ func (msgs *ProposalMessages) FindByZoneName(name string) *ProposalMessage {
 }
 
 type BlockConfirmMessage struct {
+	View int64
 	utils.Base
 	Id        []byte
 	Signature []byte
 }
 
-func NewBlockConfirmMessage(id []byte) (BlockConfirmMessage, error) {
+func NewBlockConfirmMessage(view int64, id []byte) (BlockConfirmMessage, error) {
 	msg := BlockConfirmMessage{
+		View:view,
 		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
@@ -441,18 +443,17 @@ func NewBlockConfirmMessage(id []byte) (BlockConfirmMessage, error) {
 }
 
 func (msg *BlockConfirmMessage) Hash() ([]byte, error) {
-	buf := bytes.Buffer{}
-	if jsonData, err := json.Marshal(msg.Base); err != nil {
-		return nil, err
-	} else {
-		buf.Write(jsonData)
-	}
-	if jsonData, err := json.Marshal(msg.Id); err != nil {
-		return nil, err
-	} else {
-		buf.Write(jsonData)
-	}
-	return utils.SHA256(buf.Bytes()), nil
+	//if jsonData, err := json.Marshal(msg.View); err != nil {
+	//	return nil, err
+	//} else {
+	//	buf.Write(jsonData)
+	//}
+	//if jsonData, err := json.Marshal(msg.Base); err != nil {
+	//	return nil, err
+	//} else {
+	//	buf.Write(jsonData)
+	//}
+	return msg.Id, nil
 }
 
 func (msg *BlockConfirmMessage) Sign() error {
@@ -479,62 +480,6 @@ func (msg *BlockConfirmMessage) Verify() bool {
 	if !service.CertificateAuthorityX509.Exits(msg.From) {
 		return false
 	}
-	hash, err := msg.Hash()
-	if err != nil {
-		return false
-	}
-	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
-}
-
-type DataSyncMessage struct {
-	utils.Base
-	Height    uint
-	Signature []byte
-}
-
-func NewDataSyncMessage(h uint) (DataSyncMessage, error) {
-	msg := DataSyncMessage{
-		Base: utils.Base{
-			From:      conf.BCDnsConfig.HostName,
-			TimeStamp: time.Now().Unix(),
-		},
-		Height: h,
-	}
-	err := msg.Sign()
-	if err != nil {
-		return DataSyncMessage{}, err
-	}
-	return msg, nil
-}
-
-func (msg *DataSyncMessage) Hash() ([]byte, error) {
-	buf := bytes.Buffer{}
-	if jsonData, err := json.Marshal(msg.Base); err != nil {
-		return nil, err
-	} else {
-		buf.Write(jsonData)
-	}
-	if jsonData, err := json.Marshal(msg.Height); err != nil {
-		return nil, err
-	} else {
-		buf.Write(jsonData)
-	}
-	return utils.SHA256(buf.Bytes()), nil
-}
-
-func (msg *DataSyncMessage) Sign() error {
-	hash, err := msg.Hash()
-	if err != nil {
-		return err
-	}
-	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
-		msg.Signature = sig
-		return nil
-	}
-	return errors.New("[DataSyncMessage] Generate signature failed")
-}
-
-func (msg *DataSyncMessage) VerifySignature() bool {
 	hash, err := msg.Hash()
 	if err != nil {
 		return false

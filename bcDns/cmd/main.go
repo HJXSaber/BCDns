@@ -9,20 +9,20 @@ import (
 	service3 "BCDns_0.1/network/service"
 	"BCDns_0.1/utils"
 	"fmt"
-	"net/http"
-	"net/http/pprof"
 	"time"
 )
 
 func main() {
-	go func() {
-		http.HandleFunc("/debug/pprof/block", pprof.Index)
-		http.HandleFunc("/debug/pprof/goroutine", pprof.Index)
-		http.HandleFunc("/debug/pprof/heap", pprof.Index)
-		http.HandleFunc("/debug/pprof/threadcreate", pprof.Index)
-
-		http.ListenAndServe("0.0.0.0:8888", nil)
-	}()
+	//go func() {
+	//	http.HandleFunc("/debug/pprof/block", pprof.Index)
+	//	http.HandleFunc("/debug/pprof/goroutine", pprof.Index)
+	//	http.HandleFunc("/debug/pprof/heap", pprof.Index)
+	//	http.HandleFunc("/debug/pprof/threadcreate", pprof.Index)
+	//
+	//	http.ListenAndServe("0.0.0.0:8888", nil)
+	//}()
+	initLeaderDone := make(chan uint)
+	done := make(chan uint)
 	var err error
 	fmt.Println("[Init Dao]")
 	dao2.Dao, err = NewDao()
@@ -38,30 +38,26 @@ func main() {
 	if service3.Net == nil {
 		panic("NewDNet failed")
 	}
-	fmt.Println("[Init Leader]")
-	service3.ViewManager, err = service3.NewViewManager()
+	fmt.Println("[Init consensus]")
+	service.ConsensusCenter, err = service.NewConsensus()
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("[start init leader]")
+	go service.ConsensusCenter.Start(initLeaderDone)
 	fmt.Println("[Join]")
 	err = service3.Net.Join(service2.CertificateAuthorityX509.GetSeeds())
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("[Leader.Start]")
-	service3.ViewManager.Start()
-	fmt.Println("[Init Consensus]")
-	if service3.ViewManager.IsLeader() {
+	_ = <- initLeaderDone
+	if service.ConsensusCenter.IsLeader() {
 		conf.BCDnsConfig.Byzantine = false
-	}
-	done := make(chan uint)
-	service.ConsensusCenter, err = service.NewConsensus(done)
-	if err != nil {
-		panic(err)
 	}
 	fmt.Println("[System running]")
 	fmt.Println("[Start Time]", time.Now())
-	utils.SendStatus(service3.ViewManager.IsLeader())
+	utils.SendStatus(service.ConsensusCenter.IsLeader())
+	go service.ConsensusCenter.Run(done)
 	_ = <-done
 	fmt.Println("[Err] System exit")
 }

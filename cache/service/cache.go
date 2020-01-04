@@ -13,6 +13,11 @@ type Cache struct {
 	Cache lru.Cache
 }
 
+func NewCache() Cache {
+	return Cache{}
+}
+
+
 func (c *Cache) Add(v int, key, value interface{}) error {
 	vCacheI, ok := c.Cache.Get(v)
 	if !ok {

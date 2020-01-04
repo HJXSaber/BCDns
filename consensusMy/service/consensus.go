@@ -1,34 +1,949 @@
 package service
 
-import "errors"
+import (
+	"BCDns_0.1/bcDns/conf"
+	"BCDns_0.1/blockChain"
+	service2 "BCDns_0.1/certificateAuthority/service"
+	"BCDns_0.1/messages"
+	"BCDns_0.1/network/service"
+	"BCDns_0.1/utils"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/op/go-logging"
+	"net"
+	"reflect"
+	"sync"
+	"time"
+)
 
-var ConsensusCenter *Consensus
+const (
+	unreceived uint8 = iota
+	keep
+	drop
+)
+
+const (
+	ok uint8 = iota
+	dataSync
+	invalid
+)
+
+var (
+	ConsensusCenter *Consensus
+
+	ProposalMessageChan chan messages.ProposalMessage
+	BlockConfirmChan    chan uint
+
+	blockChan chan BlockMessage
+	logger     *logging.Logger // package-level logger
+	UdpAddress = "127.0.0.1:8888"
+)
 
 type Consensus struct {
-	Proposer
-	Node
-	Leader
+	Mutex sync.Mutex
+
+	//Proposer role
+	Proposals      map[string]messages.ProposalMessage
+	proposalsTimer map[string]time.Time
+	Replies        map[string]map[string]uint8
+	Contexts       map[string]context.CancelFunc
+	Conn           *net.UDPConn
+	OrderChan      chan []byte
+
+	//Node role
+	ProposalsCache  map[string]uint8 //need clean used for start view change
+	Blocks          []blockChain.BlockValidated  //Block's hole
+	BlockMessages   []BlockMessage // need clean
+	Block           map[string]BlockMessage
+	BlockPrepareMsg map[string]map[string][]byte
+
+	//Leader role
+	MessagePool  messages.ProposalMessagePool
+	BlockConfirm bool
+	UnConfirmedH uint
+
+	//View role
+	OnChange           bool
+	View               int64
+	LeaderId           int64
+	ViewChangeMsgs     map[string]ViewChangeMessage
+	JoinReplyMessages  map[string]service.JoinReplyMessage
+	JoinMessages       map[string]service.JoinMessage
+	InitLeaderMessages map[string]service.InitLeaderMessage
 }
 
-func NewConsensus(done chan uint) (*Consensus, error) {
-	p := NewProposer()
-	if p == nil {
-		return nil, errors.New("[Consensus] NewProposer failed")
-	}
-	n := NewNode()
-	if n == nil {
-		return nil, errors.New("[Consensus] NewNode failed")
-	}
-	l := NewLeader()
-	if l == nil {
-		return nil, errors.New("[Consensus] NewLeader failed")
-	}
-	go p.Run(done)
-	go n.Run(done)
-	go l.Run(done)
-	return &Consensus{
-		*p,
-		*n,
-		*l,
-	}, nil
+type Order struct {
+	OptType  messages.OperationType
+	ZoneName string
+	Values   map[string]string
 }
+
+func init() {
+	blockChan = make(chan BlockMessage, service.ChanSize)
+	logger = logging.MustGetLogger("consensusMy")
+}
+
+func NewConsensus() (*Consensus, error) {
+	udpaddr, err := net.ResolveUDPAddr("udp", UdpAddress)
+	if err != nil {
+		panic(err)
+	}
+	conn, err := net.ListenUDP("udp", udpaddr)
+	if err != nil {
+		panic(err)
+	}
+	consensus := &Consensus{
+		Mutex:          sync.Mutex{},
+		Proposals:      map[string]messages.ProposalMessage{},
+		proposalsTimer: map[string]time.Time{},
+		Replies: map[string]map[string]uint8{},
+		Contexts: map[string]context.CancelFunc{},
+		Conn:conn,
+		OrderChan: make(chan []byte, 1024),
+
+		ProposalsCache: map[string]uint8{},
+		Blocks: []blockChain.BlockValidated{},
+		BlockMessages: []BlockMessage{},
+		Block: map[string]BlockMessage{},
+		BlockPrepareMsg: map[string]map[string][]byte{},
+
+		MessagePool: messages.NewProposalMessagePool(),
+		BlockConfirm: true,
+		UnConfirmedH: 0,
+
+		OnChange: false,
+		View: -1,
+		LeaderId: -1,
+		ViewChangeMsgs: map[string]ViewChangeMessage{},
+		JoinMessages: map[string]service.JoinMessage{},
+		JoinReplyMessages: map[string]service.JoinReplyMessage{},
+		InitLeaderMessages: map[string]service.InitLeaderMessage{},
+	}
+	return consensus, nil
+}
+
+func (c *Consensus) Start(done chan uint) {
+	for {
+		select {
+		case msg := <-service.JoinReplyChan:
+			if c.View != -1 {
+				continue
+			}
+			if msg.View != -1 {
+				c.View = msg.View
+				c.LeaderId = c.View % int64(service2.CertificateAuthorityX509.GetNetworkSize())
+				done <- 0
+				continue
+			}
+			c.JoinReplyMessages[msg.From] = msg
+			if service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages) + len(c.JoinMessages)) {
+				initLeaderMsg, err := service.NewInitLeaderMessage(service.Net.GetAllNodeIds())
+				if err != nil {
+					logger.Warningf("[ViewManagerT.Start] NewInitLeaderMessage error=%v", err)
+					panic(err)
+				}
+				jsonData, err := json.Marshal(initLeaderMsg)
+				if err != nil {
+					logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
+					panic(err)
+				}
+				service.Net.BroadCast(jsonData, service.InitLeaderMsg)
+			}
+		case msg := <-service.JoinChan:
+			replyMsg, err := service.NewJoinReplyMessage(c.View, map[string][]byte{})
+			if err != nil {
+				logger.Warningf("[Network] handleConn NewJoinReplyMessage error=%v", err)
+				continue
+			}
+			jsonData, err := json.Marshal(replyMsg)
+			if err != nil {
+				logger.Warningf("[Network] handleConn json.Marshal error=%v", err)
+				continue
+			}
+			_, _ = service.Net.Map[msg.From].Send(jsonData)
+			c.JoinMessages[msg.From] = msg
+			if c.View == -1 && service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages) + len(c.JoinMessages)) {
+				initLeaderMsg, err := service.NewInitLeaderMessage(service.Net.GetAllNodeIds())
+				if err != nil {
+					logger.Warningf("[ViewManagerT.Start] NewInitLeaderMessage error=%v", err)
+					panic(err)
+				}
+				jsonData, err := json.Marshal(initLeaderMsg)
+				if err != nil {
+					logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
+					panic(err)
+				}
+				service.Net.BroadCast(jsonData, service.InitLeaderMsg)
+			}
+		case msgByte := <-service.InitLeaderChan:
+			var msg service.InitLeaderMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[ViewManagerT.Start] json.Unmarshal error+%v", err)
+				continue
+			}
+			if !msg.VerifySignature() {
+				logger.Warningf("[ViewManagerT.Start] InitLeaderMeseaderId + 1)sage.VerifySignature failed")
+				continue
+			}
+			c.InitLeaderMessages[msg.From] = msg
+			if c.View == -1 && service2.CertificateAuthorityX509.Check(len(c.InitLeaderMessages)) {
+				c.View, c.LeaderId = c.GetLeaderNode()
+				if c.View == -1 {
+					panic("[ViewManagerT.Start] GetLeaderNode failed")
+				}
+				done <- 0
+				continue
+			}
+		}
+	}
+}
+
+func (c *Consensus) Run(done chan uint) {
+	var (
+		err error
+	)
+	defer close(done)
+	go c.ReceiveOrder()
+	interrupt := make(chan int)
+	go func() {
+		for {
+			select {
+			case <-time.After(10 * time.Second):
+				fmt.Println("Timeout", c.BlockConfirm, c.UnConfirmedH)
+				if c.BlockConfirm {
+					interrupt <- 1
+				}
+			}
+		}
+	}()
+	for {
+		select {
+		// Proposer role
+		case msgByte := <-service.ProposalReplyChan:
+			var msg messages.ProposalReplyMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Proposer.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if !msg.VerifySignature() {
+				logger.Warningf("[Proposer.Run] Signature is invalid")
+				continue
+			}
+			c.Mutex.Lock()
+			if _, ok := c.Proposals[string(msg.Id)]; ok {
+				c.Replies[string(msg.Id)][msg.From] = 0
+				if service2.CertificateAuthorityX509.Check(len(c.Replies[string(msg.Id)])) {
+					fmt.Printf("%v [Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now().Unix(), c.Proposals[string(msg.Id)],
+						time.Now().Sub(c.proposalsTimer[string(msg.Id)]).Seconds())
+					delete(c.Proposals, string(msg.Id))
+					delete(c.Replies, string(msg.Id))
+					c.Contexts[string(msg.Id)]()
+					delete(c.Contexts, string(msg.Id))
+				}
+			}
+			c.Mutex.Unlock()
+		case msgByte := <-c.OrderChan:
+			var msg Order
+			err = json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Proposer.Run] order json.Unmarshal error=%v", err)
+				continue
+			}
+			c.handleOrder(msg)
+		// Node role
+		case msgByte := <-service.ProposalChan:
+			var proposal messages.ProposalMessage
+			err := json.Unmarshal(msgByte, &proposal)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if _, exist := c.ProposalsCache[string(proposal.Id)]; !exist {
+				if !c.handleProposal(proposal) {
+					continue
+				}
+				c.ProposalsCache[string(proposal.Id)] = unreceived
+				if c.IsLeader() {
+					c.MessagePool.AddProposal(proposal)
+					if c.BlockConfirm && c.MessagePool.Size() >= blockChain.BlockMaxSize {
+						c.generateBlock()
+					}
+				} else {
+					name, err := utils.GetCertId(*service2.CertificateAuthorityX509.CertificatesOrder[c.LeaderId])
+					if err != nil {
+						logger.Warningf("[SendToLeader] GetCertId failed err=%v", err)
+						continue
+					}
+					service.Net.SendTo(msgByte, service.ProposalMsg, name)
+				}
+			}
+		case blockMsg := <-blockChan:
+			c.ProcessBlockMessage(&blockMsg)
+		case msgByte := <-service.BlockChan:
+			if c.IsOnChanging() {
+				//TODO Add feedback mechanism which send msg to client
+				continue
+			}
+			var msg BlockMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			c.ProcessBlockMessage(&msg)
+		case msgByte := <-service.BlockConfirmChan:
+			var msg messages.BlockConfirmMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if msg.View != c.View {
+				continue
+			}
+			if !msg.Verify() {
+				logger.Warningf("[Node.Run] msg.Verify failed")
+				continue
+			}
+			if _, ok := c.BlockPrepareMsg[string(msg.Id)]; !ok {
+				c.BlockPrepareMsg[string(msg.Id)] = map[string][]byte{}
+			}
+			c.BlockPrepareMsg[string(msg.Id)][msg.From] = msg.Signature
+			if _, ok := c.Block[string(msg.Id)]; ok && service2.CertificateAuthorityX509.Check(len(c.BlockPrepareMsg[string(msg.Id)])) {
+				blockValidated := blockChain.NewBlockValidated(c.Block[string(msg.Id)].Block, c.BlockPrepareMsg[string(msg.Id)])
+				if blockValidated == nil {
+					logger.Warningf("[Node.Run] NewBlockValidated failed")
+					continue
+				}
+				c.ExecuteBlock(blockValidated)
+				delete(c.BlockPrepareMsg, string(msg.Id))
+				delete(c.Block, string(msg.Id))
+			}
+		case msgByte := <-service.DataSyncChan:
+			var msg blockChain.DataSyncMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if !msg.VerifySignature() {
+				logger.Warningf("[Node.Run] DataSyncMessage.VerifySignature failed")
+				continue
+			}
+			block, err := blockChain.BlockChain.GetBlockByHeight(msg.Height)
+			if err != nil {
+				logger.Warningf("[Node.Run] GetBlockByHeight error=%v", err)
+				continue
+			}
+			respMsg, err := blockChain.NewDataSyncRespMessage(block)
+			if err != nil {
+				logger.Warningf("[Node.Run] NewDataSyncRespMessage error=%v", err)
+				continue
+			}
+			jsonData, err := json.Marshal(respMsg)
+			if err != nil {
+				logger.Warningf("[Node.Run json.Marshal error=%v", err)
+				continue
+			}
+			service.Net.SendTo(jsonData, service.DataSyncRespMsg, msg.From)
+		case msgByte := <-service.DataSyncRespChan:
+			var msg blockChain.DataSyncRespMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if !msg.Validate() {
+				logger.Warningf("[Node.Run] DataSyncRespMessage.Validate failed")
+				continue
+			}
+			c.ExecuteBlock(&msg.BlockValidated)
+		case msgByte := <-service.ProposalConfirmChan:
+			var msg messages.ProposalConfirm
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if state, ok := c.ProposalsCache[string(msg.ProposalHash)]; !ok || state == drop {
+				logger.Warningf("[Node.Run] I have never received this proposal, exist=%v state=%v", ok, state)
+				continue
+			} else if state == unreceived {
+				//TODO start view change
+				c.StartViewChange()
+			} else {
+				//This proposal is unready
+				logger.Warningf("[Node.Run] proposal is unready")
+			}
+		// Leader role
+		case <-interrupt:
+			c.generateBlock()
+
+		// Viewchange
+		case msgByte := <-service.ViewChangeChan:
+			var msg ViewChangeMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[View.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if msg.View != c.View {
+				continue
+			}
+			if !msg.VerifySignature() {
+				continue
+			}
+			if !msg.VerifySignatures() {
+				continue
+			}
+			c.ViewChangeMsgs[msg.From] = msg
+			if service2.CertificateAuthorityX509.Check(len(c.ViewChangeMsgs)) {
+				c.StartChange()
+			}
+		case msgByte := <-service.NewViewChan:
+			var msg NewViewMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[View.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if msg.View != c.View + 1 {
+				continue
+			}
+			if !msg.VerifySignature() {
+				continue
+			}
+			c.ProcessNewViewMsg(&msg)
+		}
+	}
+}
+
+func (c *Consensus) ReceiveOrder() {
+	var (
+		data = make([]byte, 1024)
+	)
+	for true {
+		len, err := c.Conn.Read(data)
+		if err != nil {
+			fmt.Printf("[Run] Proposer read order failed err=%v\n", err)
+			continue
+		}
+		c.OrderChan <- data[:len]
+	}
+}
+
+func (c *Consensus) handleOrder(msg Order) {
+	if proposal := messages.NewProposal(msg.ZoneName, msg.OptType, msg.Values); proposal != nil {
+		proposalByte, err := json.Marshal(proposal)
+		if err != nil {
+			logger.Warningf("[handleOrder] json.Marshal error=%v", err)
+			return
+		}
+		c.Mutex.Lock()
+		c.Proposals[string(proposal.Id)] = *proposal
+		c.proposalsTimer[string((proposal.Id))] = time.Now()
+		c.Replies[string(proposal.Id)] = map[string]uint8{}
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		go c.timer(ctx, proposal)
+		c.Contexts[string(proposal.Id)] = cancelFunc
+		c.Mutex.Unlock()
+		service.Net.BroadCast(proposalByte, service.ProposalMsg)
+	} else {
+		logger.Warningf("[handleOrder] NewProposal failed")
+	}
+}
+
+func (c *Consensus) timer(ctx context.Context, proposal *messages.ProposalMessage) {
+	select {
+	case <-time.After(conf.BCDnsConfig.ProposalTimeout):
+		c.Mutex.Lock()
+		defer c.Mutex.Unlock()
+		replies, ok := c.Replies[string(proposal.Id)]
+		if !ok {
+			return
+		}
+		if service2.CertificateAuthorityX509.Check(len(replies)) {
+			fmt.Printf("%v [Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now().Unix(), c.Proposals[string(proposal.Id)],
+				time.Now().Sub(c.proposalsTimer[string(proposal.Id)]).Seconds())
+			delete(c.Proposals, string(proposal.Id))
+			delete(c.Replies, string(proposal.Id))
+			delete(c.Contexts, string(proposal.Id))
+		} else {
+			confirmMsg := messages.NewProposalConfirm(proposal.Id)
+			if confirmMsg == nil {
+				logger.Warningf("[Proposer.timer] NewProposalConfirm failed")
+				return
+			}
+			confirmMsgByte, err := json.Marshal(confirmMsg)
+			if err != nil {
+				logger.Warningf("[Proposer.timer] json.Marshal error=%v", err)
+				return
+			}
+			service.Net.BroadCast(confirmMsgByte, service.ProposalConfirmMsg)
+		}
+	case <-ctx.Done():
+	}
+}
+
+func (*Consensus) handleProposal(proposal messages.ProposalMessage) bool {
+	switch proposal.Type {
+	case messages.Add:
+		if !proposal.ValidateAdd() {
+			logger.Warningf("[handleProposal] ValidateAdd failed")
+			return false
+		}
+	case messages.Del:
+		if !proposal.ValidateDel() {
+			logger.Warningf("[handleProposal] ValidateDel failed")
+			return false
+		}
+	case messages.Mod:
+		if !proposal.ValidateMod() {
+			logger.Warningf("[handleProposal] ValidateMod failed")
+			return false
+		}
+	}
+	return true
+}
+
+func (c *Consensus) ValidateBlock(msg *BlockMessage) uint8 {
+	if msg.View != c.View {
+		logger.Warningf("[Node.Run] view is invalid")
+		return invalid
+	}
+	lastBlock, err := blockChain.BlockChain.GetLatestBlock()
+	if err != nil {
+		logger.Warningf("[Node.Run] DataSync GetLatestBlock error=%v", err)
+		return invalid
+	}
+	prevHash, err := lastBlock.Hash()
+	if err != nil {
+		logger.Warningf("[Node.Run] lastBlock.Hash error=%v", err)
+		return invalid
+	}
+	if lastBlock.Height < msg.Block.Height-1 {
+		StartDataSync(lastBlock.Height+1, msg.Block.Height-1)
+		c.EnqueueBlockMessage(msg)
+		return dataSync
+	}
+	if lastBlock.Height > msg.Block.Height-1 {
+		logger.Warningf("[Node.Run] Block is out of time")
+		return invalid
+	}
+	if bytes.Compare(msg.Block.PrevBlock, prevHash) != 0 {
+		logger.Warningf("[Node.Run] PrevBlock is invalid")
+		return invalid
+	}
+	if !msg.VerifyBlock() {
+		logger.Warningf("[ValidateBlock] VerifyBlock failed")
+		return invalid
+	}
+	if !msg.VerifySignature() {
+		logger.Warningf("[ValidateBlock] VerifySignature failed")
+		return invalid
+	}
+	if !ValidateProposals(msg) {
+		logger.Warningf("[ValidateBlock] ValidateProposals failed")
+		return invalid
+	}
+	return ok
+}
+
+func (c *Consensus) EnqueueBlockMessage(msg *BlockMessage) {
+	insert := false
+	for i, b := range c.BlockMessages {
+		if msg.Height < b.Height {
+			c.BlockMessages = append(c.BlockMessages[:i+1], c.BlockMessages[i:]...)
+			c.BlockMessages[i] = *msg
+			insert = true
+			break
+		} else if msg.Height == b.Height {
+			insert = true
+			break
+		}
+	}
+	if !insert {
+		c.BlockMessages = append(c.BlockMessages, *msg)
+	}
+}
+
+func (c *Consensus) EnqueueBlock(block blockChain.BlockValidated) {
+	insert := false
+	for i, b := range c.Blocks {
+		if block.Height < b.Height {
+			c.Blocks = append(c.Blocks[:i+1], c.Blocks[i:]...)
+			c.Blocks[i] = block
+			insert = true
+			break
+		} else if block.Height == b.Height {
+			insert = true
+			break
+		}
+	}
+	if !insert {
+		c.Blocks = append(c.Blocks, block)
+	}
+}
+
+func (c *Consensus) ExecuteBlock(b *blockChain.BlockValidated) {
+	lastBlock, err := blockChain.BlockChain.GetLatestBlock()
+	if err != nil {
+		logger.Warningf("[Node.Run] ExecuteBlock GetLatestBlock error=%v", err)
+		return
+	}
+	c.EnqueueBlock(*b)
+	h := lastBlock.Height + 1
+	for _, bb := range c.Blocks {
+		if bb.Height < h {
+			c.Blocks = c.Blocks[1:]
+		} else if bb.Height == h {
+			err := blockChain.BlockChain.AddBlock(b)
+			if err != nil {
+				logger.Warningf("[Node.Run] ExecuteBlock AddBlock error=%v", err)
+				break
+			}
+			c.SendReply(&b.Block)
+			c.Blocks = c.Blocks[1:]
+		} else {
+			break
+		}
+		h++
+	}
+	if c.IsLeader() {
+		if h > c.UnConfirmedH {
+			c.BlockConfirm = true
+		}
+	}
+	for _, msg := range c.BlockMessages {
+		if msg.Height < h {
+			c.BlockMessages = c.BlockMessages[1:]
+			c.ModifyProposalState(&msg)
+		} else if msg.Height == h {
+			blockChan <- msg
+			c.BlockMessages = c.BlockMessages[1:]
+		} else {
+			break
+		}
+		h++
+	}
+}
+
+func (c *Consensus) ModifyProposalState(msg *BlockMessage) {
+	for _, p := range msg.AbandonedProposal {
+		c.ProposalsCache[string(p.Id)] = drop
+	}
+	for _, p := range msg.ProposalMessages {
+		c.ProposalsCache[string(p.Id)] = keep
+	}
+}
+
+func (*Consensus) SendReply(b *blockChain.Block) {
+	l := 0
+	for _, p := range b.ProposalMessages {
+		msg, err := messages.NewProposalReplyMessage(p.Id)
+		if err != nil {
+			logger.Warningf("[SendReply] NewProposalReplyMessage error=%v", err)
+			continue
+		}
+		jsonData, err := json.Marshal(msg)
+		if err != nil {
+			logger.Warningf("[SendReply] json.Marshal error=%v", err)
+			continue
+		}
+		service.Net.SendTo(jsonData, service.ProposalReplyMsg, p.From)
+		time.Sleep(10 * time.Millisecond)
+		l++
+	}
+	fmt.Println("sendreply", len(b.ProposalMessages), l)
+}
+
+func (c *Consensus) ProcessBlockMessage(msg *BlockMessage) {
+	id, err := msg.Block.Hash()
+	if err != nil {
+		logger.Warningf("[Node.Run] block.Hash error=%v", err)
+		return
+	}
+	switch c.ValidateBlock(msg) {
+	case dataSync:
+		return
+	case invalid:
+		logger.Warningf("[Node.Run] block is invalid")
+		return
+	}
+	c.Block[string(id)] = *msg
+	c.ModifyProposalState(msg)
+	if _, ok := c.BlockPrepareMsg[string(id)]; ok && service2.CertificateAuthorityX509.Check(len(c.BlockPrepareMsg[string(id)])) {
+		blockValidated := blockChain.NewBlockValidated(c.Block[string(id)].Block, c.BlockPrepareMsg[string(id)])
+		if blockValidated == nil {
+			logger.Warningf("[Node.Run] NewBlockValidated failed")
+			return
+		}
+		c.ExecuteBlock(blockValidated)
+		delete(c.BlockPrepareMsg, string(id))
+		delete(c.Block, string(id))
+	} else {
+		blockConfirmMsg, err := messages.NewBlockConfirmMessage(c.View, id)
+		if err != nil {
+			logger.Warningf("[Node.Run] NewBlockConfirmMessage error=%v", err)
+			return
+		}
+		jsonData, err := json.Marshal(blockConfirmMsg)
+		if err != nil {
+			logger.Warningf("[Node.Run] json.Marshal error=%v", err)
+			return
+		}
+		service.Net.BroadCast(jsonData, service.BlockConfirmMsg)
+	}
+}
+
+func (c *Consensus) generateBlock() {
+	if !c.IsLeader() {
+		return
+	}
+	if c.MessagePool.Size() <= 0 {
+		fmt.Printf("[Leader.Run] CurrentBlock is empty\n")
+		return
+	}
+	bound := blockChain.BlockMaxSize
+	if len(c.MessagePool.ProposalMessages) < blockChain.BlockMaxSize {
+		bound = len(c.MessagePool.ProposalMessages)
+	}
+	validP, abandonedP := CheckProposals(c.MessagePool.ProposalMessages[:bound])
+	block, err := blockChain.BlockChain.MineBlock(validP)
+	if err != nil {
+		logger.Warningf("[Leader.Run] MineBlock error=%v", err)
+		return
+	}
+	blockMessage, err := NewBlockMessage(c.View, block, abandonedP)
+	if err != nil {
+		logger.Warningf("[Leader.Run] NewBlockMessage error=%v", err)
+		return
+	}
+	jsonData, err := json.Marshal(blockMessage)
+	if err != nil {
+		logger.Warningf("[Leader.Run] json.Marshal error=%v", err)
+		return
+	}
+	service.Net.BroadCast(jsonData, service.BlockMsg)
+	c.MessagePool.Clear(bound)
+	c.BlockConfirm = false
+	c.UnConfirmedH = block.Height
+	fmt.Println("block broadcast fin", block.Height, len(validP), validP[len(validP)-1].Values)
+}
+
+func (c *Consensus) GetLeaderNode() (int64, int64) {
+	count := make([]int, service2.CertificateAuthorityX509.GetNetworkSize())
+	for _, msg := range c.InitLeaderMessages {
+		for _, id := range msg.NodeIds {
+			count[id]++
+		}
+	}
+	for i := int64(len(count) - 1); i >= 0; i-- {
+		if service2.CertificateAuthorityX509.Check(count[i]) {
+			return i, i
+		}
+	}
+	return -1, -1
+}
+
+func (c *Consensus) IsLeader() bool {
+	return service2.CertificateAuthorityX509.IsLeaderNode(c.LeaderId)
+}
+
+func (c *Consensus) IsNextLeader() bool {
+	return service2.CertificateAuthorityX509.IsLeaderNode((c.LeaderId + 1) %
+		int64(service2.CertificateAuthorityX509.GetNetworkSize()))
+}
+
+func (c *Consensus) GetHistory() uint {
+	var h uint
+	for _, b := range c.ViewChangeMsgs {
+		if h == 0 || h < b.BlockHeader.Height {
+			h = b.BlockHeader.Height
+		}
+	}
+	return h
+}
+
+func (c *Consensus) GetRecallBlock(h uint) BlockMessage {
+	for k, b := range c.ViewChangeMsgs {
+		if h == b.Block.Height {
+			return c.ViewChangeMsgs[k].Block
+		}
+	}
+	return BlockMessage{}
+}
+
+func (c *Consensus) FinChange() {
+	c.OnChange = false
+}
+
+func (c *Consensus) IsOnChanging() bool {
+	return c.OnChange
+}
+
+func (c *Consensus) GetLeaderId() int64 {
+	return c.LeaderId
+}
+
+func (c *Consensus) StartViewChange() {
+	var block BlockMessage
+	lastBlock, err := blockChain.BlockChain.GetLatestBlock()
+	if err != nil {
+		logger.Warningf("[Node.Run] ProposalConfirm GetLatestBlock error=%v", err)
+		return
+	}
+	for _, b := range c.Block {
+		if b.Height == lastBlock.Height + 1 {
+			block = b
+		}
+	}
+	viewChangeMsg, err := NewViewChangeMessage(lastBlock, c.View, &block)
+	jsonData, err := json.Marshal(viewChangeMsg)
+	if err != nil {
+		logger.Warningf("[Node.Run] ProposalConfirm json.Marshal error=%v", err)
+		return
+	}
+	service.Net.BroadCast(jsonData, service.ViewChangeMsg)
+}
+
+func (c *Consensus) StartChange() {
+	c.OnChange = true
+	if c.IsNextLeader() {
+		var (
+			recallBlockMsg BlockMessage
+			newViewMsg NewViewMessage
+			err error
+		)
+		history := c.GetHistory()
+		if history == 0 {
+			logger.Warningf("[View.Run] StartChange history's h is invalid")
+			return
+		}
+		recallB := c.GetRecallBlock(history + 1)
+		if recallB.TimeStamp != 0 {
+			recallBlockMsg, err = NewBlockMessage(c.View + 1, &recallB.Block, recallB.AbandonedProposal)
+			if err != nil {
+				logger.Warningf("[View.Run] StartChange NewBlockMessage error=%v", err)
+				return
+			}
+		}
+		newViewMsg, err = NewNewViewMessage(history, c.View + 1, &recallBlockMsg)
+		if err != nil {
+			logger.Warningf("[View.Run] StartChange NewNewViewMessage error=%v", err)
+			return
+		}
+		jsonData, err := json.Marshal(newViewMsg)
+		if err != nil {
+			logger.Warningf("[View.Run] StartChange json.Marshal error=%v", err)
+			return
+		}
+		service.Net.BroadCast(jsonData, service.NewViewMsg)
+	}
+}
+
+func (c *Consensus) ProcessNewViewMsg(msg *NewViewMessage) {
+	c.ProposalsCache = make(map[string]uint8)
+	c.BlockMessages = c.BlockMessages[:0]
+	c.Block = make(map[string]BlockMessage)
+	c.BlockPrepareMsg = make(map[string]map[string][]byte)
+	c.ViewChangeMsgs = make(map[string]ViewChangeMessage)
+	if c.IsLeader() {
+		c.MessagePool = messages.NewProposalMessagePool()
+		c.BlockConfirm = true
+	}
+	c.View = msg.View
+	c.LeaderId = c.View % int64(service2.CertificateAuthorityX509.GetNetworkSize())
+	lastBlock, err := blockChain.BlockChain.GetLatestBlock()
+	if err != nil {
+		logger.Warningf("[View.Run] ProcessNewViewMsg GetLatestBlock error=%v", err)
+		return
+	}
+	if lastBlock.Height < msg.Height {
+		StartDataSync(lastBlock.Height + 1, msg.Height)
+		if msg.BlockMsg.TimeStamp != 0 {
+			c.EnqueueBlockMessage(&msg.BlockMsg)
+		}
+	} else {
+		if msg.BlockMsg.TimeStamp != 0 {
+			c.ProcessBlockMessage(&msg.BlockMsg)
+		}
+	}
+	c.FinChange()
+	logger.Warningf("[View.Run] ViewChange finish")
+}
+
+func CheckProposals(proposals messages.ProposalMessages) (
+	messages.ProposalMessages, messages.ProposalMessages) {
+	filter := make(map[string]messages.ProposalMessages)
+	abandoneP := messages.ProposalMessagePool{}
+	validP := messages.ProposalMessagePool{}
+	for _, p := range proposals {
+		if fp, ok := filter[p.ZoneName]; !ok {
+			filter[p.ZoneName] = append(filter[p.ZoneName], p)
+			validP.AddProposal(p)
+		} else {
+			drop := false
+			for _, tmpP := range filter[p.ZoneName] {
+				if reflect.DeepEqual(p.Id, tmpP.Id) {
+					drop = true
+					break
+				}
+			}
+			if !drop {
+				//TODO: Two conflicted proposal
+				tmpP := fp[len(fp)-1]
+				switch p.Type {
+				case messages.Add:
+					if tmpP.Owner != messages.Dereliction {
+						abandoneP.AddProposal(p)
+					} else {
+						validP.AddProposal(p)
+					}
+				case messages.Mod:
+					if tmpP.Owner != p.Owner || tmpP.Owner != p.From {
+						abandoneP.AddProposal(p)
+					} else {
+						validP.AddProposal(p)
+					}
+				case messages.Del:
+					if p.Owner != messages.Dereliction || tmpP.Owner != p.From {
+						abandoneP.AddProposal(p)
+					} else {
+						validP.AddProposal(p)
+					}
+				}
+			}
+		}
+	}
+	return validP.ProposalMessages, abandoneP.ProposalMessages
+}
+
+func ValidateProposals(msg *BlockMessage) bool {
+	tmpPool := messages.ProposalMessages{}
+	tmpPool = append(tmpPool, msg.ProposalMessages...)
+	tmpPool = append(tmpPool, msg.AbandonedProposal...)
+	validP, _ := CheckProposals(tmpPool)
+	return reflect.DeepEqual(validP, msg.ProposalMessages)
+}
+
+func StartDataSync(lastH, h uint) {
+	for i := lastH; i <= h; i++ {
+		syncMsg, err := blockChain.NewDataSyncMessage(i)
+		if err != nil {
+			logger.Warningf("[DataSync] NewDataSyncMessage error=%v", err)
+			continue
+		}
+		jsonData, err := json.Marshal(syncMsg)
+		if err != nil {
+			logger.Warningf("[DataSync] json.Marshal error=%v", err)
+			continue
+		}
+		service.Net.BroadCast(jsonData, service.DataSyncMsg)
+	}
+}
+

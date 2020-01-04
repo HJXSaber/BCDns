@@ -2,7 +2,7 @@
 
 mode="docker"
 
-cd /go/src/BCDns_0.1
+#cd /go/src/BCDns_0.1
 
 rm -f ./certificateAuthority/conf/$HOST/s*.cer
 
