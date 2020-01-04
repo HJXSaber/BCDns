@@ -58,6 +58,8 @@ type Consensus struct {
 	BlockMessages   []BlockMessage // need clean
 	Block           map[string]BlockMessage
 	BlockPrepareMsg map[string]map[string][]byte
+	PrepareSent     map[string]bool
+	BlockCommitMsg  map[string]map[string]uint8
 
 	//Leader role
 	MessagePool  messages.ProposalMessagePool
@@ -108,6 +110,8 @@ func NewConsensus() (*Consensus, error) {
 		BlockMessages: []BlockMessage{},
 		Block: map[string]BlockMessage{},
 		BlockPrepareMsg: map[string]map[string][]byte{},
+		PrepareSent: map[string]bool{},
+		BlockCommitMsg: map[string]map[string]uint8{},
 
 		MessagePool: messages.NewProposalMessagePool(),
 		BlockConfirm: true,
@@ -305,21 +309,60 @@ func (c *Consensus) Run(done chan uint) {
 			if msg.View != c.View {
 				continue
 			}
-			if !msg.Verify() {
-				logger.Warningf("[Node.Run] msg.Verify failed")
+			if !msg.VerifySignature() {
+				logger.Warningf("[Node.Run] msg.VerifySignature failed")
+				continue
+			}
+			if !msg.VerifyProof() {
+				logger.Warningf("[Node.Run] msg.VerifyProof failed")
 				continue
 			}
 			if _, ok := c.BlockPrepareMsg[string(msg.Id)]; !ok {
 				c.BlockPrepareMsg[string(msg.Id)] = map[string][]byte{}
+				c.PrepareSent[string(msg.Id)] = false
 			}
-			c.BlockPrepareMsg[string(msg.Id)][msg.From] = msg.Signature
-			if _, ok := c.Block[string(msg.Id)]; ok && service2.CertificateAuthorityX509.Check(len(c.BlockPrepareMsg[string(msg.Id)])) {
+			c.BlockPrepareMsg[string(msg.Id)][msg.From] = msg.Proof
+			if _, ok := c.Block[string(msg.Id)]; ok && service2.CertificateAuthorityX509.Check(len(c.BlockPrepareMsg[string(msg.Id)])) &&
+				!c.PrepareSent[string(msg.Id)] {
+				blockCommitMsg, err := messages.NewBlockCommitMessage(c.View, msg.Id)
+				if err != nil {
+					logger.Warningf("[Node.Run] NewBlockCommitMessage error=%v", err)
+					continue
+				}
+				jsonData, err := json.Marshal(blockCommitMsg)
+				if err != nil {
+					logger.Warningf("[Node.Run] json.Marshal error=%v", err)
+					continue
+				}
+				c.PrepareSent[string(msg.Id)] = true
+				service.Net.BroadCast(jsonData, service.BlockCommitMsg)
+			}
+		case msgByte := <- service.BlockCommitChan:
+			var msg messages.BlockCommitMessage
+			err := json.Unmarshal(msgByte, &msg)
+			if err != nil {
+				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
+				continue
+			}
+			if msg.View != c.View {
+				continue
+			}
+			if !msg.VerifySignature() {
+				logger.Warningf("[Node.Run] msg.VerifySignature failed")
+				continue
+			}
+			if _, ok := c.BlockCommitMsg[string(msg.Id)]; !ok {
+				c.BlockCommitMsg[string(msg.Id)] = map[string]uint8{}
+			}
+			c.BlockCommitMsg[string(msg.Id)][msg.From] = 0
+			if service2.CertificateAuthorityX509.Check(len(c.BlockCommitMsg[string(msg.Id)])) {
 				blockValidated := blockChain.NewBlockValidated(c.Block[string(msg.Id)].Block, c.BlockPrepareMsg[string(msg.Id)])
 				if blockValidated == nil {
 					logger.Warningf("[Node.Run] NewBlockValidated failed")
 					continue
 				}
 				c.ExecuteBlock(blockValidated)
+				delete(c.BlockCommitMsg, string(msg.Id))
 				delete(c.BlockPrepareMsg, string(msg.Id))
 				delete(c.Block, string(msg.Id))
 			}

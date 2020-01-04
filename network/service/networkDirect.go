@@ -27,6 +27,7 @@ var (
 	ProposalChan        chan []byte
 	BlockChan           chan []byte
 	BlockConfirmChan    chan []byte
+	BlockCommitChan		chan []byte
 	DataSyncChan        chan []byte
 	DataSyncRespChan    chan []byte
 	ProposalReplyChan   chan []byte
@@ -43,6 +44,7 @@ func init() {
 	ProposalChan = make(chan []byte, ChanSize)
 	BlockChan = make(chan []byte, ChanSize)
 	BlockConfirmChan = make(chan []byte, ChanSize)
+	BlockCommitChan = make(chan []byte, ChanSize)
 	DataSyncChan = make(chan []byte, ChanSize)
 	DataSyncRespChan = make(chan []byte, ChanSize)
 	ProposalReplyChan = make(chan []byte, ChanSize)
@@ -60,6 +62,7 @@ const (
 	ProposalMsg MessageTypeT = iota + 1
 	BlockMsg
 	BlockConfirmMsg
+	BlockCommitMsg
 	DataSyncMsg
 	DataSyncRespMsg
 	ProposalReplyMsg
@@ -208,6 +211,8 @@ func (n *DNet) handleConn(conn net.Conn) {
 			BlockChan <- msg.Payload
 		case BlockConfirmMsg:
 			BlockConfirmChan <- msg.Payload
+		case BlockCommitMsg:
+			BlockCommitChan <- msg.Payload
 		case DataSyncMsg:
 			fmt.Println("dataSync")
 			DataSyncChan <- msg.Payload

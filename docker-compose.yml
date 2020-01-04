@@ -1,10 +1,10 @@
 version: "3"
 services:
   s1:
-    image: zjoker/bcdns:latest
+    image: zjoker/bcdns-pbft:latest
     volumes:
       - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
-      - /var/run/bcdns/s1:/go/src/BCDns_0.1/certificateAuthority/conf/s1
+      - /var/run/bcdns-pbft/s1:/go/src/BCDns_0.1/certificateAuthority/conf/s1
     container_name: s1
     environment:
       - BCDNSConfFile=/go/src/BCDns_0.1/bcDns/conf/s1/BCDNS
@@ -15,10 +15,10 @@ services:
     tty: true
 
   s2:
-    image: zjoker/bcdns:latest
+    image: zjoker/bcdns-pbft:latest
     volumes:
       - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
-      - /var/run/bcdns/s2:/go/src/BCDns_0.1/certificateAuthority/conf/s2
+      - /var/run/bcdns-pbft/s2:/go/src/BCDns_0.1/certificateAuthority/conf/s2
     container_name: s2
     environment:
       - BCDNSConfFile=/go/src/BCDns_0.1/bcDns/conf/s2/BCDNS
@@ -29,10 +29,10 @@ services:
     tty: true
 
   s3:
-    image: zjoker/bcdns:latest
+    image: zjoker/bcdns-pbft:latest
     volumes:
       - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
-      - /var/run/bcdns/s3:/go/src/BCDns_0.1/certificateAuthority/conf/s3
+      - /var/run/bcdns-pbft/s3:/go/src/BCDns_0.1/certificateAuthority/conf/s3
     container_name: s3
     environment:
       - BCDNSConfFile=/go/src/BCDns_0.1/bcDns/conf/s3/BCDNS
@@ -43,10 +43,10 @@ services:
     tty: true
 
   s4:
-    image: zjoker/bcdns:latest
+    image: zjoker/bcdns-pbft:latest
     volumes:
       - /var/opt/go/src/BCDns_0.1:/go/src/BCDns_0.1
-      - /var/run/bcdns/s4:/go/src/BCDns_0.1/certificateAuthority/conf/s4
+      - /var/run/bcdns-pbft/s4:/go/src/BCDns_0.1/certificateAuthority/conf/s4
     container_name: s4
     environment:
       - BCDNSConfFile=/go/src/BCDns_0.1/bcDns/conf/s4/BCDNS

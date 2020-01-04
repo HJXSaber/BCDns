@@ -7,7 +7,7 @@ mode="docker"
 rm -f ./certificateAuthority/conf/$HOST/s*.cer
 
 if [[ $1 == ${mode} ]]; then
-    cd /var/run/bcdns
+    cd /var/run/bcdns-pbft
     for i in $(seq 1 $2)
     do
         for j in $(seq 1 $2)
