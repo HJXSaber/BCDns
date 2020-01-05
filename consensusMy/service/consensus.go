@@ -175,6 +175,7 @@ func (c *Consensus) Start(done chan uint) {
 					logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
 					panic(err)
 				}
+				time.Sleep(time.Second)
 				service.Net.BroadCast(jsonData, service.InitLeaderMsg)
 			}
 		case msgByte := <-service.InitLeaderChan:
@@ -305,14 +306,18 @@ func (c *Consensus) Run(done chan uint) {
 			if msg.View != c.View {
 				continue
 			}
-			if !msg.Verify() {
-				logger.Warningf("[Node.Run] msg.Verify failed")
+			if !msg.VerifySignature() {
+				logger.Warningf("[Node.Run] msg.VerifySignature failed")
+				continue
+			}
+			if !msg.VerifyProof() {
+				logger.Warningf("[Node.Run] msg.VerifyProof failed")
 				continue
 			}
 			if _, ok := c.BlockPrepareMsg[string(msg.Id)]; !ok {
 				c.BlockPrepareMsg[string(msg.Id)] = map[string][]byte{}
 			}
-			c.BlockPrepareMsg[string(msg.Id)][msg.From] = msg.Signature
+			c.BlockPrepareMsg[string(msg.Id)][msg.From] = msg.Proof
 			if _, ok := c.Block[string(msg.Id)]; ok && service2.CertificateAuthorityX509.Check(len(c.BlockPrepareMsg[string(msg.Id)])) {
 				blockValidated := blockChain.NewBlockValidated(c.Block[string(msg.Id)].Block, c.BlockPrepareMsg[string(msg.Id)])
 				if blockValidated == nil {
