@@ -179,6 +179,7 @@ func (c *Consensus) Start(done chan uint) {
 					logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
 					panic(err)
 				}
+				time.Sleep(time.Second)
 				service.Net.BroadCast(jsonData, service.InitLeaderMsg)
 			}
 		case msgByte := <-service.InitLeaderChan:

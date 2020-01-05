@@ -140,7 +140,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 				n.Mutex.Lock()
 				for i, member := range n.Members {
 					if strings.Compare(member.RemoteAddr, conn.RemoteAddr().String()) == 0 {
-						n.Map[member.Name].Conn.Close()
+						_ = n.Map[member.Name].Conn.Close()
 						delete(n.Map, member.Name)
 						n.Members = append(n.Members[:i], n.Members[i+1:]...)
 						break
