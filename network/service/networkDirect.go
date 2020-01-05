@@ -71,6 +71,7 @@ const (
 	ViewChangeMsg
 	NewViewMsg
 	JoinMsg
+	JoinReplyMsg
 )
 
 const (
@@ -287,32 +288,57 @@ func (n *DNet) PushAndPull(conn net.Conn, localData []byte) error {
 		return err
 	}
 
-	remoteData := make([]byte, MaxPacketLength)
-	l, err := conn.Read(remoteData)
+	var (
+		msg    Message
+		state = Packed
+		header *PacketHeader
+		length = 0
+		data   = make([]byte, 0)
+	)
+	for {
+		remoteData := make([]byte, MaxPacketLength)
+		l, err := conn.Read(remoteData)
+		length += l
+		data = append(data, remoteData[:l]...)
+		if state == Packed {
+			header, err = GetPacketHeader(data)
+			if err != nil {
+				logger.Warningf("[PushAndPull] GetPacketHeader error=%v", err)
+				return errors.New("[PushAndPull] GetPacketHeader error")
+			}
+		}
+		if length < header.Len {
+			state = Packing
+		} else {
+			msg, err = UnpackMessage(data[:header.Len])
+			if err != nil {
+				logger.Warningf("[PushAndPull] UnpackMessage error=%v", err)
+				return errors.New("[PushAndPull] UnpackMessage error")
+			}
+			break
+		}
+	}
+	var joinReplyMsg JoinReplyMessage
+	err = json.Unmarshal(msg.Payload, &joinReplyMsg)
 	if err != nil {
 		return err
 	}
-	var msg JoinReplyMessage
-	err = json.Unmarshal(remoteData[:l], &msg)
-	if err != nil {
-		return err
-	}
-	if !msg.VerifySignature() {
+	if !joinReplyMsg.VerifySignature() {
 		return errors.New("[PushAndPull] JoinReplyMessage.VerifySignature failed")
 	}
-	if msg.From != conf.BCDnsConfig.HostName {
+	if joinReplyMsg.From != conf.BCDnsConfig.HostName {
 		node := DNode{
 			Pass:       true,
 			RemoteAddr: conn.RemoteAddr().String(),
-			Name:       msg.From,
-			NodeId:     msg.NodeId,
+			Name:       joinReplyMsg.From,
+			NodeId:     joinReplyMsg.NodeId,
 			Conn:       conn,
 		}
 		n.Members = append(n.Members, node)
 		n.Mutex.Lock()
 		defer n.Mutex.Unlock()
 		n.Map[node.Name] = node
-		JoinReplyChan <- msg
+		JoinReplyChan <- joinReplyMsg
 	}
 	return nil
 }

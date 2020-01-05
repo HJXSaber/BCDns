@@ -158,15 +158,25 @@ func (c *Consensus) Start(done chan uint) {
 		case msg := <-service.JoinChan:
 			replyMsg, err := service.NewJoinReplyMessage(c.View, map[string][]byte{})
 			if err != nil {
-				logger.Warningf("[Network] handleConn NewJoinReplyMessage error=%v", err)
+				logger.Warningf("[ViewManagerT.Start] NewJoinReplyMessage error=%v", err)
 				continue
 			}
 			jsonData, err := json.Marshal(replyMsg)
 			if err != nil {
-				logger.Warningf("[Network] handleConn json.Marshal error=%v", err)
+				logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
 				continue
 			}
-			_, _ = service.Net.Map[msg.From].Send(jsonData)
+			packedMsg, err := service.PackMessage(service.NewMessage(service.JoinReplyMsg, jsonData))
+			if err != nil {
+				logger.Warningf("[ViewManagerT.Start] PackMessage error=%v", err)
+				continue
+			}
+			data, err := json.Marshal(packedMsg)
+			if err != nil {
+				logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
+				continue
+			}
+			_, _ = service.Net.Map[msg.From].Send(data)
 			c.JoinMessages[msg.From] = msg
 			if c.View == -1 && service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages) + len(c.JoinMessages)) {
 				initLeaderMsg, err := service.NewInitLeaderMessage(service.Net.GetAllNodeIds())
