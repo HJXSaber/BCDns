@@ -171,12 +171,7 @@ func (c *Consensus) Start(done chan uint) {
 				logger.Warningf("[ViewManagerT.Start] PackMessage error=%v", err)
 				continue
 			}
-			data, err := json.Marshal(packedMsg)
-			if err != nil {
-				logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
-				continue
-			}
-			_, _ = service.Net.Map[msg.From].Send(data)
+			_, _ = service.Net.Map[msg.From].Send(packedMsg)
 			c.JoinMessages[msg.From] = msg
 			if c.View == -1 && service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages) + len(c.JoinMessages)) {
 				initLeaderMsg, err := service.NewInitLeaderMessage(service.Net.GetAllNodeIds())
