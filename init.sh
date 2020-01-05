@@ -12,7 +12,7 @@ if [ ! -d "./$HOST" ]; then
 fi
 
 expect -c "
-    spawn ./generateCert.sh eth0 CH BJ BJ BUPT 222 $HOST
+    spawn ./generateCert.sh ens3 CH BJ BJ BUPT 222 $HOST
     expect {
         \"*pass*\" {set timeout 300; send \"0401\r\"; exp_continue;}
     }"
