@@ -2,7 +2,7 @@
 
 mode="docker"
 
-#cd /go/src/BCDns_0.1
+cd /go/src/BCDns_0.1
 
 rm -f ./certificateAuthority/conf/$HOST/s*.cer
 
@@ -19,10 +19,10 @@ if [[ $1 == ${mode} ]]; then
     done
 else
     expect -c "
-    spawn scp onos@$1:/workspace/hosts /tmp
+    spawn scp root@$1:/tmp/hosts /tmp
     expect {
         \"*assword\" {set timeout 300; send \"123456\r\"; exp_continue;}
-        \"yes/no\" {send \"yes\r\";}
+        \"yes/no\" {send \"yes\r\"; exp_continue;}
     }"
     cat /tmp/hosts | while read line
     do
@@ -32,8 +32,8 @@ else
             continue
         fi
         expect -c "
-        spawn scp ./certificateAuthority/conf/$HOST/LocalCertificate.cer onos@$ip:/go/src/BCDns_0.1/certificateAuthority/conf/$hostname/$HOST.cer
-        expect {
+        spawn scp root@$ip:/go/src/BCDns_0.1/certificateAuthority/conf/$hostname/LocalCertificate.cer ./certificateAuthority/conf/$HOST/$hostname.cer
+	expect {
         \"*yes/no*\" {send \"yes\r\";exp_continue;}
         \"*assword\" {set timeout 300; send \"123456\r\"; exp_continue;}
         }"

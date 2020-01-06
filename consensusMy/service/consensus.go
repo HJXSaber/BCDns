@@ -51,6 +51,7 @@ type Consensus struct {
 	Contexts       map[string]context.CancelFunc
 	Conn           *net.UDPConn
 	OrderChan      chan []byte
+	PCount         uint
 
 	//Node role
 	ProposalsCache  map[string]uint8 //need clean used for start view change
@@ -60,11 +61,14 @@ type Consensus struct {
 	BlockPrepareMsg map[string]map[string][]byte
 	PrepareSent     map[string]bool
 	BlockCommitMsg  map[string]map[string]uint8
+	PPCount         uint
+	PPPCount        uint
 
 	//Leader role
 	MessagePool  messages.ProposalMessagePool
 	BlockConfirm bool
 	UnConfirmedH uint
+	PPPPCount uint
 
 	//View role
 	OnChange           bool
@@ -242,7 +246,8 @@ func (c *Consensus) Run(done chan uint) {
 			if _, ok := c.Proposals[string(msg.Id)]; ok {
 				c.Replies[string(msg.Id)][msg.From] = 0
 				if service2.CertificateAuthorityX509.Check(len(c.Replies[string(msg.Id)])) {
-					fmt.Printf("%v [Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now().Unix(), c.Proposals[string(msg.Id)],
+					fmt.Printf("%v %v %v %v %v [Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now().Unix(), c.PCount,
+						c.PPCount, c.PPPCount, c.PPPPCount, c.Proposals[string(msg.Id)],
 						time.Now().Sub(c.proposalsTimer[string(msg.Id)]).Seconds())
 					delete(c.Proposals, string(msg.Id))
 					delete(c.Replies, string(msg.Id))
@@ -267,10 +272,12 @@ func (c *Consensus) Run(done chan uint) {
 				logger.Warningf("[Node.Run] json.Unmarshal error=%v", err)
 				continue
 			}
+			c.PPPCount++
 			if _, exist := c.ProposalsCache[string(proposal.Id)]; !exist {
 				if !c.handleProposal(proposal) {
 					continue
 				}
+				c.PPCount++
 				c.ProposalsCache[string(proposal.Id)] = unreceived
 				if c.IsLeader() {
 					c.MessagePool.AddProposal(proposal)
@@ -495,6 +502,7 @@ func (c *Consensus) handleOrder(msg Order) {
 		go c.timer(ctx, proposal)
 		c.Contexts[string(proposal.Id)] = cancelFunc
 		c.Mutex.Unlock()
+		c.PCount++
 		service.Net.BroadCast(proposalByte, service.ProposalMsg)
 	} else {
 		logger.Warningf("[handleOrder] NewProposal failed")
@@ -511,7 +519,8 @@ func (c *Consensus) timer(ctx context.Context, proposal *messages.ProposalMessag
 			return
 		}
 		if service2.CertificateAuthorityX509.Check(len(replies)) {
-			fmt.Printf("%v [Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now().Unix(), c.Proposals[string(proposal.Id)],
+			fmt.Printf("%v %v %v %v %v [Proposer.Run] ProposalMsgT execute successfully %v %v\n", time.Now().Unix(),
+				c.PCount, c.PPCount, c.PPPCount, c.PPPPCount, c.Proposals[string(proposal.Id)],
 				time.Now().Sub(c.proposalsTimer[string(proposal.Id)]).Seconds())
 			delete(c.Proposals, string(proposal.Id))
 			delete(c.Replies, string(proposal.Id))
@@ -774,6 +783,7 @@ func (c *Consensus) generateBlock() {
 	}
 	service.Net.BroadCast(jsonData, service.BlockMsg)
 	c.MessagePool.Clear(bound)
+	c.PPPPCount += uint(bound)
 	c.BlockConfirm = false
 	c.UnConfirmedH = block.Height
 	fmt.Println("block broadcast fin", block.Height, len(validP), validP[len(validP)-1].Values)

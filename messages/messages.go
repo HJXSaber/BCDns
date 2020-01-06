@@ -374,13 +374,11 @@ type ProposalMessages []ProposalMessage
 type ProposalMessagePool struct {
 	Mutex sync.Mutex
 	ProposalMessages
-	ProposalState map[string]uint8
 }
 
 func NewProposalMessagePool() ProposalMessagePool {
 	pool := ProposalMessagePool{
 		ProposalMessages: ProposalMessages{},
-		ProposalState:    map[string]uint8{},
 	}
 	return pool
 }
@@ -389,20 +387,10 @@ func (pool *ProposalMessagePool) AddProposal(p ProposalMessage) {
 	pool.ProposalMessages = append(pool.ProposalMessages, p)
 }
 
-func (pool *ProposalMessagePool) Exist(p ProposalMessage) bool {
-	_, ok := pool.ProposalState[string(p.Id)]
-	return ok
-}
-
 func (pool *ProposalMessagePool) Clear(index int) {
 	if index == 0 {
 		pool.ProposalMessages = ProposalMessages{}
-		pool.ProposalState = make(map[string]uint8)
 	} else {
-		for i := 0; i < index; i++ {
-			p := pool.ProposalMessages[i]
-			delete(pool.ProposalState, string(p.Id))
-		}
 		pool.ProposalMessages = pool.ProposalMessages[index:]
 	}
 }

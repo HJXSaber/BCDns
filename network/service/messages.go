@@ -64,17 +64,20 @@ func UnpackMessage(data []byte) (Message, error) {
 	return msg, nil
 }
 
-func GetPacketHeader(data []byte) (*PacketHeader, error) {
+func GetPacketHeader(data []byte) (*PacketHeader, bool, error) {
+	if len(data) < HeaderLen {
+		return &PacketHeader{}, true, nil
+	}
 	header := data[:HeaderLen]
 	magic := utils.BytesToInt(header[:4])
 	if magic != MagicNumber {
-		return nil, errors.New("[GetPacketHeader] Wrong magic")
+		return nil, false, errors.New("[GetPacketHeader] Wrong magic")
 	}
 	len := utils.BytesToInt(header[4:])
 	return &PacketHeader{
 		Magic: magic,
 		Len:   len,
-	}, nil
+	}, false, nil
 }
 
 type JoinMessage struct {
