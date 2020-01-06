@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cd /var/opt/go/src/BCDns_0.1/bcDns/cmd
+cd /go/src/BCDns_0.1/bcDns/cmd
 
 latency=$(grep "execute successfully" run.log | awk '{sum+=$NF} END {print sum/NR}')
 
@@ -26,7 +26,7 @@ done<tmp.log
 
 gap=$(($timeEnd-$timeStart+$fLatency))
 
-amount=$(grep "execute successfully" run.log | tail -1 | awk '{print $11}' | awk -F ":" '{print $2}' | awk -F "]" '{print $1}')
+amount=$(grep "execute successfully" run.log | wc -l)
 
 throughout=$(printf "%.5f" `echo "scale=5;$amount/$gap"|bc`)
 

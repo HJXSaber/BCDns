@@ -4,15 +4,18 @@ go 1.13
 
 require (
 	github.com/boltdb/bolt v1.3.1
+	github.com/fatih/color v1.8.0 // indirect
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/izqui/helpers v0.0.0-20150821122028-c69cdb8bbd19
+	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/sasha-s/go-deadlock v0.2.0
 	github.com/spf13/viper v1.4.0
 	github.com/syndtr/goleveldb v1.0.0
+	github.com/uber/go-torch v0.0.0-20181107071353-86f327cc820e // indirect
 	golang.org/x/net v0.0.0-20191105084925-a882066a44e0 // indirect
 	golang.org/x/sys v0.0.0-20191104094858-e8c54fb511f6 // indirect
 )

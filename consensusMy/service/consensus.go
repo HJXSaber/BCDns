@@ -660,7 +660,6 @@ func (*Consensus) SendReply(b *blockChain.Block) {
 			continue
 		}
 		service.Net.SendTo(jsonData, service.ProposalReplyMsg, p.From)
-		time.Sleep(10 * time.Millisecond)
 		l++
 	}
 	fmt.Println("sendreply", len(b.ProposalMessages), l)

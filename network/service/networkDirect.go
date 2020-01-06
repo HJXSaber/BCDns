@@ -125,6 +125,7 @@ func (n *DNet) handleConn(conn net.Conn) {
 		header *PacketHeader
 		length = 0
 		data   = make([]byte, 0)
+		needData bool
 	)
 	state := Packed
 	for {
@@ -153,83 +154,88 @@ func (n *DNet) handleConn(conn net.Conn) {
 		}
 		length += l
 		data = append(data, dataBuf[:l]...)
-		if state == Packed {
-			header, err = GetPacketHeader(data)
-			if err != nil {
-				length, data = 0, data[:0]
-				logger.Warningf("[NetWork] handleConn GetPacketHeader error=%v", err)
-				continue
+		for {
+			if state == Packed {
+				header, needData, err = GetPacketHeader(data)
+				if err != nil {
+					length, data = 0, data[:0]
+					logger.Warningf("[NetWork] handleConn GetPacketHeader error=%v", err)
+					continue
+				}
+				if needData {
+					break
+				}
 			}
-		}
-		if length < header.Len {
-			state = Packing
-			continue
-		} else {
-			state = Packed
-			msg, err = UnpackMessage(data[:header.Len])
-			data = data[header.Len:]
-			length -= header.Len
-			if err != nil {
-				logger.Warningf("[NetWork] handleConn UnpackMessage error=%v", err)
-				continue
+			if length < header.Len {
+				state = Packing
+				break
+			} else {
+				state = Packed
+				msg, err = UnpackMessage(data[:header.Len])
+				data = data[header.Len:]
+				length -= header.Len
+				if err != nil {
+					logger.Warningf("[NetWork] handleConn UnpackMessage error=%v", err)
+					continue
+				}
 			}
-		}
-		switch msg.MessageTypeT {
-		case JoinMsg:
-			var message JoinMessage
-			err := json.Unmarshal(msg.Payload, &message)
-			if err != nil {
-				logger.Warningf("[Network] handleConn json.Unmarshal error=%v", err)
-				continue
+			switch msg.MessageTypeT {
+			case JoinMsg:
+				var message JoinMessage
+				err := json.Unmarshal(msg.Payload, &message)
+				if err != nil {
+					logger.Warningf("[Network] handleConn json.Unmarshal error=%v", err)
+					continue
+				}
+				if !message.VerifySignature() {
+					logger.Warningf("[Network] handleConn signature is invalid")
+					continue
+				}
+				if !service.CertificateAuthorityX509.VerifyCertificate(message.Cert) {
+					logger.Warningf("[Network] handleConn cert is invalid")
+					continue
+				}
+				node := DNode{
+					Pass:       true,
+					RemoteAddr: conn.RemoteAddr().String(),
+					Name:       message.From,
+					NodeId:     message.NodeId,
+					Conn:       conn,
+				}
+				n.Members = append(n.Members, node)
+				n.Mutex.Lock()
+				n.Map[node.Name] = node
+				n.Mutex.Unlock()
+				JoinChan <- message
+			case ProposalMsg:
+				ProposalChan <- msg.Payload
+			case BlockMsg:
+				BlockChan <- msg.Payload
+			case BlockConfirmMsg:
+				BlockConfirmChan <- msg.Payload
+			case DataSyncMsg:
+				fmt.Println("dataSync")
+				DataSyncChan <- msg.Payload
+			case DataSyncRespMsg:
+				fmt.Println("dataSyncReply")
+				DataSyncRespChan <- msg.Payload
+			case ProposalReplyMsg:
+				ProposalReplyChan <- msg.Payload
+			case ProposalConfirmMsg:
+				fmt.Println("proposalConfirm")
+				ProposalConfirmChan <- msg.Payload
+			case InitLeaderMsg:
+				fmt.Println("InitLeaderMsg")
+				InitLeaderChan <- msg.Payload
+			case ViewChangeMsg:
+				fmt.Println("ViewChangeMsg")
+				ViewChangeChan <- msg.Payload
+			case NewViewMsg:
+				fmt.Println("NewVIewMsg")
+				NewViewChan <- msg.Payload
+			default:
+				logger.Warningf("[Network] handleConn Unknown message type")
 			}
-			if !message.VerifySignature() {
-				logger.Warningf("[Network] handleConn signature is invalid")
-				continue
-			}
-			if !service.CertificateAuthorityX509.VerifyCertificate(message.Cert) {
-				logger.Warningf("[Network] handleConn cert is invalid")
-				continue
-			}
-			node := DNode{
-				Pass:       true,
-				RemoteAddr: conn.RemoteAddr().String(),
-				Name:       message.From,
-				NodeId:     message.NodeId,
-				Conn:       conn,
-			}
-			n.Members = append(n.Members, node)
-			n.Mutex.Lock()
-			n.Map[node.Name] = node
-			n.Mutex.Unlock()
-			JoinChan <- message
-		case ProposalMsg:
-			ProposalChan <- msg.Payload
-		case BlockMsg:
-			BlockChan <- msg.Payload
-		case BlockConfirmMsg:
-			BlockConfirmChan <- msg.Payload
-		case DataSyncMsg:
-			fmt.Println("dataSync")
-			DataSyncChan <- msg.Payload
-		case DataSyncRespMsg:
-			fmt.Println("dataSyncReply")
-			DataSyncRespChan <- msg.Payload
-		case ProposalReplyMsg:
-			ProposalReplyChan <- msg.Payload
-		case ProposalConfirmMsg:
-			fmt.Println("proposalConfirm")
-			ProposalConfirmChan <- msg.Payload
-		case InitLeaderMsg:
-			fmt.Println("InitLeaderMsg")
-			InitLeaderChan <- msg.Payload
-		case ViewChangeMsg:
-			fmt.Println("ViewChangeMsg")
-			ViewChangeChan <- msg.Payload
-		case NewViewMsg:
-			fmt.Println("NewVIewMsg")
-			NewViewChan <- msg.Payload
-		default:
-			logger.Warningf("[Network] handleConn Unknown message type")
 		}
 	}
 }

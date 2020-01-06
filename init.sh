@@ -11,11 +11,11 @@ if [ ! -d "./$HOST" ]; then
     mkdir ./$HOST
 fi
 
-expect -c "
-    spawn ./generateCert.sh eth0 CH BJ BJ BUPT 222 $HOST
-    expect {
-        \"*pass*\" {set timeout 300; send \"0401\r\"; exp_continue;}
-    }"
+#expect -c "
+#    spawn ./generateCert.sh ens3 CH BJ BJ BUPT 222 $HOST
+#    expect {
+#        \"*pass*\" {set timeout 300; send \"0401\r\"; exp_continue;}
+#    }"
 
 cd /go/src/BCDns_0.1/bcDns/conf/
 if [ ! -d "./$HOST" ]; then
