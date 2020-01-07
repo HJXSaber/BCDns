@@ -73,6 +73,9 @@ func init() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		if strings.Compare(fileName, RootCertificateName) == 0{
+			continue
+		}
 		if ok {
 			cert := loadCertificate2(CertificatesPath + fileName)
 			if cert == nil {

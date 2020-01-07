@@ -2,5 +2,5 @@
   "HOSTNAME": "s2",
   "PORT": "8001",
   "Byzantine": false,
-  "MODE": "PBFT"
+  "MODE": "MYBFT"
 }

@@ -764,8 +764,7 @@ func (c *ConsensusMyBft) IsLeader() bool {
 }
 
 func (c *ConsensusMyBft) IsNextLeader() bool {
-	return service2.CertificateAuthorityX509.IsLeaderNode((c.LeaderId + 1) %
-		int64(service2.CertificateAuthorityX509.GetNetworkSize()))
+	return service2.CertificateAuthorityX509.IsLeaderNode((c.View + 1) % int64(service2.CertificateAuthorityX509.GetNetworkSize()))
 }
 
 func (c *ConsensusMyBft) GetHistory() uint {

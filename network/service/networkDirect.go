@@ -99,11 +99,11 @@ func NewDNet() (*DNet, error) {
 		Members: []DNode{},
 		Map:     map[string]DNode{},
 	}
-	go dNet.handleStram()
+	go dNet.handleStream()
 	return dNet, nil
 }
 
-func (n *DNet) handleStram() {
+func (n *DNet) handleStream() {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4",
 		strings.Join([]string{ListenAddr, conf.BCDnsConfig.Port}, ":"))
 	if err != nil {
