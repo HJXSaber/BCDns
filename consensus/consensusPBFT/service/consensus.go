@@ -804,7 +804,7 @@ func (c *ConsensusPBFT) IsLeader() bool {
 }
 
 func (c *ConsensusPBFT) IsNextLeader() bool {
-	return service2.CertificateAuthorityX509.IsLeaderNode((c.LeaderId + 1) %
+	return service2.CertificateAuthorityX509.IsLeaderNode((c.View + 1) %
 		int64(service2.CertificateAuthorityX509.GetNetworkSize()))
 }
 
