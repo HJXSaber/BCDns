@@ -33,9 +33,9 @@ else
         fi
         expect -c "
         spawn scp root@$ip:/go/src/BCDns_0.1/certificateAuthority/conf/$hostname/LocalCertificate.cer ./certificateAuthority/conf/$HOST/$hostname.cer
-	expect {
-        \"*yes/no*\" {send \"yes\r\";exp_continue;}
-        \"*assword\" {set timeout 300; send \"123456\r\"; exp_continue;}
+	    expect {
+            \"*yes/no*\" {send \"yes\r\";exp_continue;}
+            \"*assword\" {set timeout 300; send \"123456\r\"; exp_continue;}
         }"
     done
 fi
