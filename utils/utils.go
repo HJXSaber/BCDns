@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 )
@@ -71,6 +72,7 @@ func SendStatus(isLeader bool) {
 		panic(err)
 	}
 	_, err = conn.Write(data)
+	fmt.Println("[SendStatus] msg")
 	if err != nil {
 		panic(err)
 	}
