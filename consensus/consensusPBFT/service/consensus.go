@@ -469,10 +469,8 @@ func (c *ConsensusPBFT) Run(done chan uint) {
 }
 
 func (c *ConsensusPBFT) ReceiveOrder() {
-	var (
-		data = make([]byte, 1024)
-	)
 	for true {
+		data := make([]byte, 1024)
 		len, err := c.Conn.Read(data)
 		if err != nil {
 			fmt.Printf("[Run] Proposer read order failed err=%v\n", err)
