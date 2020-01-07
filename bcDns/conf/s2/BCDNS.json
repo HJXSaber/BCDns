@@ -1,5 +1,6 @@
 {
   "HOSTNAME": "s2",
   "PORT": "8001",
-  "Byzantine": false
+  "Byzantine": false,
+  "MODE": "PBFT"
 }

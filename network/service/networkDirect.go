@@ -27,6 +27,7 @@ var (
 	ProposalChan        chan []byte
 	BlockChan           chan []byte
 	BlockConfirmChan    chan []byte
+	BlockCommitChan		chan []byte
 	DataSyncChan        chan []byte
 	DataSyncRespChan    chan []byte
 	ProposalReplyChan   chan []byte
@@ -43,6 +44,7 @@ func init() {
 	ProposalChan = make(chan []byte, ChanSize)
 	BlockChan = make(chan []byte, ChanSize)
 	BlockConfirmChan = make(chan []byte, ChanSize)
+	BlockCommitChan = make(chan []byte, ChanSize)
 	DataSyncChan = make(chan []byte, ChanSize)
 	DataSyncRespChan = make(chan []byte, ChanSize)
 	ProposalReplyChan = make(chan []byte, ChanSize)
@@ -60,6 +62,7 @@ const (
 	ProposalMsg MessageTypeT = iota + 1
 	BlockMsg
 	BlockConfirmMsg
+	BlockCommitMsg
 	DataSyncMsg
 	DataSyncRespMsg
 	ProposalReplyMsg
@@ -68,6 +71,7 @@ const (
 	ViewChangeMsg
 	NewViewMsg
 	JoinMsg
+	JoinReplyMsg
 )
 
 const (
@@ -207,12 +211,39 @@ func (n *DNet) handleConn(conn net.Conn) {
 				n.Map[node.Name] = node
 				n.Mutex.Unlock()
 				JoinChan <- message
+			case JoinReplyMsg:
+				var message JoinReplyMessage
+				err = json.Unmarshal(msg.Payload, &message)
+				if err != nil {
+					logger.Warningf("[Network] handleConn json.Unmarshal error=%v", err)
+					continue
+				}
+				if !message.VerifySignature() {
+					logger.Warningf("[Network] handleConn JoinReplyMessage.VerifySignature failed")
+					continue
+				}
+				if message.From != conf.BCDnsConfig.HostName {
+					node := DNode{
+						Pass:       true,
+						RemoteAddr: conn.RemoteAddr().String(),
+						Name:       message.From,
+						NodeId:     message.NodeId,
+						Conn:       conn,
+					}
+					n.Members = append(n.Members, node)
+					n.Mutex.Lock()
+					n.Map[node.Name] = node
+					n.Mutex.Unlock()
+					JoinReplyChan <- message
+				}
 			case ProposalMsg:
 				ProposalChan <- msg.Payload
 			case BlockMsg:
 				BlockChan <- msg.Payload
 			case BlockConfirmMsg:
 				BlockConfirmChan <- msg.Payload
+			case BlockCommitMsg:
+				BlockCommitChan <- msg.Payload
 			case DataSyncMsg:
 				fmt.Println("dataSync")
 				DataSyncChan <- msg.Payload
@@ -266,9 +297,9 @@ func (n *DNet) Join(seeds []string) error {
 				logger.Warningf("[Network] JoinNode error=%v", err)
 				return
 			}
-			err = n.PushAndPull(conn, localData)
+			_, err = conn.Write(localData)
 			if err != nil {
-				logger.Warningf("[Network] Join push&pull error=%v", err)
+				logger.Warningf("[Network] Join push error=%v", err)
 				return
 			}
 			go n.handleConn(conn)
@@ -278,42 +309,6 @@ func (n *DNet) Join(seeds []string) error {
 	wg.Wait()
 	if success == 0 {
 		return errors.New("[NetWork] Join failed")
-	}
-	return nil
-}
-
-func (n *DNet) PushAndPull(conn net.Conn, localData []byte) error {
-	_, err := conn.Write(localData)
-	if err != nil {
-		return err
-	}
-
-	remoteData := make([]byte, MaxPacketLength)
-	l, err := conn.Read(remoteData)
-	if err != nil {
-		return err
-	}
-	var msg JoinReplyMessage
-	err = json.Unmarshal(remoteData[:l], &msg)
-	if err != nil {
-		return err
-	}
-	if !msg.VerifySignature() {
-		return errors.New("[PushAndPull] JoinReplyMessage.VerifySignature failed")
-	}
-	if msg.From != conf.BCDnsConfig.HostName {
-		node := DNode{
-			Pass:       true,
-			RemoteAddr: conn.RemoteAddr().String(),
-			Name:       msg.From,
-			NodeId:     msg.NodeId,
-			Conn:       conn,
-		}
-		n.Members = append(n.Members, node)
-		n.Mutex.Lock()
-		defer n.Mutex.Unlock()
-		n.Map[node.Name] = node
-		JoinReplyChan <- msg
 	}
 	return nil
 }

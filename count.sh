@@ -28,6 +28,10 @@ gap=$(($timeEnd-$timeStart+$fLatency))
 
 amount=$(grep "execute successfully" run.log | wc -l)
 
+sendAmount=$(grep "execute successfully" run.log | tail -1| awk '{print $3}')
+
 throughout=$(printf "%.5f" `echo "scale=5;$amount/$gap"|bc`)
 
-echo "$latency $throughout"
+sendRate=$(printf "%.5f" `echo "scale=5;$sendAmount/$gap"|bc`)
+
+echo "$latency $throughout $sendRate"

@@ -4,12 +4,18 @@ import (
 	"BCDns_0.1/bcDns/conf"
 	blockChain2 "BCDns_0.1/blockChain"
 	service2 "BCDns_0.1/certificateAuthority/service"
-	"BCDns_0.1/consensusMy/service"
+	mybft "BCDns_0.1/consensus/consensusMy/service"
+	pbft "BCDns_0.1/consensus/consensusPBFT/service"
+	"BCDns_0.1/consensus/model"
 	dao2 "BCDns_0.1/dao"
 	service3 "BCDns_0.1/network/service"
 	"BCDns_0.1/utils"
 	"fmt"
 	"time"
+)
+
+var (
+	ConsensusCenter model.ConsensusI
 )
 
 func main() {
@@ -39,25 +45,30 @@ func main() {
 		panic("NewDNet failed")
 	}
 	fmt.Println("[Init consensus]")
-	service.ConsensusCenter, err = service.NewConsensus()
+	switch conf.BCDnsConfig.Mode {
+	case "MYBFT":
+		ConsensusCenter, err = mybft.NewConsensus()
+	case "PBFT":
+		ConsensusCenter, err = pbft.NewConsensus()
+	}
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("[start init leader]")
-	go service.ConsensusCenter.Start(initLeaderDone)
+	go ConsensusCenter.Start(initLeaderDone)
 	fmt.Println("[Join]")
 	err = service3.Net.Join(service2.CertificateAuthorityX509.GetSeeds())
 	if err != nil {
 		panic(err)
 	}
 	_ = <- initLeaderDone
-	if service.ConsensusCenter.IsLeader() {
+	if ConsensusCenter.IsLeader() {
 		conf.BCDnsConfig.Byzantine = false
 	}
 	fmt.Println("[System running]")
 	fmt.Println("[Start Time]", time.Now())
-	utils.SendStatus(service.ConsensusCenter.IsLeader())
-	go service.ConsensusCenter.Run(done)
+	utils.SendStatus(ConsensusCenter.IsLeader())
+	go ConsensusCenter.Run(done)
 	_ = <-done
 	fmt.Println("[Err] System exit")
 }

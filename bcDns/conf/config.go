@@ -22,6 +22,7 @@ type Config struct {
 	LeaderMsgBufferSize int
 	PowDifficult        int
 	Byzantine           bool
+	Mode string
 }
 
 var (
@@ -48,6 +49,7 @@ func init() {
 	BCDnsConfig.Port = viper.GetString("PORT")
 	BCDnsConfig.HostName = viper.GetString("HOSTNAME")
 	BCDnsConfig.Byzantine = viper.GetBool("Byzantine")
+	BCDnsConfig.Mode = viper.GetString("MODE")
 	BCDnsConfig.ProposalBufferSize = 10000
 	BCDnsConfig.ProposalTimeout = 30 * time.Second
 }

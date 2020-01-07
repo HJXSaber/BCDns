@@ -52,12 +52,12 @@ func PackMessage(msg Message) ([]byte, error) {
 
 func UnpackMessage(data []byte) (Message, error) {
 	payload := data[HeaderLen:]
-	data, err := snappy.Decode(nil, payload)
+	decodedData, err := snappy.Decode(nil, payload)
 	if err != nil {
 		return Message{}, err
 	}
 	var msg Message
-	err = json.Unmarshal(data, &msg)
+	err = json.Unmarshal(decodedData, &msg)
 	if err != nil {
 		return Message{}, err
 	}
@@ -155,6 +155,7 @@ func NewJoinReplyMessage(view int64, signatures map[string][]byte) (*JoinReplyMe
 		},
 		View:       view,
 		Signatures: signatures,
+		NodeId: service.CertificateAuthorityX509.NodeId,
 	}
 	err := msg.Sign()
 	if err != nil {

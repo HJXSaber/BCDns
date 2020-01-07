@@ -534,3 +534,62 @@ func (msg *ProposalReplyMessage) VerifySignature() bool {
 	}
 	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
+
+type BlockCommitMessage struct {
+	View int64
+	utils.Base
+	Id []byte
+	Signature []byte
+}
+
+func NewBlockCommitMessage(view int64, id []byte) (BlockCommitMessage, error) {
+	msg := BlockCommitMessage{
+		View:view,
+		Base:utils.Base{
+			From:conf.BCDnsConfig.HostName,
+			TimeStamp:time.Now().Unix(),
+		},
+		Id:id,
+	}
+	err := msg.Sign()
+	if err != nil {
+		return BlockCommitMessage{}, err
+	}
+	return msg, nil
+}
+
+func (msg *BlockCommitMessage) Hash() ([]byte, error) {
+	buf := bytes.Buffer{}
+	if jsonData, err := json.Marshal(msg.View); err != nil {
+		return nil, err
+	} else {
+		buf.Write(jsonData)
+	}
+	if jsonData, err := json.Marshal(msg.Base); err != nil {
+		return nil, err
+	} else {
+		buf.Write(jsonData)
+	}
+	buf.Write(msg.Id)
+	return utils.SHA256(buf.Bytes()), nil
+}
+
+func (msg *BlockCommitMessage) Sign() error {
+	hash, err := msg.Hash()
+	if err != nil {
+		return err
+	}
+	if sig := service.CertificateAuthorityX509.Sign(hash); sig != nil {
+		msg.Signature = sig
+		return nil
+	}
+	return errors.New("[BlockConfirmMessage] Generate signature failed")
+}
+
+func (msg *BlockCommitMessage) VerifySignature() bool {
+	hash, err := msg.Hash()
+	if err != nil {
+		return false
+	}
+	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
+}
