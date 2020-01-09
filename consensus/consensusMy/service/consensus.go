@@ -7,7 +7,6 @@ import (
 	"BCDns_0.1/consensus/model"
 	"BCDns_0.1/messages"
 	"BCDns_0.1/network/service"
-	"BCDns_0.1/utils"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -275,14 +274,15 @@ func (c *ConsensusMyBft) Run(done chan uint) {
 					if c.BlockConfirm && c.MessagePool.Size() >= blockChain.BlockMaxSize {
 						c.generateBlock()
 					}
-				} else {
-					name, err := utils.GetCertId(*service2.CertificateAuthorityX509.CertificatesOrder[c.LeaderId])
-					if err != nil {
-						logger.Warningf("[SendToLeader] GetCertId failed err=%v", err)
-						continue
-					}
-					service.Net.SendTo(msgByte, service.ProposalMsg, name)
 				}
+				//} else {
+				//	name, err := utils.GetCertId(*service2.CertificateAuthorityX509.CertificatesOrder[c.LeaderId])
+				//	if err != nil {
+				//		logger.Warningf("[SendToLeader] GetCertId failed err=%v", err)
+				//		continue
+				//	}
+				//	service.Net.SendTo(msgByte, service.ProposalMsg, name)
+				//}
 			}
 		case blockMsg := <-blockChan:
 			c.ProcessBlockMessage(&blockMsg)
