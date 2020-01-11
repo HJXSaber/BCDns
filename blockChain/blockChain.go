@@ -12,7 +12,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-const dbFile = "blockchain_%s.db"
+const dbFile = "../data/blockchain_%s.db"
 const blocksBucket = "blocks"
 
 var (

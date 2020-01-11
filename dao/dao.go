@@ -27,7 +27,7 @@ type DAOInterface interface {
 	Set(key, value []byte) error
 }
 
-const cacheFile = "blockchain_cache_%s.db"
+const cacheFile = "../data/blockchain_cache_%s.db"
 
 type DB struct {
 	*leveldb.DB
