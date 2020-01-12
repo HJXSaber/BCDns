@@ -26,4 +26,10 @@ cp BCDNS.json ./$HOST
 
 sed "s/s[0-9]\+/$HOST/g" ./$HOST/BCDNS.json -i
 
-mount -t tmpfs -o size=1g tmpfs ./bcDns/data/
+cd /go/src/BCDns_0.1/bcDns
+
+if [ ! -d "./data" ]; then
+    mkdir ./data
+fi
+
+mount -t tmpfs -o size=1g tmpfs ./data/
