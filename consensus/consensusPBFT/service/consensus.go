@@ -659,11 +659,7 @@ func (c *ConsensusPBFT) ExecuteBlock(b *blockChain.BlockValidated) {
 		}
 		h++
 	}
-	if c.IsLeader() {
-		if h > c.UnConfirmedH {
-			c.BlockConfirm = true
-		}
-	}
+	height := h
 	for _, msg := range c.BlockMessages {
 		if msg.Height < h {
 			c.BlockMessages = c.BlockMessages[1:]
@@ -675,6 +671,14 @@ func (c *ConsensusPBFT) ExecuteBlock(b *blockChain.BlockValidated) {
 			break
 		}
 		h++
+	}
+	if c.IsLeader() {
+		if height > c.UnConfirmedH {
+			c.BlockConfirm = true
+			if c.MessagePool.Size() >= 200 {
+				c.generateBlock()
+			}
+		}
 	}
 }
 

@@ -2,7 +2,7 @@
 
 cd /go/src/BCDns_0.1/bcDns/cmd
 
-rm -rf blockchain_*
+rm -rf ../data/blockchain_*
 
 if [[ $# -eq 1 ]]; then
     sed "s/\(false\|true\)/$1/g" ../conf/$HOST/BCDNS.json -i
