@@ -2,5 +2,6 @@
   "HOSTNAME": "s1",
   "PORT": "8001",
   "Byzantine": false,
-  "MODE": "MYBFT"
+  "MODE": "MYBFT",
+  "TEST": "yes"
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -23,6 +24,8 @@ type Config struct {
 	PowDifficult        int
 	Byzantine           bool
 	Mode string
+
+	Test bool
 }
 
 var (
@@ -50,6 +53,11 @@ func init() {
 	BCDnsConfig.HostName = viper.GetString("HOSTNAME")
 	BCDnsConfig.Byzantine = viper.GetBool("Byzantine")
 	BCDnsConfig.Mode = viper.GetString("MODE")
+	if strings.Compare("yes", viper.GetString("TEST")) == 0 {
+		BCDnsConfig.Test = true
+	} else {
+		BCDnsConfig.Test = false
+	}
 	BCDnsConfig.ProposalBufferSize = 10000
 	BCDnsConfig.ProposalTimeout = 30 * time.Second
 }

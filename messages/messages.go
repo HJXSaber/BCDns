@@ -107,12 +107,16 @@ func NewProposal(zoneName string, t OperationType, values map[string]string) *Pr
 		fmt.Printf("[NewProposal] Hash Failed err=%v\n", err)
 		return nil
 	}
-	err = msg.Sign()
-	if err != nil {
-		fmt.Printf("[NewProposal] msg.Sign error=%v\n", err)
-		return nil
+	if conf.BCDnsConfig.Test {
+		return &msg
+	} else {
+		err = msg.Sign()
+		if err != nil {
+			fmt.Printf("[NewProposal] msg.Sign error=%v\n", err)
+			return nil
+		}
+		return &msg
 	}
-	return &msg
 }
 
 func (msg *ProposalMessage) GetPow() error {
@@ -189,11 +193,15 @@ func (msg *ProposalMessage) Sign() error {
 }
 
 func (msg *ProposalMessage) VerifySignature() bool {
-	hash, err := msg.Hash()
-	if err != nil {
-		return false
+	if conf.BCDnsConfig.Test {
+		return true
+	} else {
+		hash, err := msg.Hash()
+		if err != nil {
+			return false
+		}
+		return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 	}
-	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
 
 func (msg *ProposalMessage) MarshalProposalMessage() ([]byte, error) {
@@ -269,16 +277,15 @@ func (msg *ProposalConfirm) VerifySignature() bool {
 }
 
 func (msg *ProposalMessage) ValidateAdd() bool {
-	if !service.CertificateAuthorityX509.Exits(msg.From) {
-		logger.Warningf("[ValidateAdd] Invalid HostName=%v", msg.From)
-		return false
-	}
-	bodyByte, err := msg.Hash()
-	if err != nil {
-		logger.Warningf("[ValidateAdd] json.Marshal failed err=%v", err)
+	if !msg.VerifySignature() {
+		logger.Warningf("[ValidateAdd] validate signature failed")
 		return false
 	}
 	blockProposal := new(ProposalMessage)
+	if !msg.ValidatePow() {
+		logger.Warningf("[ValidateAdd] validate Pow failed")
+		return false
+	}
 	if data, err := dao.Dao.GetZoneName(msg.ZoneName); err != leveldb.ErrNotFound {
 		blockProposal, err = UnMarshalProposalMessage(data)
 		if err != nil {
@@ -290,25 +297,12 @@ func (msg *ProposalMessage) ValidateAdd() bool {
 			return false
 		}
 	}
-	if !service.CertificateAuthorityX509.VerifySignature(msg.Signature, bodyByte, msg.From) {
-		logger.Warningf("[ValidateAdd] validate signature failed")
-		return false
-	}
-	if !msg.ValidatePow() {
-		logger.Warningf("[ValidateAdd] validate Pow failed")
-		return false
-	}
 	return true
 }
 
 func (msg *ProposalMessage) ValidateDel() bool {
-	if !service.CertificateAuthorityX509.Exits(msg.From) {
-		logger.Warningf("[ValidateDel] Invalid HostName=%v", msg.From)
-		return false
-	}
-	bodyByte, err := msg.Hash()
-	if err != nil {
-		logger.Warningf("[ValidateDel] json.Marshal failed err=%v", err)
+	if !msg.VerifySignature() {
+		logger.Warningf("[ValidateDel] validate signature failed")
 		return false
 	}
 	if msg.Owner != Dereliction {
@@ -330,21 +324,12 @@ func (msg *ProposalMessage) ValidateDel() bool {
 		logger.Warningf("[ValidateDel] Zonename %v is not belong to %v", msg.ZoneName, msg.From)
 		return false
 	}
-	if !service.CertificateAuthorityX509.VerifySignature(msg.Signature, bodyByte, msg.From) {
-		logger.Warningf("[ValidateDel] validate signature failed")
-		return false
-	}
 	return true
 }
 
 func (msg *ProposalMessage) ValidateMod() bool {
-	if !service.CertificateAuthorityX509.Exits(msg.From) {
-		logger.Warningf("[ValidateMod] Invalid HostName=%v", msg.From)
-		return false
-	}
-	bodyByte, err := msg.Hash()
-	if err != nil {
-		logger.Warningf("[ValidateMod] json.Marshal failed err=%v", err)
+	if !msg.VerifySignature() {
+		logger.Warningf("[ValidateMod] validate signature failed")
 		return false
 	}
 	blockProposal := new(ProposalMessage)
@@ -360,10 +345,6 @@ func (msg *ProposalMessage) ValidateMod() bool {
 	}
 	if msg.From != blockProposal.Owner || msg.Owner != blockProposal.Owner {
 		logger.Warningf("[ValidateMod] ZoneName %v is not belong to %v", msg.ZoneName, msg.From)
-		return false
-	}
-	if !service.CertificateAuthorityX509.VerifySignature(msg.Signature, bodyByte, msg.From) {
-		logger.Warningf("[ValidateMod] validate signature failed")
 		return false
 	}
 	return true
@@ -528,11 +509,14 @@ func (msg *ProposalReplyMessage) Sign() error {
 }
 
 func (msg *ProposalReplyMessage) VerifySignature() bool {
-	hash, err := msg.Hash()
-	if err != nil {
-		return false
+	if conf.BCDnsConfig.Test {
+		return true
+	} else {hash, err := msg.Hash()
+		if err != nil {
+			return false
+		}
+		return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 	}
-	return service.CertificateAuthorityX509.VerifySignature(msg.Signature, hash, msg.From)
 }
 
 type BlockCommitMessage struct {
