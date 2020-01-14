@@ -14,13 +14,13 @@ func TestSign(t *testing.T) {
 	go func() {
 		select {
 		case <- time.After(60 * time.Second):
+			fmt.Println("count", count)
 			panic("Time up")
 		}
 	}()
 	for {
 		msg, _ := NewBlockConfirmMessage(0, i)
 		msg.VerifySignature()
-		fmt.Println(count)
 		count++
 	}
 }
