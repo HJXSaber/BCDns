@@ -523,6 +523,7 @@ type BlockCommitMessage struct {
 	View int64
 	utils.Base
 	Id []byte
+	Proof []byte
 	Signature []byte
 }
 
@@ -534,6 +535,11 @@ func NewBlockCommitMessage(view int64, id []byte) (BlockCommitMessage, error) {
 			TimeStamp:time.Now().Unix(),
 		},
 		Id:id,
+	}
+	if proof := service.CertificateAuthorityX509.Sign(id); proof != nil {
+		msg.Proof = proof
+	} else {
+		return BlockCommitMessage{}, errors.New("[NewBlockCommitMessage] Get proof failed")
 	}
 	err := msg.Sign()
 	if err != nil {

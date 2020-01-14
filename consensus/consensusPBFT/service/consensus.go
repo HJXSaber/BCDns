@@ -55,7 +55,7 @@ type ConsensusPBFT struct {
 	Block           map[string]model.BlockMessage
 	BlockPrepareMsg map[string]map[string][]byte
 	PrepareSent     map[string]bool
-	BlockCommitMsg  map[string]map[string]uint8
+	BlockCommitMsg  map[string]map[string][]byte
 	PPCount         uint
 	PPPCount        uint
 
@@ -110,7 +110,7 @@ func NewConsensus() (model.ConsensusI, error) {
 		Block: map[string]model.BlockMessage{},
 		BlockPrepareMsg: map[string]map[string][]byte{},
 		PrepareSent: map[string]bool{},
-		BlockCommitMsg: map[string]map[string]uint8{},
+		BlockCommitMsg: map[string]map[string][]byte{},
 
 		MessagePool: messages.NewProposalMessagePool(),
 		BlockConfirm: true,
@@ -355,12 +355,11 @@ func (c *ConsensusPBFT) Run(done chan uint) {
 				continue
 			}
 			if _, ok := c.BlockCommitMsg[string(msg.Id)]; !ok {
-				c.BlockCommitMsg[string(msg.Id)] = map[string]uint8{}
+				c.BlockCommitMsg[string(msg.Id)] = map[string][]byte{}
 			}
-			c.BlockCommitMsg[string(msg.Id)][msg.From] = 0
-			if _, ok := c.Block[string(msg.Id)]; ok && service2.CertificateAuthorityX509.Check(len(c.BlockCommitMsg[string(msg.Id)])) &&
-				service2.CertificateAuthorityX509.Check(len(c.BlockPrepareMsg[string(msg.Id)])) {
-				blockValidated := blockChain.NewBlockValidated(c.Block[string(msg.Id)].Block, c.BlockPrepareMsg[string(msg.Id)])
+			c.BlockCommitMsg[string(msg.Id)][msg.From] = msg.Proof
+			if _, ok := c.Block[string(msg.Id)]; ok && service2.CertificateAuthorityX509.Check(len(c.BlockCommitMsg[string(msg.Id)])) {
+				blockValidated := blockChain.NewBlockValidated(c.Block[string(msg.Id)].Block, c.BlockCommitMsg[string(msg.Id)])
 				if blockValidated == nil {
 					logger.Warningf("[Node.Run] NewBlockValidated failed")
 					continue
@@ -727,7 +726,17 @@ func (c *ConsensusPBFT) ProcessBlockMessage(msg *model.BlockMessage) {
 	}
 	c.Block[string(id)] = *msg
 	c.ModifyProposalState(msg)
-	if _, ok := c.BlockPrepareMsg[string(id)]; ok && service2.CertificateAuthorityX509.Check(len(c.BlockPrepareMsg[string(id)])) &&
+	if _, ok1 := c.BlockCommitMsg[string(id)]; ok1 && service2.CertificateAuthorityX509.Check(len(c.BlockCommitMsg[string(id)])) {
+		blockValidated := blockChain.NewBlockValidated(c.Block[string(id)].Block, c.BlockCommitMsg[string(id)])
+		if blockValidated == nil {
+			logger.Warningf("[Node.Run] NewBlockValidated failed")
+			return
+		}
+		c.ExecuteBlock(blockValidated)
+		delete(c.BlockCommitMsg, string(id))
+		delete(c.BlockPrepareMsg, string(id))
+		delete(c.Block, string(id))
+	} else if _, ok2 := c.BlockPrepareMsg[string(id)]; ok2 && service2.CertificateAuthorityX509.Check(len(c.BlockPrepareMsg[string(id)])) &&
 		!c.PrepareSent[string(id)] {
 			blockCommitMsg, err := messages.NewBlockCommitMessage(c.View, id)
 			if err != nil {
