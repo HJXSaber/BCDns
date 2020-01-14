@@ -6,4 +6,4 @@ go test -v messages_test.go messages.go > log
 
 per=$(grep count log| awk '{print $2}')
 
-echo $per
+echo "$per "

@@ -71,11 +71,9 @@ func SendStatus(isLeader bool) {
 	if err != nil {
 		panic(err)
 	}
-	for i := 0; i < 5; i++ {
-		_, err = conn.Write(data)
-		if err != nil {
-			panic(err)
-		}
+	_, err = conn.Write(data)
+	if err != nil {
+		panic(err)
 	}
 	fmt.Println("[SendStatus] msg")
 }
