@@ -13,5 +13,10 @@ elif [[ $# -eq 3 ]]; then
     sed "s/\(false\|true\)/$1/g" ../conf/$HOST/BCDNS.json -i
     sed "s/\(PBFT\|MYBFT\)/$2/g" ../conf/$HOST/BCDNS.json -i
     sed "s/\(yes\|no\)/$3/g" ../conf/$HOST/BCDNS.json -i
+elif [[ $# -eq 4 ]]; then
+    sed "s/\(false\|true\)/$1/g" ../conf/$HOST/BCDNS.json -i
+    sed "s/\(PBFT\|MYBFT\)/$2/g" ../conf/$HOST/BCDNS.json -i
+    sed "s/\(yes\|no\)/$3/g" ../conf/$HOST/BCDNS.json -i
+    sed "s/[0-9]/$4/g" ../conf/$HOST/BCDNS.json -i
 fi
 go run main.go > ../data/run.log

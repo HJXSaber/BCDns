@@ -373,5 +373,8 @@ func (n *DNet) GetAllNodeIds() []int64 {
 }
 
 func (n DNode) Send(msg []byte) (int, error) {
+	if conf.BCDnsConfig.SetDelay {
+		time.Sleep(conf.BCDnsConfig.Delay)
+	}
 	return n.Conn.Write(msg)
 }

@@ -26,6 +26,8 @@ type Config struct {
 	Mode string
 
 	Test bool
+	Delay time.Duration
+	SetDelay bool
 }
 
 var (
@@ -57,6 +59,13 @@ func init() {
 		BCDnsConfig.Test = true
 	} else {
 		BCDnsConfig.Test = false
+	}
+	d := viper.GetInt("DELAY")
+	if d == 0 {
+		BCDnsConfig.SetDelay = false
+	} else {
+		BCDnsConfig.SetDelay = true
+		BCDnsConfig.Delay = time.Duration(d) * time.Millisecond
 	}
 	BCDnsConfig.ProposalBufferSize = 10000
 	BCDnsConfig.ProposalTimeout = 30 * time.Second

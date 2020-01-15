@@ -3,5 +3,6 @@
   "PORT": "8001",
   "Byzantine": false,
   "MODE": "MYBFT",
-  "TEST": "yes"
+  "TEST": "yes",
+  "DELAY": 1
 }
