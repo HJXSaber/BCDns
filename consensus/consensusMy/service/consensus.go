@@ -326,6 +326,7 @@ func (c *ConsensusMyBft) Run(done chan uint) {
 					logger.Warningf("[Node.Run] NewBlockValidated failed")
 					continue
 				}
+				fmt.Println("Road", 1)
 				c.ExecuteBlock(blockValidated)
 				delete(c.BlockPrepareMsg, string(msg.Id))
 				delete(c.Block, string(msg.Id))
@@ -368,6 +369,7 @@ func (c *ConsensusMyBft) Run(done chan uint) {
 				logger.Warningf("[Node.Run] DataSyncRespMessage.Validate failed")
 				continue
 			}
+			fmt.Println("Road", 2)
 			c.ExecuteBlock(&msg.BlockValidated)
 		case msgByte := <-service.ProposalConfirmChan:
 			var msg messages.ProposalConfirm
@@ -692,6 +694,7 @@ func (c *ConsensusMyBft) ProcessBlockMessage(msg *model.BlockMessage) {
 			logger.Warningf("[Node.Run] NewBlockValidated failed")
 			return
 		}
+		fmt.Println("Road", 3)
 		c.ExecuteBlock(blockValidated)
 		delete(c.BlockPrepareMsg, string(id))
 		delete(c.Block, string(id))

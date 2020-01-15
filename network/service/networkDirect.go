@@ -328,7 +328,7 @@ func (n *DNet) BroadCast(payload []byte, t MessageTypeT) {
 		return
 	}
 
-	if conf.BCDnsConfig.Byzantine && (t == ProposalMsg || t == BlockMsg || t == BlockConfirmMsg || t == ProposalReplyMsg) {
+	if conf.BCDnsConfig.Byzantine && (t == BlockCommitMsg || t == BlockConfirmMsg || t == ProposalReplyMsg) {
 		rand2 := rand.New(rand.NewSource(time.Now().UnixNano()))
 		ignored := rand2.Intn(service.CertificateAuthorityX509.GetNetworkSize() - 1)
 		for i, m := range n.Members {
