@@ -73,7 +73,6 @@ type ConsensusPBFT struct {
 	JoinReplyMessages  map[string]service.JoinReplyMessage
 	JoinMessages       map[string]service.JoinMessage
 	InitLeaderMessages map[string]service.InitLeaderMessage
-	SentInitLeaderMsg bool
 }
 
 type Order struct {
@@ -124,7 +123,6 @@ func NewConsensus() (model.ConsensusI, error) {
 		JoinMessages: map[string]service.JoinMessage{},
 		JoinReplyMessages: map[string]service.JoinReplyMessage{},
 		InitLeaderMessages: map[string]service.InitLeaderMessage{},
-		SentInitLeaderMsg: false,
 	}
 	return consensus, nil
 }
@@ -143,7 +141,7 @@ func (c *ConsensusPBFT) Start(done chan uint) {
 				continue
 			}
 			c.JoinReplyMessages[msg.From] = msg
-			if !c.SentInitLeaderMsg && service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages) + len(c.JoinMessages)) {
+			if service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages) + len(c.JoinMessages)) {
 				initLeaderMsg, err := service.NewInitLeaderMessage(service.Net.GetAllNodeIds())
 				if err != nil {
 					logger.Warningf("[ViewManagerT.Start] NewInitLeaderMessage error=%v", err)
@@ -154,7 +152,6 @@ func (c *ConsensusPBFT) Start(done chan uint) {
 					logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
 					panic(err)
 				}
-				c.SentInitLeaderMsg = true
 				service.Net.BroadCast(jsonData, service.InitLeaderMsg)
 			}
 		case msg := <-service.JoinChan:
@@ -170,7 +167,7 @@ func (c *ConsensusPBFT) Start(done chan uint) {
 			}
 			service.Net.SendTo(jsonData, service.JoinReplyMsg, msg.From)
 			c.JoinMessages[msg.From] = msg
-			if c.View == -1 && !c.SentInitLeaderMsg && service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages) + len(c.JoinMessages)) {
+			if c.View == -1 && service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages) + len(c.JoinMessages)) {
 				initLeaderMsg, err := service.NewInitLeaderMessage(service.Net.GetAllNodeIds())
 				if err != nil {
 					logger.Warningf("[ViewManagerT.Start] NewInitLeaderMessage error=%v", err)
@@ -181,8 +178,7 @@ func (c *ConsensusPBFT) Start(done chan uint) {
 					logger.Warningf("[ViewManagerT.Start] json.Marshal error=%v", err)
 					panic(err)
 				}
-				c.SentInitLeaderMsg = true
-				service.Net.BroadCast(jsonData, service.InitLeaderMsg)
+				service.Net.SendTo(jsonData, service.InitLeaderMsg, msg.From)
 			}
 		case msgByte := <-service.InitLeaderChan:
 			var msg service.InitLeaderMessage
