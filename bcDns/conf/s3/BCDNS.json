@@ -1,6 +1,0 @@
-{
-  "HOSTNAME": "s3",
-  "PORT": "8001",
-  "Byzantine": false,
-  "MODE": "MYBFT"
-}
