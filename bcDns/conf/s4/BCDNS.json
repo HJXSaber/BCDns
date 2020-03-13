@@ -1,8 +1,8 @@
 {
-  "HOSTNAME": "s1",
+  "HOSTNAME": "s4",
   "PORT": "8001",
   "Byzantine": false,
   "MODE": "MYBFT",
   "TEST": "yes",
-  "DELAY": 0
+  "DELAY": 100
 }

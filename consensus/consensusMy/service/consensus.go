@@ -211,7 +211,7 @@ func (c *ConsensusMyBft) Run(done chan uint) {
 		for {
 			select {
 			case <-time.After(10 * time.Second):
-				fmt.Println("Timeout", c.BlockConfirm, c.UnConfirmedH)
+				//fmt.Println("Timeout", c.BlockConfirm, c.UnConfirmedH)
 				if c.BlockConfirm {
 					interrupt <- 1
 				}
@@ -263,6 +263,15 @@ func (c *ConsensusMyBft) Run(done chan uint) {
 				continue
 			}
 			c.PPPcount++
+			if !conf.BCDnsConfig.SetDelay && proposal.From != conf.BCDnsConfig.HostName{
+				ord := Order{
+					OptType:proposal.Type,
+					ZoneName:proposal.ZoneName,
+					Values:proposal.Values,
+				}
+				c.handleOrder(ord)
+				continue
+			}
 			if _, exist := c.ProposalsCache[string(proposal.Id)]; !exist {
 				if !c.handleProposal(proposal) {
 					continue
@@ -270,6 +279,13 @@ func (c *ConsensusMyBft) Run(done chan uint) {
 				c.PPCount++
 				c.ProposalsCache[string(proposal.Id)] = unreceived
 				if c.IsLeader() {
+					//newMsg := messages.NewProposal(proposal.ZoneName, proposal.Type, proposal.Values)
+					//if newMsg == nil {
+					//	continue
+					//}
+					//c.Proposals[string(newMsg.Id)] = *newMsg
+					//c.Replies[string(newMsg.Id)] = map[string]uint8{}
+					//c.MessagePool.AddProposal(*newMsg)
 					c.MessagePool.AddProposal(proposal)
 					if c.BlockConfirm && c.MessagePool.Size() >= blockChain.BlockMaxSize {
 						c.generateBlock()
@@ -460,6 +476,7 @@ func (c *ConsensusMyBft) handleOrder(msg Order) {
 		c.Mutex.Unlock()
 		c.PCount++
 		service.Net.BroadCast(proposalByte, service.ProposalMsg)
+		fmt.Println("Proposal sent")
 	} else {
 		logger.Warningf("[handleOrder] NewProposal failed")
 	}
@@ -833,10 +850,6 @@ func (c *ConsensusMyBft) StartChange() {
 			err            error
 		)
 		history := c.GetHistory()
-		if history == 0 {
-			logger.Warningf("[View.Run] StartChange history's h is invalid")
-			return
-		}
 		recallB := c.GetRecallBlock(history + 1)
 		if recallB.TimeStamp != 0 {
 			recallBlockMsg, err = model.NewBlockMessage(c.View + 1, &recallB.Block, recallB.AbandonedProposal)

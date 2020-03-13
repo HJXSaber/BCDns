@@ -68,5 +68,5 @@ func init() {
 		BCDnsConfig.Delay = time.Duration(d) * time.Millisecond
 	}
 	BCDnsConfig.ProposalBufferSize = 10000
-	BCDnsConfig.ProposalTimeout = 30 * time.Second
+	BCDnsConfig.ProposalTimeout = 20 * time.Second
 }

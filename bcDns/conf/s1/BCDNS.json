@@ -4,5 +4,5 @@
   "Byzantine": false,
   "MODE": "MYBFT",
   "TEST": "yes",
-  "DELAY": 0
+  "DELAY": 500
 }
