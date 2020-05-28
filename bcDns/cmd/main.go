@@ -61,7 +61,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	_ = <- initLeaderDone
+	_ = <-initLeaderDone
 	if ConsensusCenter.IsLeader() {
 		conf.BCDnsConfig.Byzantine = false
 	}
