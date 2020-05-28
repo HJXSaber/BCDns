@@ -4,5 +4,6 @@
   "Byzantine": false,
   "MODE": "MYBFT",
   "TEST": "yes",
-  "DELAY": 1
+  "DELAY": 1,
+  "CONFIGINTERVAL": 10
 }

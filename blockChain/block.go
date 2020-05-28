@@ -173,7 +173,6 @@ func Map(f interface{}, vs interface{}) interface{} {
 	return vys.Interface()
 }
 
-
 type BlockValidated struct {
 	Block
 	Signatures map[string][]byte

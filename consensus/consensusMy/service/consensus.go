@@ -31,7 +31,7 @@ const (
 )
 
 var (
-	blockChan chan model.BlockMessage
+	blockChan  chan model.BlockMessage
 	logger     *logging.Logger // package-level logger
 	UdpAddress = "127.0.0.1:8888"
 )
@@ -46,21 +46,21 @@ type ConsensusMyBft struct {
 	Contexts       map[string]context.CancelFunc
 	Conn           *net.UDPConn
 	OrderChan      chan []byte
-	PCount uint
+	PCount         uint
 
 	//Node role
-	ProposalsCache  map[string]uint8            //need clean used for start view change
-	Blocks          []blockChain.BlockValidated //Block's hole
+	ProposalsCache  map[string]uint8            // need clean used for start view change
+	Blocks          []blockChain.BlockValidated // Block's hole
 	BlockMessages   []model.BlockMessage        // need clean
 	Block           map[string]model.BlockMessage
 	BlockPrepareMsg map[string]map[string][]byte
-	PPCount uint
+	PPCount         uint
 
 	//Leader role
 	MessagePool  messages.ProposalMessagePool
 	BlockConfirm bool
 	UnConfirmedH uint
-	PPPcount    uint
+	PPPcount     uint
 	PPPPcount    uint
 
 	//View role
@@ -76,7 +76,7 @@ type ConsensusMyBft struct {
 type Order struct {
 	OptType  messages.OperationType
 	ZoneName string
-	Values   map[string]string
+	Values   []string
 }
 
 func init() {
@@ -97,27 +97,27 @@ func NewConsensus() (model.ConsensusI, error) {
 		Mutex:          sync.Mutex{},
 		Proposals:      map[string]messages.ProposalMessage{},
 		proposalsTimer: map[string]time.Time{},
-		Replies: map[string]map[string]uint8{},
-		Contexts: map[string]context.CancelFunc{},
-		Conn:conn,
-		OrderChan: make(chan []byte, 1024),
+		Replies:        map[string]map[string]uint8{},
+		Contexts:       map[string]context.CancelFunc{},
+		Conn:           conn,
+		OrderChan:      make(chan []byte, 1024),
 
-		ProposalsCache: map[string]uint8{},
-		Blocks: []blockChain.BlockValidated{},
-		BlockMessages: []model.BlockMessage{},
-		Block: map[string]model.BlockMessage{},
+		ProposalsCache:  map[string]uint8{},
+		Blocks:          []blockChain.BlockValidated{},
+		BlockMessages:   []model.BlockMessage{},
+		Block:           map[string]model.BlockMessage{},
 		BlockPrepareMsg: map[string]map[string][]byte{},
 
-		MessagePool: messages.NewProposalMessagePool(),
+		MessagePool:  messages.NewProposalMessagePool(),
 		BlockConfirm: true,
 		UnConfirmedH: 0,
 
-		OnChange: false,
-		View: -1,
-		LeaderId: -1,
-		ViewChangeMsgs: map[string]model.ViewChangeMessage{},
-		JoinMessages: map[string]service.JoinMessage{},
-		JoinReplyMessages: map[string]service.JoinReplyMessage{},
+		OnChange:           false,
+		View:               -1,
+		LeaderId:           -1,
+		ViewChangeMsgs:     map[string]model.ViewChangeMessage{},
+		JoinMessages:       map[string]service.JoinMessage{},
+		JoinReplyMessages:  map[string]service.JoinReplyMessage{},
 		InitLeaderMessages: map[string]service.InitLeaderMessage{},
 	}
 	return consensus, nil
@@ -163,7 +163,7 @@ func (c *ConsensusMyBft) Start(done chan uint) {
 			}
 			service.Net.SendTo(jsonData, service.JoinReplyMsg, msg.From)
 			c.JoinMessages[msg.From] = msg
-			if c.View == -1 && service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages) + len(c.JoinMessages)) {
+			if c.View == -1 && service2.CertificateAuthorityX509.Check(len(c.JoinReplyMessages)+len(c.JoinMessages)) {
 				initLeaderMsg, err := service.NewInitLeaderMessage(service.Net.GetAllNodeIds())
 				if err != nil {
 					logger.Warningf("[ViewManagerT.Start] NewInitLeaderMessage error=%v", err)
@@ -420,7 +420,7 @@ func (c *ConsensusMyBft) Run(done chan uint) {
 				logger.Warningf("[View.Run] json.Unmarshal error=%v", err)
 				continue
 			}
-			if msg.View != c.View + 1 {
+			if msg.View != c.View+1 {
 				continue
 			}
 			if !msg.VerifySignature() {
@@ -772,14 +772,16 @@ func (c *ConsensusMyBft) IsNextLeader() bool {
 	return service2.CertificateAuthorityX509.IsLeaderNode((c.View + 1) % int64(service2.CertificateAuthorityX509.GetNetworkSize()))
 }
 
-func (c *ConsensusMyBft) GetHistory() uint {
+func (c *ConsensusMyBft) GetLatestBlock() (block model.BlockMessage, proofs map[string][]byte) {
 	var h uint
 	for _, b := range c.ViewChangeMsgs {
 		if h == 0 || h < b.BlockHeader.Height {
 			h = b.BlockHeader.Height
+			block = b.Block
+			proofs = b.Proofs
 		}
 	}
-	return h
+	return
 }
 
 func (c *ConsensusMyBft) GetRecallBlock(h uint) model.BlockMessage {
@@ -811,7 +813,7 @@ func (c *ConsensusMyBft) StartViewChange() {
 		return
 	}
 	for _, b := range c.Block {
-		if b.Height == lastBlock.Height + 1 {
+		if b.Height == lastBlock.Height+1 {
 			block = b
 		}
 	}
@@ -827,25 +829,12 @@ func (c *ConsensusMyBft) StartViewChange() {
 func (c *ConsensusMyBft) StartChange() {
 	c.OnChange = true
 	if c.IsNextLeader() {
-		var (
-			recallBlockMsg model.BlockMessage
-			newViewMsg     model.NewViewMessage
-			err            error
-		)
-		history := c.GetHistory()
-		if history == 0 {
-			logger.Warningf("[View.Run] StartChange history's h is invalid")
+		block, proofs := c.GetLatestBlock()
+		if block.TimeStamp == 0 {
+			logger.Warningf("[View.Run] StartChange NewBlockMessage can't find correct block")
 			return
 		}
-		recallB := c.GetRecallBlock(history + 1)
-		if recallB.TimeStamp != 0 {
-			recallBlockMsg, err = model.NewBlockMessage(c.View + 1, &recallB.Block, recallB.AbandonedProposal)
-			if err != nil {
-				logger.Warningf("[View.Run] StartChange NewBlockMessage error=%v", err)
-				return
-			}
-		}
-		newViewMsg, err = model.NewNewViewMessage(history, c.View + 1, &recallBlockMsg)
+		newViewMsg, err := model.NewNewViewMessage(c.View, c.ViewChangeMsgs, block, proofs)
 		if err != nil {
 			logger.Warningf("[View.Run] StartChange NewNewViewMessage error=%v", err)
 			return
@@ -877,13 +866,17 @@ func (c *ConsensusMyBft) ProcessNewViewMsg(msg *model.NewViewMessage) {
 		return
 	}
 	if lastBlock.Height < msg.Height {
-		StartDataSync(lastBlock.Height + 1, msg.Height)
+		StartDataSync(lastBlock.Height+1, msg.Height)
 		if msg.BlockMsg.TimeStamp != 0 {
 			c.EnqueueBlockMessage(&msg.BlockMsg)
 		}
-	} else {
-		if msg.BlockMsg.TimeStamp != 0 {
-			c.ProcessBlockMessage(&msg.BlockMsg)
+	} else if lastBlock.Height > msg.Height {
+		for {
+			err = blockChain.BlockChain.RevokeBlock()
+			if err == nil {
+				break
+			}
+			logger.Warningf("[View.Run] ProcessNewViewMsg GetLatestBlock error=%v", err)
 		}
 	}
 	c.FinChange()
@@ -959,4 +952,3 @@ func StartDataSync(lastH, h uint) {
 		service.Net.BroadCast(jsonData, service.DataSyncMsg)
 	}
 }
-

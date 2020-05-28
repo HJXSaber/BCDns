@@ -15,7 +15,16 @@ type ZoneStatePoolT struct {
 
 type ZoneRecord struct {
 	Owner  string
-	Values map[string]string
+	Values []string
+}
+
+func init() {
+	var err error
+	ZoneStatePool, err = NewZoneStatePool()
+	if err != nil {
+		fmt.Printf("[ZoneStatePool error=%v]", err)
+		panic(err)
+	}
 }
 
 func NewZoneStatePool() (*ZoneStatePoolT, error) {

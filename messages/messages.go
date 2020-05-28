@@ -34,7 +34,7 @@ type ProposalMessage struct {
 	Type      OperationType
 	ZoneName  string
 	Owner     string
-	Values    map[string]string
+	Values    []string
 	Nonce     uint32
 	Id        []byte
 	Signature []byte
@@ -44,7 +44,7 @@ func init() {
 	logger = logging.MustGetLogger("messages")
 }
 
-func NewProposal(zoneName string, t OperationType, values map[string]string) *ProposalMessage {
+func NewProposal(zoneName string, t OperationType, values []string) *ProposalMessage {
 	var (
 		err  error
 		base = utils.Base{
@@ -96,7 +96,7 @@ func NewProposal(zoneName string, t OperationType, values map[string]string) *Pr
 			Type:     Mod,
 			ZoneName: zoneName,
 			Owner:    base.From,
-			Values:   utils.CoverMap(blockProposal.Values, values),
+			Values:   values,
 		}
 	default:
 		fmt.Println("Unknown proposal type")
@@ -368,7 +368,6 @@ func (pool *ProposalMessagePool) AddProposal(p ProposalMessage) {
 	pool.ProposalMessages = append(pool.ProposalMessages, p)
 }
 
-
 func (pool *ProposalMessagePool) Clear(index int) {
 	if index == 0 {
 		pool.ProposalMessages = ProposalMessages{}
@@ -394,13 +393,13 @@ type BlockConfirmMessage struct {
 	View int64
 	utils.Base
 	Id        []byte
-	Proof []byte
+	Proof     []byte
 	Signature []byte
 }
 
 func NewBlockConfirmMessage(view int64, id []byte) (BlockConfirmMessage, error) {
 	msg := BlockConfirmMessage{
-		View:view,
+		View: view,
 		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
@@ -459,7 +458,6 @@ func (msg *BlockConfirmMessage) VerifyProof() bool {
 	return service.CertificateAuthorityX509.VerifySignature(msg.Proof, msg.Id, msg.From)
 }
 
-
 type ProposalReplyMessage struct {
 	utils.Base
 	Id        []byte
@@ -511,7 +509,8 @@ func (msg *ProposalReplyMessage) Sign() error {
 func (msg *ProposalReplyMessage) VerifySignature() bool {
 	if conf.BCDnsConfig.Test {
 		return true
-	} else {hash, err := msg.Hash()
+	} else {
+		hash, err := msg.Hash()
 		if err != nil {
 			return false
 		}
@@ -522,19 +521,19 @@ func (msg *ProposalReplyMessage) VerifySignature() bool {
 type BlockCommitMessage struct {
 	View int64
 	utils.Base
-	Id []byte
-	Proof []byte
+	Id        []byte
+	Proof     []byte
 	Signature []byte
 }
 
 func NewBlockCommitMessage(view int64, id []byte) (BlockCommitMessage, error) {
 	msg := BlockCommitMessage{
-		View:view,
-		Base:utils.Base{
-			From:conf.BCDnsConfig.HostName,
-			TimeStamp:time.Now().Unix(),
+		View: view,
+		Base: utils.Base{
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
 		},
-		Id:id,
+		Id: id,
 	}
 	if proof := service.CertificateAuthorityX509.Sign(id); proof != nil {
 		msg.Proof = proof

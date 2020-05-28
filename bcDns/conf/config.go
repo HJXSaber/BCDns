@@ -23,11 +23,13 @@ type Config struct {
 	LeaderMsgBufferSize int
 	PowDifficult        int
 	Byzantine           bool
-	Mode string
+	Mode                string
 
-	Test bool
-	Delay time.Duration
+	Test     bool
+	Delay    time.Duration
 	SetDelay bool
+
+	ConfigInterval time.Duration
 }
 
 var (
@@ -69,4 +71,6 @@ func init() {
 	}
 	BCDnsConfig.ProposalBufferSize = 10000
 	BCDnsConfig.ProposalTimeout = 30 * time.Second
+	c := viper.GetInt("CONFIGINTERVAL")
+	BCDnsConfig.ConfigInterval = time.Duration(c) * time.Second
 }

@@ -23,7 +23,7 @@ type BlockMessage struct {
 //TODO
 func NewBlockMessage(view int64, b *blockChain.Block, abandonedP messages.ProposalMessages) (BlockMessage, error) {
 	msg := BlockMessage{
-		View:view,
+		View: view,
 		Base: utils.Base{
 			From:      conf.BCDnsConfig.HostName,
 			TimeStamp: time.Now().Unix(),
@@ -82,21 +82,21 @@ type ViewChangeMessage struct {
 	View int64
 	utils.Base
 	BlockHeader blockChain.BlockHeader
-	Proofs map[string][]byte
-	Block BlockMessage
-	Signature []byte
+	Proofs      map[string][]byte
+	Block       BlockMessage
+	Signature   []byte
 }
 
 func NewViewChangeMessage(lastBlock *blockChain.BlockValidated, view int64, b *BlockMessage) (ViewChangeMessage, error) {
-	msg :=  ViewChangeMessage{
-		View:view,
+	msg := ViewChangeMessage{
+		View: view,
 		Base: utils.Base{
-			From:conf.BCDnsConfig.HostName,
-			TimeStamp:time.Now().Unix(),
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
 		},
 		BlockHeader: lastBlock.BlockHeader,
-		Proofs: lastBlock.Signatures,
-		Block: *b,
+		Proofs:      lastBlock.Signatures,
+		Block:       *b,
 	}
 	err := msg.Sign()
 	if err != nil {
@@ -172,20 +172,24 @@ func (msg *ViewChangeMessage) VerifySignatures() bool {
 type NewViewMessage struct {
 	View int64
 	utils.Base
-	Height uint
-	BlockMsg BlockMessage
+	Height    uint
+	BlockMsg  BlockMessage
+	Proofs    map[string][]byte
+	V         map[string]ViewChangeMessage
 	Signature []byte
 }
 
-func NewNewViewMessage(h uint, view int64, b *BlockMessage) (NewViewMessage, error) {
-	msg :=  NewViewMessage{
-		View:view,
+func NewNewViewMessage(view int64, viewChangeMsgs map[string]ViewChangeMessage, block BlockMessage, proofs map[string][]byte) (NewViewMessage, error) {
+	msg := NewViewMessage{
+		View: view,
 		Base: utils.Base{
-			From:conf.BCDnsConfig.HostName,
-			TimeStamp:time.Now().Unix(),
+			From:      conf.BCDnsConfig.HostName,
+			TimeStamp: time.Now().Unix(),
 		},
-		Height:h,
-		BlockMsg: *b,
+		Height:   block.Height,
+		BlockMsg: block,
+		Proofs:   proofs,
+		V:        viewChangeMsgs,
 	}
 	err := msg.Sign()
 	if err != nil {
@@ -215,6 +219,18 @@ func (msg *NewViewMessage) Hash() ([]byte, error) {
 		return nil, err
 	} else {
 		buf.Write(hash)
+	}
+	if jsonData, err := json.Marshal(msg.Proofs); err != nil {
+		return nil, err
+	} else {
+		buf.Write(jsonData)
+	}
+	for _, v := range msg.V {
+		if hash, err := v.Hash(); err != nil {
+			return nil, err
+		} else {
+			buf.Write(hash)
+		}
 	}
 	return utils.SHA256(buf.Bytes()), nil
 }

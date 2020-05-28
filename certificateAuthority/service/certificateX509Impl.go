@@ -73,7 +73,7 @@ func init() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if strings.Compare(fileName, RootCertificateName) == 0{
+		if strings.Compare(fileName, RootCertificateName) == 0 {
 			continue
 		}
 		if ok {

@@ -27,7 +27,7 @@ var (
 	ProposalChan        chan []byte
 	BlockChan           chan []byte
 	BlockConfirmChan    chan []byte
-	BlockCommitChan		chan []byte
+	BlockCommitChan     chan []byte
 	DataSyncChan        chan []byte
 	DataSyncRespChan    chan []byte
 	ProposalReplyChan   chan []byte
@@ -125,10 +125,10 @@ func (n *DNet) handleStream() {
 
 func (n *DNet) handleConn(conn net.Conn) {
 	var (
-		msg    Message
-		header *PacketHeader
-		length = 0
-		data   = make([]byte, 0)
+		msg      Message
+		header   *PacketHeader
+		length   = 0
+		data     = make([]byte, 0)
 		needData bool
 	)
 	state := Packed

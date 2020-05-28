@@ -114,7 +114,7 @@ func (bc *Blockchain) AddBlock(block *BlockValidated) error {
 	defer dao.Dao.Mutex.Unlock()
 	for _, p := range block.ProposalMessages {
 		err := dao.Db.Delete([]byte(p.ZoneName), nil)
-		//ZoneStatePool.Modify(p.ZoneName)
+		ZoneStatePool.Modify(p.ZoneName)
 		if err != nil {
 			fmt.Printf("[AddBlock] Db.Delete error=%v\n", err)
 			return err
@@ -144,7 +144,6 @@ func (bc *Blockchain) AddBlock(block *BlockValidated) error {
 		lastHash := b.Get([]byte("l"))
 		lastBlockData := b.Get(lastHash)
 		lastBlock, err := UnMarshalBlockValidated(lastBlockData)
-
 		if err != nil {
 			return err
 		}
@@ -218,6 +217,37 @@ func (bc *Blockchain) GetLatestBlock() (*BlockValidated, error) {
 	}
 
 	return lastBlock, nil
+}
+
+func (bc *Blockchain) RevokeBlock() error {
+	lastBlock, err := bc.GetLatestBlock()
+	if err != nil {
+		return err
+	}
+	err = bc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		prevHash := lastBlock.PrevBlock
+		key, err := lastBlock.Hash()
+		if err != nil {
+			return err
+		}
+
+		err = b.Put([]byte("l"), prevHash)
+		if err != nil {
+			return err
+		}
+		bc.tip = prevHash
+
+		err = b.Delete(key)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetBlockByHash finds a block by its hash and returns it

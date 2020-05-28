@@ -13,7 +13,7 @@ func TestSign(t *testing.T) {
 	count := 0
 	go func() {
 		select {
-		case <- time.After(60 * time.Second):
+		case <-time.After(60 * time.Second):
 			fmt.Println("count", count)
 			panic("Time up")
 		}
@@ -24,7 +24,6 @@ func TestSign(t *testing.T) {
 		count++
 	}
 }
-
 
 func SHA256(data []byte) []byte {
 	hash := sha256.New()

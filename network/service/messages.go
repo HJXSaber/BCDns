@@ -155,7 +155,7 @@ func NewJoinReplyMessage(view int64, signatures map[string][]byte) (*JoinReplyMe
 		},
 		View:       view,
 		Signatures: signatures,
-		NodeId: service.CertificateAuthorityX509.NodeId,
+		NodeId:     service.CertificateAuthorityX509.NodeId,
 	}
 	err := msg.Sign()
 	if err != nil {
