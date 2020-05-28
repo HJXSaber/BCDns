@@ -2,6 +2,7 @@ package main
 
 import (
 	"BCDns_0.1/bcDns/conf"
+	"BCDns_0.1/bind9Config"
 	blockChain2 "BCDns_0.1/blockChain"
 	service2 "BCDns_0.1/certificateAuthority/service"
 	mybft "BCDns_0.1/consensus/consensusMy/service"
@@ -68,6 +69,7 @@ func main() {
 	fmt.Println("[System running]")
 	fmt.Println("[Start Time]", time.Now())
 	utils.SendStatus(ConsensusCenter.IsLeader())
+	bind9Config.Generator.Run()
 	go ConsensusCenter.Run(done)
 	_ = <-done
 	fmt.Println("[Err] System exit")
